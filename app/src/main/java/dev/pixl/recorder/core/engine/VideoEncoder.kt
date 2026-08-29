@@ -42,6 +42,7 @@ class VideoEncoder(
     private val isPaused = AtomicBoolean(false)
     private var pauseStartTimeNs: Long = 0L
     private var totalPauseOffsetNs: Long = 0L
+    private var firstFramePtsUs: Long = -1L
     private var lastPtsUs: Long = 0L
 
     // FPS measurement
@@ -112,6 +113,7 @@ class VideoEncoder(
         codec.start()
         isRunning.set(true)
         isPaused.set(false)
+        firstFramePtsUs = -1L
         lastPtsUs = 0L
         totalPauseOffsetNs = 0L
         frameCount = 0
@@ -209,8 +211,14 @@ class VideoEncoder(
 
                                 if (bufferInfo.size > 0) {
                                     if (!isPaused.get()) {
-                                        // Adjust PTS for any pauses and ensure monotonic progression
-                                        val adjustedPtsUs = (bufferInfo.presentationTimeUs - (totalPauseOffsetNs / 1_000L)).coerceAtLeast(lastPtsUs)
+                                        // Normalize video PTS so the first frame starts at 0 microseconds
+                                        if (firstFramePtsUs < 0) {
+                                            firstFramePtsUs = bufferInfo.presentationTimeUs
+                                            Log.i(tag, "First video frame captured at raw PTS: ${firstFramePtsUs}us (uptime: ${firstFramePtsUs / 1_000_000}s), normalized to 0us")
+                                        }
+
+                                        val relativePtsUs = bufferInfo.presentationTimeUs - firstFramePtsUs
+                                        val adjustedPtsUs = (relativePtsUs - (totalPauseOffsetNs / 1_000L)).coerceAtLeast(lastPtsUs)
                                         bufferInfo.presentationTimeUs = adjustedPtsUs
                                         lastPtsUs = adjustedPtsUs
 

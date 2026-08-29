@@ -58,6 +58,18 @@ class ScreenRecorderEngine(
     private val isMuxerStarted = AtomicBoolean(false)
     private val muxerLock = ReentrantLock()
 
+    // Pending sample queue for samples received before muxer starts
+    private val pendingSamples = mutableListOf<PendingSample>()
+
+    private data class PendingSample(
+        val trackIndex: Int,
+        val data: ByteArray,
+        val offset: Int,
+        val size: Int,
+        val presentationTimeUs: Long,
+        val flags: Int
+    )
+
     private val isRecording = AtomicBoolean(false)
     private val isPaused = AtomicBoolean(false)
 
@@ -79,6 +91,12 @@ class ScreenRecorderEngine(
         _state.value = RecorderState.Preparing()
 
         try {
+            // Reset state
+            videoTrackIndex = -1
+            audioTrackIndex = -1
+            isMuxerStarted.set(false)
+            pendingSamples.clear()
+
             // 1. Initialize MediaStore Scoped Storage Writer
             val writer = MediaStoreWriter(context, config)
             mediaStoreWriter = writer
@@ -91,7 +109,7 @@ class ScreenRecorderEngine(
                 }
 
                 override fun onVideoSampleData(buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
-                    writeSample(videoTrackIndex, buffer, bufferInfo)
+                    writeSample(0, buffer, bufferInfo) // Track 0 is video
                 }
 
                 override fun onVideoError(e: Throwable) {
@@ -113,7 +131,7 @@ class ScreenRecorderEngine(
                     }
 
                     override fun onAudioSampleData(buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
-                        writeSample(audioTrackIndex, buffer, bufferInfo)
+                        writeSample(1, buffer, bufferInfo) // Track 1 is audio
                     }
 
                     override fun onAudioError(e: Throwable) {
@@ -160,15 +178,15 @@ class ScreenRecorderEngine(
             )
 
             // 5. Start all pipelines
-            vEncoder.start(engineScope)
-            audioEncoder?.start(engineScope)
-            audioCaptureManager?.start(engineScope)
-
             isRecording.set(true)
             isPaused.set(false)
             startTimeMs = System.currentTimeMillis()
             totalPausedDurationMs = 0L
             totalBytesWritten = 0L
+
+            vEncoder.start(engineScope)
+            audioEncoder?.start(engineScope)
+            audioCaptureManager?.start(engineScope)
 
             startTelemetryTicker()
             Log.i(tag, "ScreenRecorderEngine started successfully")
@@ -248,7 +266,7 @@ class ScreenRecorderEngine(
                     }
                 }
 
-                // 4. Finalize MediaStore record
+                // 4. Finalize MediaStore record with accurate duration
                 val uri = mediaStoreWriter?.currentUri
                 mediaStoreWriter?.finish(finalDurationMs, finalBytes)
 
@@ -268,7 +286,7 @@ class ScreenRecorderEngine(
                     totalBytes = finalBytes,
                     formattedSize = formattedSize
                 )
-                Log.i(tag, "ScreenRecorderEngine successfully finished: $uri ($formattedSize)")
+                Log.i(tag, "ScreenRecorderEngine successfully finished: $uri ($formattedSize, ${finalDurationMs / 1000}s)")
             } catch (e: Exception) {
                 Log.e(tag, "Error stopping ScreenRecorderEngine", e)
                 handleError("Failed to finalize recording: ${e.message}", e)
@@ -342,22 +360,64 @@ class ScreenRecorderEngine(
         val isAudioReady = !hasAudio || audioTrackIndex >= 0
 
         if (isVideoReady && isAudioReady && !isMuxerStarted.get()) {
-            mediaMuxer?.start()
+            val muxer = mediaMuxer ?: return
+            muxer.start()
             isMuxerStarted.set(true)
-            Log.i(tag, "MediaMuxer started with all configured tracks")
+            Log.i(tag, "MediaMuxer started with all configured tracks (Video: $videoTrackIndex, Audio: $audioTrackIndex)")
+
+            // Drain queued pending samples
+            for (sample in pendingSamples) {
+                val realTrack = if (sample.trackIndex == 0) videoTrackIndex else audioTrackIndex
+                if (realTrack >= 0) {
+                    try {
+                        val byteBuf = ByteBuffer.wrap(sample.data, sample.offset, sample.size)
+                        val info = MediaCodec.BufferInfo().apply {
+                            set(sample.offset, sample.size, sample.presentationTimeUs, sample.flags)
+                        }
+                        muxer.writeSampleData(realTrack, byteBuf, info)
+                        totalBytesWritten += sample.size
+                    } catch (e: Exception) {
+                        Log.e(tag, "Error draining pending sample", e)
+                    }
+                }
+            }
+            pendingSamples.clear()
         }
     }
 
-    private fun writeSample(trackIndex: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
-        if (trackIndex < 0 || !isMuxerStarted.get()) return
+    private fun writeSample(logicalTrack: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        if (!isRecording.get()) return
 
         muxerLock.withLock {
             if (isMuxerStarted.get()) {
-                try {
-                    mediaMuxer?.writeSampleData(trackIndex, buffer, bufferInfo)
-                    totalBytesWritten += bufferInfo.size
-                } catch (e: Exception) {
-                    Log.e(tag, "Error writing sample data to track $trackIndex", e)
+                val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
+                if (realTrack >= 0) {
+                    try {
+                        mediaMuxer?.writeSampleData(realTrack, buffer, bufferInfo)
+                        totalBytesWritten += bufferInfo.size
+                    } catch (e: Exception) {
+                        Log.e(tag, "Error writing sample data to track $realTrack", e)
+                    }
+                }
+            } else {
+                // Queue until muxer starts (max 100 frames)
+                if (pendingSamples.size < 100) {
+                    val bytes = ByteArray(bufferInfo.size)
+                    val oldPos = buffer.position()
+                    buffer.position(bufferInfo.offset)
+                    buffer.get(bytes, 0, bufferInfo.size)
+                    buffer.position(oldPos)
+
+                    pendingSamples.add(
+                        PendingSample(
+                            trackIndex = logicalTrack,
+                            data = bytes,
+                            offset = 0,
+                            size = bufferInfo.size,
+                            presentationTimeUs = bufferInfo.presentationTimeUs,
+                            flags = bufferInfo.flags
+                        )
+                    )
                 }
             }
         }
@@ -378,7 +438,7 @@ class ScreenRecorderEngine(
                         isPaused = false
                     )
                 }
-                delay(200) // Update UI at 5Hz
+                delay(100) // Smooth 10Hz ticker
             }
         }
     }

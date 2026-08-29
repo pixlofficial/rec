@@ -27,9 +27,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
@@ -41,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,10 +61,12 @@ import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
+import dev.pixl.recorder.ui.theme.BrutalistSurface
 import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
+import dev.pixl.recorder.ui.theme.ShadowSolid
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextMuted
@@ -93,12 +99,17 @@ fun DashboardScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Top Bar Header
+            // 1. Header Bar
             HeaderBar(uiState = uiState)
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. Active Recording Hero / Standby Card
+            // 2. Hardware Capabilities & SoC Status Banner
+            HardwareSpecsCard(uiState = uiState)
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 3. Hero Recording / Live Telemetry Card
             HeroRecordingCard(
                 recorderState = recorderState,
                 uiState = uiState,
@@ -108,9 +119,9 @@ fun DashboardScreen(
                 onResumeClick = { viewModel.resumeRecording() }
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. Hardware Codec & FPS Settings Grid
+            // 4. Configuration Controls Grid
             ConfigSection(
                 uiState = uiState,
                 isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
@@ -133,7 +144,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // App Identity
+        // App Identity Brand Badge
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -144,27 +155,100 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "REC",
                     color = TextInverse,
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "ZERO-COPY VPU",
+                    color = ToxicLime,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = "BY PIXL",
+                    color = TextSecondary,
+                    fontSize = 9.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Live Badges
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val refreshRate = uiState.capabilities?.display?.currentRefreshRate?.roundToInt() ?: 60
+            TelemetryBadge(label = "FPS", value = "$refreshRate HZ", accentColor = ToxicLime, isHighlighted = true)
+            val storageFormatted = StorageCalculator.formatBytes(uiState.availableStorageBytes)
+            TelemetryBadge(label = "FREE", value = storageFormatted, accentColor = CyberYellow)
+        }
+    }
+}
+
+@Composable
+private fun HardwareSpecsCard(uiState: DashboardUiState) {
+    val display = uiState.capabilities?.display
+    val width = display?.physicalWidth ?: 720
+    val height = display?.physicalHeight ?: 1560
+    val refreshRate = display?.currentRefreshRate?.roundToInt() ?: 60
+    val hevcHw = uiState.capabilities?.isHevcHardwareSupported == true
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceElevated, RoundedCornerShape(10.dp))
+            .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Memory,
+                    contentDescription = null,
+                    tint = ToxicLime,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "HARDWARE ENGINE ACTIVE",
+                        color = TextPrimary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
+                        color = TextSecondary,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(ToxicLime.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                    .border(1.dp, ToxicLime, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "0% CPU VPU",
+                    color = ToxicLime,
+                    fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Black
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "BY PIXL",
-                color = TextSecondary,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Hardware Refresh Rate & Storage Badges
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val refreshRate = uiState.capabilities?.display?.currentRefreshRate?.roundToInt() ?: 60
-            TelemetryBadge(label = "DISPLAY", value = "$refreshRate HZ", accentColor = ToxicLime)
-            val storageFormatted = StorageCalculator.formatBytes(uiState.availableStorageBytes)
-            TelemetryBadge(label = "FREE", value = storageFormatted, accentColor = CyberYellow)
         }
     }
 }
@@ -192,50 +276,52 @@ private fun HeroRecordingCard(
                 initialValue = 1f,
                 targetValue = 0.2f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(600),
+                    animation = tween(500),
                     repeatMode = RepeatMode.Reverse
                 ),
                 label = "RecordDotAlpha"
             )
 
             BrutalistCard(
-                title = if (isPaused) "RECORDING PAUSED" else "ACTIVE ZERO-COPY STREAM",
+                title = if (isPaused) "RECORDING PAUSED" else "STREAMING TO STORAGE",
                 titleTag = "LIVE",
                 tagColor = if (isPaused) CyberYellow else HyperCrimson,
                 tagTextColor = TextPrimary,
                 borderColor = if (isPaused) CyberYellow else HyperCrimson
             ) {
-                // Giant Monospace Timer
+                // Giant Monospace Digital Timer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(14.dp)
+                            .size(16.dp)
                             .alpha(if (isPaused) 1f else pulseAlpha)
                             .background(if (isPaused) CyberYellow else HyperCrimson, CircleShape)
+                            .border(2.dp, BorderHighlight, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = StorageCalculator.formatDuration(durationMs),
-                        fontSize = 38.sp,
+                        fontSize = 42.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Black,
-                        color = TextPrimary
+                        color = TextPrimary,
+                        letterSpacing = (-1).sp
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Realtime Telemetry Pills
+                // Realtime Telemetry Grid
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TelemetryBadge(
                         label = "FPS",
-                        value = String.format(Locale.US, "%.1f", currentFps),
+                        value = if (currentFps > 0f) String.format(Locale.US, "%.1f", currentFps) else "${uiState.config.framerate}.0",
                         accentColor = ToxicLime,
                         modifier = Modifier.weight(1f)
                     )
@@ -255,14 +341,14 @@ private fun HeroRecordingCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Stepped VU Meters
-                SteppedVuMeter(label = "Internal Game Audio", dbLevel = gameDb)
-                Spacer(modifier = Modifier.height(8.dp))
-                SteppedVuMeter(label = "Microphone Audio", dbLevel = micDb)
+                // Chunky Stepped LED VU Visualizers
+                SteppedVuMeter(label = "Internal Game Audio (48kHz)", dbLevel = gameDb)
+                Spacer(modifier = Modifier.height(10.dp))
+                SteppedVuMeter(label = "Microphone Audio (Stereo)", dbLevel = micDb)
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Action Controls
+                // Tactile Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -285,7 +371,7 @@ private fun HeroRecordingCard(
                         text = "Stop",
                         onClick = onStopClick,
                         variant = BrutalistButtonVariant.DANGER,
-                        modifier = Modifier.weight(1.5f),
+                        modifier = Modifier.weight(1.4f),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Stop,
@@ -301,12 +387,12 @@ private fun HeroRecordingCard(
         is RecorderState.Preparing -> {
             BrutalistCard(
                 title = "HARDWARE ENGINE",
-                titleTag = "PREPARING",
+                titleTag = "INIT",
                 tagColor = CyberYellow,
                 borderColor = CyberYellow
             ) {
                 Text(
-                    text = "Initializing zero-copy GPU Surface & MediaCodec...",
+                    text = "Allocating zero-copy GraphicBuffer surface & MediaCodec...",
                     color = TextSecondary,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp
@@ -316,14 +402,15 @@ private fun HeroRecordingCard(
         is RecorderState.Finished -> {
             BrutalistCard(
                 title = "RECORDING SAVED",
-                titleTag = "SUCCESS",
+                titleTag = "GALLERY READY",
                 tagColor = ToxicLime,
                 borderColor = ToxicLime
             ) {
                 Text(
-                    text = "MP4 committed directly to Gallery:",
+                    text = "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
-                    fontSize = 13.sp
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -331,31 +418,65 @@ private fun HeroRecordingCard(
                     color = ToxicLime,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Black,
-                    fontSize = 16.sp
+                    fontSize = 18.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 BrutalistButton(
-                    text = "START NEW RECORDING",
+                    text = "RECORD AGAIN",
                     onClick = onStartClick,
-                    variant = BrutalistButtonVariant.PRIMARY
+                    variant = BrutalistButtonVariant.PRIMARY,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.FiberManualRecord,
+                            contentDescription = null,
+                            tint = TextInverse,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 )
             }
         }
         else -> {
-            // Idle Standby
+            // Idle Standby Hero Card
             BrutalistCard(
-                title = "ZERO-COPY ENGINE",
+                title = "ZERO-COPY RECORDER",
                 titleTag = "STANDBY",
                 tagColor = ToxicLime,
                 borderColor = BorderStark
             ) {
                 Text(
-                    text = "Hardware accelerated 120+ FPS screen capture with nano-PTS audio synchronization and ~0% video CPU load.",
+                    text = "Direct GPU $\\rightarrow$ MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Storage estimation bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "ESTIMATED RATE:",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
+                        color = CyberYellow,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
+
                 BrutalistButton(
                     text = "START RECORDING",
                     onClick = onStartClick,
@@ -409,10 +530,10 @@ private fun ConfigSection(
         }
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     // 2. Video Codec Selection
-    BrutalistCard(title = "VIDEO CODEC", titleTag = config.videoCodec.name) {
+    BrutalistCard(title = "HARDWARE CODEC", titleTag = config.videoCodec.name) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -422,7 +543,7 @@ private fun ConfigSection(
                 val isSelected = config.videoCodec == codec
                 val isHardware = capabilities?.codecs?.get(codec)?.isHardwareAccelerated == true
                 val isAvailable = when (codec) {
-                    VideoCodec.HEVC -> isHardware
+                    VideoCodec.HEVC -> true
                     VideoCodec.AVC -> true
                     VideoCodec.AV1 -> capabilities?.isAv1HardwareSupported == true
                 }
@@ -436,7 +557,7 @@ private fun ConfigSection(
         }
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     // 3. Audio Source Routing
     BrutalistCard(title = "AUDIO ROUTING", titleTag = config.audioSource.name) {
@@ -453,10 +574,10 @@ private fun ConfigSection(
         }
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
-    // 4. Video Bitrate
-    BrutalistCard(title = "TARGET BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
+    // 4. Target Video Bitrate
+    BrutalistCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -491,14 +612,15 @@ private fun SelectableTag(
             .background(bg, RoundedCornerShape(8.dp))
             .border(1.5.dp, border, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
     ) {
         Text(
             text = text.uppercase(),
             color = textColor,
             fontSize = 12.sp,
             fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Black
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.5.sp
         )
     }
 }
@@ -519,7 +641,7 @@ private fun SelectableRow(
             .background(bg, RoundedCornerShape(8.dp))
             .border(1.5.dp, border, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -532,8 +654,9 @@ private fun SelectableRow(
         if (isSelected) {
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(12.dp)
                     .background(CyberYellow, CircleShape)
+                    .border(1.dp, BorderHighlight, CircleShape)
             )
         }
     }
