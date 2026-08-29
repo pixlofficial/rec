@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.REC" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/obsidian_background</item>
+        <item name="android:navigationBarColor">@color/obsidian_background</item>
+        <item name="android:windowBackground">@color/obsidian_background</item>
+    </style>
+</resources>

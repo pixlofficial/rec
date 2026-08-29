@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">REC</string>
+    <string name="notification_channel_name">Screen Recording Service</string>
+    <string name="notification_channel_desc">Active status and controls for zero-copy screen recording</string>
+    <string name="notification_recording_title">Recording Active</string>
+    <string name="notification_paused_title">Recording Paused</string>
+    <string name="notification_action_stop">Stop</string>
+    <string name="notification_action_pause">Pause</string>
+    <string name="notification_action_resume">Resume</string>
+    <string name="permission_overlay_title">Display Over Other Apps</string>
+    <string name="permission_overlay_desc">REC requires overlay permission to show the floating game pill controls.</string>
+</resources>

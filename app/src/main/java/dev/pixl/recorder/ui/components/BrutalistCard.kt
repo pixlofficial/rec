@@ -1,0 +1,107 @@
+package dev.pixl.recorder.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.pixl.recorder.ui.theme.BorderStark
+import dev.pixl.recorder.ui.theme.BrutalistSurface
+import dev.pixl.recorder.ui.theme.CyberYellow
+import dev.pixl.recorder.ui.theme.ShadowSolid
+import dev.pixl.recorder.ui.theme.TextInverse
+import dev.pixl.recorder.ui.theme.TextPrimary
+
+@Composable
+fun BrutalistCard(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    titleTag: String? = null,
+    tagColor: Color = CyberYellow,
+    tagTextColor: Color = TextInverse,
+    borderColor: Color = BorderStark,
+    containerColor: Color = BrutalistSurface,
+    shape: Shape = RoundedCornerShape(12.dp),
+    shadowOffset: Dp = 4.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        // Hard drop shadow layer
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = shadowOffset, y = shadowOffset)
+                .background(ShadowSolid, shape)
+                .border(2.dp, BorderStark, shape)
+        )
+
+        // Front Card Surface
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(containerColor, shape)
+                .border(2.dp, borderColor, shape)
+                .padding(16.dp)
+        ) {
+            if (title != null || titleTag != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (title != null) {
+                        Text(
+                            text = title.uppercase(),
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (titleTag != null) {
+                        Box(
+                            modifier = Modifier
+                                .background(tagColor, RoundedCornerShape(4.dp))
+                                .border(1.dp, Color.White, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = titleTag.uppercase(),
+                                color = tagTextColor,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            content()
+        }
+    }
+}

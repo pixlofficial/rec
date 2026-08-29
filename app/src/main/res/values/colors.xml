@@ -1,0 +1,10 @@
+<resources>
+    <!-- Cyberpunk Obsidian Palette -->
+    <color name="obsidian_background">#08080C</color>
+    <color name="frosted_surface">#12121A</color>
+    <color name="neon_cyan">#00F0FF</color>
+    <color name="electric_purple">#8A2BE2</color>
+    <color name="pulsing_crimson">#FF334B</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8A8D9F</color>
+</resources>

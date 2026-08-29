@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Audio Recording Permissions -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Foreground Service Permissions (Android 14+ FGS Types) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!-- Notification Permission (Android 13+ / API 33+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Floating Game Pill Overlay -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Haptics for UI -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".PixLApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@null"
+        android:fullBackupContent="false"
+        android:icon="@drawable/ic_notification"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_notification"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.REC">
+
+        <!-- Main Telemetry Dashboard Launcher Activity -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.REC">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Zero-Copy MediaProjection & Audio Capture Foreground Service -->
+        <service
+            android:name=".service.RecordingService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|microphone" />
+
+        <!-- Draggable Floating Game Pill Overlay Service -->
+        <service
+            android:name=".service.FloatingOverlayService"
+            android:enabled="true"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
