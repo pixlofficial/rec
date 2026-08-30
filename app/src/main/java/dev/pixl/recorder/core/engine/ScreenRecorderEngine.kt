@@ -51,6 +51,8 @@ class ScreenRecorderEngine(
     private var audioCaptureManager: AudioCaptureManager? = null
     private var mediaStoreWriter: MediaStoreWriter? = null
     private var virtualDisplay: VirtualDisplay? = null
+    private var displayListener: DisplayManager.DisplayListener? = null
+    private var lastRecordedRotation: Int = -1
 
     private var mediaMuxer: MediaMuxer? = null
     private var videoTrackIndex = -1
@@ -165,17 +167,56 @@ class ScreenRecorderEngine(
             }
 
             // 4. Create VirtualDisplay piped directly to VideoEncoder Input Surface (Zero-Copy)
+            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+            val defaultDisplay = displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
+            val currentRotation = defaultDisplay?.rotation ?: android.view.Surface.ROTATION_0
+            lastRecordedRotation = currentRotation
+
+            val isLandscape = currentRotation == android.view.Surface.ROTATION_90 || currentRotation == android.view.Surface.ROTATION_270
+            val portraitWidth = kotlin.math.min(config.width, config.height)
+            val portraitHeight = kotlin.math.max(config.width, config.height)
+            val (initialWidth, initialHeight) = if (isLandscape) {
+                portraitHeight to portraitWidth
+            } else {
+                portraitWidth to portraitHeight
+            }
+
             val surface = vEncoder.inputSurface ?: throw IllegalStateException("Encoder surface is null")
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "PixL-REC-Display",
-                config.width,
-                config.height,
+                initialWidth,
+                initialHeight,
                 config.dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface,
                 null,
                 Handler(Looper.getMainLooper())
             )
+
+            // Register Real-Time Display Rotation Listener for Automatic Dynamic Adaptation
+            val listener = object : DisplayManager.DisplayListener {
+                override fun onDisplayAdded(displayId: Int) = Unit
+                override fun onDisplayRemoved(displayId: Int) = Unit
+                override fun onDisplayChanged(displayId: Int) {
+                    if (displayId == android.view.Display.DEFAULT_DISPLAY) {
+                        val activeDisplay = displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY) ?: return
+                        val newRotation = activeDisplay.rotation
+                        if (newRotation != lastRecordedRotation) {
+                            lastRecordedRotation = newRotation
+                            val isLand = newRotation == android.view.Surface.ROTATION_90 || newRotation == android.view.Surface.ROTATION_270
+                            val (w, h) = if (isLand) {
+                                portraitHeight to portraitWidth
+                            } else {
+                                portraitWidth to portraitHeight
+                            }
+                            Log.i(tag, "Display rotation changed to $newRotation -> Resizing VirtualDisplay to ${w}x${h} @ ${config.dpi} DPI")
+                            virtualDisplay?.resize(w, h, config.dpi)
+                        }
+                    }
+                }
+            }
+            displayListener = listener
+            displayManager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
 
             // 5. Start all pipelines
             isRecording.set(true)
@@ -245,7 +286,16 @@ class ScreenRecorderEngine(
                 // Small delay to allow codec EOS flushing
                 delay(150)
 
-                // 2. Release Virtual Display
+                // 2. Release Virtual Display & unregister rotation listener
+                displayListener?.let {
+                    try {
+                        val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+                        displayManager?.unregisterDisplayListener(it)
+                    } catch (e: Exception) {
+                        Log.w(tag, "Error unregistering displayListener", e)
+                    }
+                    displayListener = null
+                }
                 virtualDisplay?.release()
                 virtualDisplay = null
 
@@ -301,6 +351,16 @@ class ScreenRecorderEngine(
         isRecording.set(false)
         telemetryTickerJob?.cancel()
         engineScope.cancel()
+
+        displayListener?.let {
+            try {
+                val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+                displayManager?.unregisterDisplayListener(it)
+            } catch (e: Exception) {
+                Log.w(tag, "Error unregistering displayListener on release", e)
+            }
+            displayListener = null
+        }
 
         try {
             virtualDisplay?.release()

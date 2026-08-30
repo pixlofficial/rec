@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="50dp"
+    android:viewportWidth="200"
+    android:viewportHeight="50">
+
+    <!-- "REC" Pixel Typography (Top Row) -->
+    <!-- Letter R -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 60,6 h 16 v 14 h -16 z M 66,10 h 4 v 6 h -4 z M 72,14 h 4 v 6 h -4 z" />
+
+    <!-- Letter E -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 82,6 h 16 v 4 h -10 v 4 h 8 v 4 h -8 v 4 h 10 v 4 h -16 z" />
+
+    <!-- Letter C -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 104,6 h 16 v 4 h -10 v 12 h 10 v 4 h -16 z" />
+
+    <!-- "by PixL" Subtitle (Bottom Row) -->
+    <!-- 'b' -->
+    <path
+        android:fillColor="#808080"
+        android:pathData="M 74,32 h 2 v 12 h -2 z M 76,36 h 4 v 8 h -4 z M 76,38 h 2 v 4 h -2 z" />
+    <!-- 'y' -->
+    <path
+        android:fillColor="#808080"
+        android:pathData="M 83,36 h 2 v 6 h 2 v -6 h 2 v 10 h -6 v -2 h 4 v -2 h -4 z" />
+
+    <!-- 'P' -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M 95,32 h 6 v 7 h -4 v 5 h -2 z M 97,34 h 2 v 3 h -2 z" />
+    <!-- 'i' -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 104,32 h 2 v 2 h -2 z M 104,36 h 2 v 8 h -2 z" />
+    <!-- 'x' -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 109,36 h 2 v 2 h 2 v -2 h 2 v 2 h -2 v 4 h 2 v 2 h -2 v -2 h -2 v 2 h -2 v -2 h 2 v -4 h -2 z" />
+    <!-- 'L' -->
+    <path
+        android:fillColor="#EDEDED"
+        android:pathData="M 118,32 h 2 v 10 h 4 v 2 h -6 z" />
+
+</vector>
