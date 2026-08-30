@@ -37,7 +37,7 @@ fun BrutalistCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     titleTag: String? = null,
-    tagColor: Color = CyberYellow,
+    tagColor: Color = Color.White,
     tagTextColor: Color = TextInverse,
     borderColor: Color = BorderStark,
     containerColor: Color = BrutalistSurface,
