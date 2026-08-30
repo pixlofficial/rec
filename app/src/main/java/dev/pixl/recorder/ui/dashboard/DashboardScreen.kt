@@ -186,7 +186,8 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "REC",
                     color = Color.White,
-                    fontSize = 21.sp,
+                    fontSize = 28.sp,
+                    lineHeight = 28.sp,
                     fontFamily = Handjet,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -194,7 +195,8 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "by PixL",
                     color = TextSecondary,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 16.sp,
                     fontFamily = Handjet,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.5.sp
