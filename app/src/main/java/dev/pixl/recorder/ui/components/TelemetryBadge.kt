@@ -16,9 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.pixl.recorder.ui.theme.BodyFont
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
+import dev.pixl.recorder.ui.theme.Handjet
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.ToxicLime
@@ -35,7 +35,7 @@ fun TelemetryBadge(
         modifier = modifier
             .background(if (isHighlighted) accentColor else SurfaceElevated, RoundedCornerShape(6.dp))
             .border(1.5.dp, if (isHighlighted) BorderHighlight else BorderStark, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 5.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -43,19 +43,19 @@ fun TelemetryBadge(
             Text(
                 text = label.uppercase(),
                 color = if (isHighlighted) TextInverse.copy(alpha = 0.75f) else dev.pixl.recorder.ui.theme.TextSecondary,
-                fontSize = 10.sp,
-                fontFamily = BodyFont,
-                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                fontFamily = Handjet,
+                fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp,
                 maxLines = 1
             )
-            Spacer(modifier = Modifier.width(5.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = value.uppercase(),
                 color = if (isHighlighted) TextInverse else accentColor,
-                fontSize = 11.sp,
-                fontFamily = BodyFont,
-                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+                fontFamily = Handjet,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 maxLines = 1
             )

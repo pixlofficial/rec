@@ -71,10 +71,10 @@ import dev.pixl.recorder.ui.components.BrutalistButtonVariant
 import dev.pixl.recorder.ui.components.BrutalistCard
 import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
-import dev.pixl.recorder.ui.theme.BodyFont
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.CyberYellow
+import dev.pixl.recorder.ui.theme.Handjet
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
 import dev.pixl.recorder.ui.theme.LexendTera
@@ -194,8 +194,8 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "BY PIXL",
                     color = TextSecondary,
-                    fontSize = 10.sp,
-                    fontFamily = BodyFont,
+                    fontSize = 13.sp,
+                    fontFamily = Handjet,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
                 )
@@ -254,8 +254,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     Text(
                         text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
                         color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontFamily = BodyFont,
+                        fontSize = 14.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -270,8 +270,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                 Text(
                     text = "0% CPU",
                     color = ToxicLime,
-                    fontSize = 10.sp,
-                    fontFamily = BodyFont,
+                    fontSize = 12.sp,
+                    fontFamily = Handjet,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -315,7 +315,7 @@ private fun HeroRecordingCard(
                 tagTextColor = TextPrimary,
                 borderColor = if (isPaused) CyberYellow else HyperCrimson
             ) {
-                // Giant Digital Timer
+                // Giant Dot-Matrix Digital Timer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -330,11 +330,11 @@ private fun HeroRecordingCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = StorageCalculator.formatDuration(durationMs),
-                        fontSize = 36.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 46.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
-                        letterSpacing = (-0.5).sp
+                        letterSpacing = 1.sp
                     )
                 }
 
@@ -420,8 +420,8 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Allocating zero-copy GraphicBuffer surface & MediaCodec...",
                     color = TextSecondary,
-                    fontFamily = BodyFont,
-                    fontSize = 13.sp
+                    fontFamily = Handjet,
+                    fontSize = 15.sp
                 )
             }
         }
@@ -435,16 +435,16 @@ private fun HeroRecordingCard(
                 Text(
                     text = "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontFamily = BodyFont
+                    fontSize = 14.sp,
+                    fontFamily = Handjet
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${recorderState.formattedSize} • ${StorageCalculator.formatDuration(recorderState.durationMs)}",
                     color = ToxicLime,
-                    fontFamily = LexendTera,
+                    fontFamily = Handjet,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 20.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 BrutalistButton(
@@ -473,9 +473,9 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
-                    fontFamily = BodyFont,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp
+                    fontFamily = Handjet,
+                    fontSize = 15.sp,
+                    lineHeight = 19.sp
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -489,15 +489,15 @@ private fun HeroRecordingCard(
                     Text(
                         text = "ESTIMATED RATE:",
                         color = TextSecondary,
-                        fontSize = 10.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 14.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
                         color = CyberYellow,
-                        fontSize = 10.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 15.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -684,9 +684,9 @@ private fun OverlayAndCleanCanvasSection(
                     else
                         "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
                     color = if (isAndroid14Plus) TextSecondary else TextMuted,
-                    fontSize = 11.sp,
-                    fontFamily = BodyFont,
-                    lineHeight = 15.sp
+                    fontSize = 14.sp,
+                    fontFamily = Handjet,
+                    lineHeight = 17.sp
                 )
 
                 if (isAndroid14Plus) {
@@ -742,18 +742,20 @@ private fun SwitchRow(
                 Text(
                     text = title,
                     color = if (checked) TextPrimary else TextSecondary,
-                    fontSize = 13.sp,
-                    fontFamily = BodyFont,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 16.sp,
+                    fontFamily = Handjet,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(1.dp))
                 Text(
                     text = subtitle,
                     color = TextMuted,
-                    fontSize = 11.sp,
-                    fontFamily = BodyFont,
+                    fontSize = 13.sp,
+                    fontFamily = Handjet,
                     fontWeight = FontWeight.Normal,
-                    lineHeight = 14.sp
+                    lineHeight = 16.sp,
+                    letterSpacing = 0.3.sp
                 )
             }
         }
@@ -920,16 +922,17 @@ private fun SelectableRow(
             .background(bg, RoundedCornerShape(8.dp))
             .border(1.5.dp, border, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = text,
             color = if (isSelected) TextPrimary else TextSecondary,
-            fontSize = 12.sp,
-            fontFamily = BodyFont,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            fontSize = 15.sp,
+            fontFamily = Handjet,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            letterSpacing = 0.5.sp
         )
         if (isSelected) {
             Box(

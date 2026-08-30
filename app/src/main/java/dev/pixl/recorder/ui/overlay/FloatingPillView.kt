@@ -287,21 +287,22 @@ fun FloatingPillView(
                             Text(
                                 text = if (isPaused) "PAUSED" else "REC",
                                 color = accentColor,
-                                fontSize = 9.sp,
-                                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 12.sp,
+                                fontFamily = dev.pixl.recorder.ui.theme.Handjet,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
                             )
                         }
                     }
 
-                    // Digital Timer Counter
+                    // Digital Dot-Matrix Timer Counter
                     Text(
                         text = StorageCalculator.formatDuration(currentDuration),
                         color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontSize = 18.sp,
+                        fontFamily = dev.pixl.recorder.ui.theme.Handjet,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
+                        letterSpacing = 1.sp
                     )
 
                     // 1. Pause / Resume Button
