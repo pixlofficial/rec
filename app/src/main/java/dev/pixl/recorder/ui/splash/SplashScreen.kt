@@ -71,7 +71,7 @@ fun SplashScreen(
             painter = painterResource(id = R.drawable.ic_logo_core),
             contentDescription = "REC Logo Core",
             modifier = Modifier
-                .size(100.dp)
+                .size(96.dp)
                 .scale(pulseScale)
         )
 
