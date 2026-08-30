@@ -20,7 +20,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name=".PixLApp"
+        android:name=".RecApp"
         android:allowBackup="false"
         android:dataExtractionRules="@null"
         android:fullBackupContent="false"
