@@ -29,8 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Stop Triggers & Sensors:**
   * Hardware accelerometer **Shake-to-Stop** trigger with debounce filters.
   * Automatic stop on screen-off / device lock.
-* **Cyberpunk Brutalist UI & Vault:**
-  * Custom dark aesthetic with high-contrast brutalist cards and animated neon telemetry indicators.
+* **High-Contrast Dark UI & Media Vault:**
+  * Clean dark aesthetic with high-contrast section cards and animated telemetry indicators.
   * In-app local media vault with video playback, Scoped Storage deletion, and system share sheet integration.
   * Hardware capability scanner probing real-time display refresh rate, encoder profile limits, and block-rate envelopes.
 * **CI/CD & Packaging:**

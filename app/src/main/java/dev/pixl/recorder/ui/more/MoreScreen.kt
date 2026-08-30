@@ -43,7 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.pixl.recorder.ui.components.BrutalistCard
+import dev.pixl.recorder.ui.components.SectionCard
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
 import dev.pixl.recorder.ui.theme.BitcountPropSingle
@@ -97,7 +97,7 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 2. 100% Offline Privacy Guarantee Badge Card
-            BrutalistCard(
+            SectionCard(
                 title = "PRIVACY & SECURITY GUARANTEE",
                 titleTag = "100% OFFLINE",
                 tagColor = ToxicLime
@@ -144,7 +144,7 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             // 3. Support & Community Action Rows
-            BrutalistCard(title = "COMMUNITY & FEEDBACK", titleTag = "OPEN SOURCE") {
+            SectionCard(title = "COMMUNITY & FEEDBACK", titleTag = "OPEN SOURCE") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SupportActionRow(
                         icon = Icons.Default.BugReport,
@@ -182,7 +182,7 @@ fun MoreScreen(
             val isHevc = capabilities?.isHevcHardwareSupported == true
             val isAvc = capabilities?.codecs?.get(dev.pixl.recorder.core.model.VideoCodec.AVC)?.isHardwareAccelerated == true
 
-            BrutalistCard(title = "HARDWARE ENGINE DIAGNOSTICS", titleTag = "VPU STATUS") {
+            SectionCard(title = "HARDWARE ENGINE DIAGNOSTICS", titleTag = "VPU STATUS") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     DiagnosticRow(label = "DEVICE MODEL", value = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL}")
                     DiagnosticRow(label = "ANDROID VERSION", value = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
@@ -196,7 +196,7 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             // 5. About PixL Card
-            BrutalistCard(title = "ABOUT PIXL REC", titleTag = "v${dev.pixl.recorder.BuildConfig.VERSION_NAME}") {
+            SectionCard(title = "ABOUT PIXL REC", titleTag = "v${dev.pixl.recorder.BuildConfig.VERSION_NAME}") {
                 Text(
                     text = "High-performance, zero-copy, hardware-accelerated screen recorder engineered in Kotlin and Jetpack Compose.",
                     color = TextSecondary,
@@ -206,7 +206,7 @@ fun MoreScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Crafted by PixL • Cyber-Brutalist Edition",
+                    text = "Crafted by PixL • Precision Edition",
                     color = TextPrimary,
                     fontSize = 12.sp,
                     fontFamily = BitcountPropSingle,

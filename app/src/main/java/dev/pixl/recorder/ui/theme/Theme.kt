@@ -25,7 +25,7 @@ private val DarkColorScheme = darkColorScheme(
     onError = TextPrimary,
     background = ObsidianCanvas,
     onBackground = TextPrimary,
-    surface = BrutalistSurface,
+    surface = SurfaceCard,
     onSurface = TextPrimary,
     surfaceVariant = SurfaceElevated,
     onSurfaceVariant = TextSecondary,
@@ -51,7 +51,7 @@ fun RECTheme(
 
     MaterialTheme(
         colorScheme = DarkColorScheme,
-        typography = BrutalistTypography,
+        typography = AppTypography,
         content = content
     )
 }

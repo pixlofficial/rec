@@ -22,7 +22,7 @@ import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.ui.dashboard.DashboardScreen
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
 import dev.pixl.recorder.ui.more.MoreScreen
-import dev.pixl.recorder.ui.navigation.BrutalistBottomNav
+import dev.pixl.recorder.ui.navigation.BottomNavBar
 import dev.pixl.recorder.ui.navigation.NavigationTab
 import dev.pixl.recorder.ui.settings.SettingsScreen
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
@@ -41,7 +41,7 @@ fun MainScreen(
     Scaffold(
         containerColor = ObsidianCanvas,
         bottomBar = {
-            BrutalistBottomNav(
+            BottomNavBar(
                 currentTab = currentTab,
                 onTabSelected = { currentTab = it },
                 recorderState = recorderState,

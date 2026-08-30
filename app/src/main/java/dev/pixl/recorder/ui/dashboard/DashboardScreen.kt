@@ -75,9 +75,9 @@ import dev.pixl.recorder.core.model.PillRecallGesture
 import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.core.model.VideoCodec
 import dev.pixl.recorder.core.storage.StorageCalculator
-import dev.pixl.recorder.ui.components.BrutalistButton
-import dev.pixl.recorder.ui.components.BrutalistButtonVariant
-import dev.pixl.recorder.ui.components.BrutalistCard
+import dev.pixl.recorder.ui.components.ActionButton
+import dev.pixl.recorder.ui.components.ActionButtonVariant
+import dev.pixl.recorder.ui.components.SectionCard
 import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.theme.BitcountPropSingle
@@ -344,7 +344,7 @@ private fun HeroRecordingCard(
                 label = "RecordDotAlpha"
             )
 
-            BrutalistCard(
+            SectionCard(
                 title = if (isPaused) "RECORDING PAUSED" else "STREAMING TO STORAGE",
                 titleTag = "LIVE",
                 tagColor = if (isPaused) CyberYellow else HyperCrimson,
@@ -415,10 +415,10 @@ private fun HeroRecordingCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    BrutalistButton(
+                    ActionButton(
                         text = if (isPaused) "Resume" else "Pause",
                         onClick = if (isPaused) onResumeClick else onPauseClick,
-                        variant = BrutalistButtonVariant.SURFACE,
+                        variant = ActionButtonVariant.SURFACE,
                         modifier = Modifier.weight(1f),
                         leadingIcon = {
                             Icon(
@@ -429,10 +429,10 @@ private fun HeroRecordingCard(
                             )
                         }
                     )
-                    BrutalistButton(
+                    ActionButton(
                         text = "Stop",
                         onClick = onStopClick,
-                        variant = BrutalistButtonVariant.DANGER,
+                        variant = ActionButtonVariant.DANGER,
                         modifier = Modifier.weight(1.4f),
                         leadingIcon = {
                             Icon(
@@ -447,7 +447,7 @@ private fun HeroRecordingCard(
             }
         }
         is RecorderState.Preparing -> {
-            BrutalistCard(
+            SectionCard(
                 title = "HARDWARE ENGINE",
                 titleTag = "INIT",
                 tagColor = CyberYellow,
@@ -463,7 +463,7 @@ private fun HeroRecordingCard(
             }
         }
         is RecorderState.Finished -> {
-            BrutalistCard(
+            SectionCard(
                 title = "RECORDING SAVED",
                 titleTag = "GALLERY READY",
                 tagColor = ToxicLime,
@@ -484,10 +484,10 @@ private fun HeroRecordingCard(
                     fontSize = 18.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                BrutalistButton(
+                ActionButton(
                     text = "RECORD AGAIN",
                     onClick = onStartClick,
-                    variant = BrutalistButtonVariant.PRIMARY,
+                    variant = ActionButtonVariant.PRIMARY,
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.FiberManualRecord,
@@ -501,7 +501,7 @@ private fun HeroRecordingCard(
         }
         else -> {
             // Idle Standby Hero Card
-            BrutalistCard(
+            SectionCard(
                 title = "ZERO-COPY RECORDER",
                 titleTag = "STANDBY",
                 tagColor = ToxicLime,
@@ -541,10 +541,10 @@ private fun HeroRecordingCard(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                BrutalistButton(
+                ActionButton(
                     text = "START RECORDING",
                     onClick = onStartClick,
-                    variant = BrutalistButtonVariant.PRIMARY,
+                    variant = ActionButtonVariant.PRIMARY,
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.FiberManualRecord,
@@ -574,7 +574,7 @@ private fun OverlayAndCleanCanvasSection(
     val config = uiState.config
     val isAndroid14Plus = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 
-    BrutalistCard(
+    SectionCard(
         title = "CLEAN CANVAS & OVERLAY CONTROLS",
         titleTag = if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
         tagColor = if (!config.showFloatingPill) ToxicLime else if (config.autoHidePill) HyperCyan else Color.White,
@@ -826,7 +826,7 @@ private fun ConfigSection(
     val capabilities = uiState.capabilities
 
     // 1. Framerate Deck
-    BrutalistCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
+    SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -848,7 +848,7 @@ private fun ConfigSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 2. Hardware Video Codec Deck
-    BrutalistCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
+    SectionCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -875,7 +875,7 @@ private fun ConfigSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 3. Audio Source Routing
-    BrutalistCard(title = "AUDIO ROUTING", titleTag = config.audioSource.name) {
+    SectionCard(title = "AUDIO ROUTING", titleTag = config.audioSource.name) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AudioSource.entries.forEach { source ->
                 val isSelected = config.audioSource == source
@@ -892,7 +892,7 @@ private fun ConfigSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 4. Target Video Bitrate
-    BrutalistCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
+    SectionCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

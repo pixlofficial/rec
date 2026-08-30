@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // Canvas & Surfaces (Deep Obsidian Black Palette)
 val ObsidianCanvas = Color(0xFF08080C)
-val BrutalistSurface = Color(0xFF101018)
+val SurfaceCard = Color(0xFF101018)
 val SurfaceElevated = Color(0xFF161622)
 val SurfaceRaised = Color(0xFF20202E)
 

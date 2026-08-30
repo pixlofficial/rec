@@ -70,7 +70,7 @@ val LexendTera = FontFamily(
     Font(R.font.lexend_tera, FontWeight.Black)
 )
 
-val BrutalistTypography = Typography(
+val AppTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,

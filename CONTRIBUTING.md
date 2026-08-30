@@ -1,6 +1,6 @@
 # Contributing to REC by PixL
 
-Thank you for your interest in contributing to **REC**! REC is an open-source, zero-copy, hardware-accelerated screen recorder engineered for Android with a cyber-brutalist aesthetic and strict zero-bloat privacy.
+Thank you for your interest in contributing to **REC**! REC is an open-source, zero-copy, hardware-accelerated screen recorder engineered for Android with a clean dark aesthetic and strict zero-bloat privacy.
 
 ---
 
@@ -16,8 +16,8 @@ When submitting code to REC, please keep our core engineering pillars in mind:
    * Internal audio (`AudioPlaybackCapture`) and microphone audio (`AudioRecord`) must be timestamped with `System.nanoTime()` and strictly aligned with video presentation timestamps (`PTS`).
 3. **100% Offline & Privacy First:**
    * Zero analytics trackers, zero advertisement SDKs, zero cloud telemetry, and zero third-party dependencies that violate user privacy.
-4. **Cyber-Brutalist Aesthetic & Typography Rules:**
-   * High-contrast stark styling with neon accents (`#E50914`, `#00FF66`, `#00E5FF`).
+4. **Clean Dark Theme & Typography Hierarchy:**
+   * High-contrast styling with vivid accents (`#E50914`, `#00FF66`, `#00E5FF`).
    * Display typography (`BitcountPropSingle` / monospace) is paired for headers and telemetry, while clean proportional sans-serif is used for subtitles and body text to prevent layout wrapping.
 
 ---

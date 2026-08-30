@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,20 +36,20 @@ import dev.pixl.recorder.ui.theme.ShadowSolid
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextPrimary
 
-enum class BrutalistButtonVariant {
-    PRIMARY,   // Hyper Crimson (Electric Red)
-    DANGER,    // Hyper Crimson
+enum class ActionButtonVariant {
+    PRIMARY,   // White / Crisp Text
+    DANGER,    // Hyper Crimson (Electric Red)
     SUCCESS,   // Toxic Lime
     WARNING,   // Cyber Yellow
     SURFACE    // Dark Slate
 }
 
 @Composable
-fun BrutalistButton(
+fun ActionButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    variant: BrutalistButtonVariant = BrutalistButtonVariant.PRIMARY,
+    variant: ActionButtonVariant = ActionButtonVariant.PRIMARY,
     containerColor: Color? = null,
     contentColor: Color? = null,
     borderColor: Color = BorderHighlight,
@@ -69,19 +68,19 @@ fun BrutalistButton(
     )
 
     val resolvedBg = containerColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> dev.pixl.recorder.ui.theme.TextPrimary
-        BrutalistButtonVariant.DANGER -> dev.pixl.recorder.ui.theme.HyperCrimson
-        BrutalistButtonVariant.SUCCESS -> dev.pixl.recorder.ui.theme.ToxicLime
-        BrutalistButtonVariant.WARNING -> CyberYellow
-        BrutalistButtonVariant.SURFACE -> dev.pixl.recorder.ui.theme.SurfaceElevated
+        ActionButtonVariant.PRIMARY -> dev.pixl.recorder.ui.theme.TextPrimary
+        ActionButtonVariant.DANGER -> dev.pixl.recorder.ui.theme.HyperCrimson
+        ActionButtonVariant.SUCCESS -> dev.pixl.recorder.ui.theme.ToxicLime
+        ActionButtonVariant.WARNING -> CyberYellow
+        ActionButtonVariant.SURFACE -> dev.pixl.recorder.ui.theme.SurfaceElevated
     }
 
     val resolvedContent = contentColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> TextInverse
-        BrutalistButtonVariant.DANGER -> TextPrimary
-        BrutalistButtonVariant.SUCCESS -> TextInverse
-        BrutalistButtonVariant.WARNING -> TextInverse
-        BrutalistButtonVariant.SURFACE -> TextPrimary
+        ActionButtonVariant.PRIMARY -> TextInverse
+        ActionButtonVariant.DANGER -> TextPrimary
+        ActionButtonVariant.SUCCESS -> TextInverse
+        ActionButtonVariant.WARNING -> TextInverse
+        ActionButtonVariant.SURFACE -> TextPrimary
     }
 
     val actualBg = if (enabled) resolvedBg else resolvedBg.copy(alpha = 0.4f)

@@ -30,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,13 +41,11 @@ import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
 import dev.pixl.recorder.ui.theme.SurfaceElevated
-import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextMuted
 import dev.pixl.recorder.ui.theme.TextPrimary
-import dev.pixl.recorder.ui.theme.TextSecondary
 
 @Composable
-fun BrutalistBottomNav(
+fun BottomNavBar(
     currentTab: NavigationTab,
     onTabSelected: (NavigationTab) -> Unit,
     recorderState: RecorderState,

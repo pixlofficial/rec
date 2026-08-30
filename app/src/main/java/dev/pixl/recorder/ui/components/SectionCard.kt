@@ -20,27 +20,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.ui.theme.BorderStark
-import dev.pixl.recorder.ui.theme.BrutalistSurface
-import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.ShadowSolid
+import dev.pixl.recorder.ui.theme.SurfaceCard
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextPrimary
 
 @Composable
-fun BrutalistCard(
+fun SectionCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     titleTag: String? = null,
     tagColor: Color = Color.White,
     tagTextColor: Color = TextInverse,
     borderColor: Color = BorderStark,
-    containerColor: Color = BrutalistSurface,
+    containerColor: Color = SurfaceCard,
     shape: Shape = RoundedCornerShape(12.dp),
     shadowOffset: Dp = 4.dp,
     content: @Composable ColumnScope.() -> Unit
@@ -48,7 +46,7 @@ fun BrutalistCard(
     Box(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Hard drop shadow layer
+        // Drop shadow layer
         Box(
             modifier = Modifier
                 .matchParentSize()

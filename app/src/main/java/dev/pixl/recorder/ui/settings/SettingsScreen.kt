@@ -53,7 +53,7 @@ import dev.pixl.recorder.core.model.PillRecallGesture
 import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.core.model.VideoCodec
 import dev.pixl.recorder.core.storage.StorageCalculator
-import dev.pixl.recorder.ui.components.BrutalistCard
+import dev.pixl.recorder.ui.components.SectionCard
 import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
@@ -191,7 +191,7 @@ private fun VideoSettingsSection(
     val capabilities = uiState.capabilities
 
     // 1. Framerate Selection
-    BrutalistCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
+    SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -213,7 +213,7 @@ private fun VideoSettingsSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 2. Codec Selection
-    BrutalistCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
+    SectionCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -244,7 +244,7 @@ private fun VideoSettingsSection(
     val nativeWidth = display?.physicalWidth ?: 720
     val nativeHeight = display?.physicalHeight ?: 1560
 
-    BrutalistCard(title = "CAPTURE RESOLUTION", titleTag = "${config.width}x${config.height}") {
+    SectionCard(title = "CAPTURE RESOLUTION", titleTag = "${config.width}x${config.height}") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -270,7 +270,7 @@ private fun VideoSettingsSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 4. Bitrate Deck
-    BrutalistCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
+    SectionCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -301,7 +301,7 @@ private fun AudioSettingsSection(
     val micDb = if (recorderState is RecorderState.Recording) recorderState.micAudioDb else -60f
 
     // 1. Audio Source Routing
-    BrutalistCard(title = "AUDIO SOURCE ROUTING", titleTag = config.audioSource.name) {
+    SectionCard(title = "AUDIO SOURCE ROUTING", titleTag = config.audioSource.name) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AudioSource.entries.forEach { source ->
                 val isSelected = config.audioSource == source
@@ -318,7 +318,7 @@ private fun AudioSettingsSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 2. Real-time VU Levels
-    BrutalistCard(title = "LIVE AUDIO VU VISUALIZER", titleTag = "48 KHZ STEREO") {
+    SectionCard(title = "LIVE AUDIO VU VISUALIZER", titleTag = "48 KHZ STEREO") {
         SteppedVuMeter(label = "Internal Game Audio Loopback", dbLevel = gameDb)
         Spacer(modifier = Modifier.height(12.dp))
         SteppedVuMeter(label = "Microphone Audio (Stereo)", dbLevel = micDb)
@@ -334,7 +334,7 @@ private fun ControlsSettingsSection(
 ) {
     val config = uiState.config
 
-    BrutalistCard(
+    SectionCard(
         title = "OVERLAY & GESTURE CONTROLS",
         titleTag = if (config.showFloatingPill) "PILL ON" else "CLEAN CANVAS"
     ) {
@@ -426,7 +426,7 @@ private fun StorageSettingsSection(
     val freeStorageFormatted = StorageCalculator.formatBytes(uiState.availableStorageBytes)
     val estimatedMb = uiState.config.estimatedMbPerMinute
 
-    BrutalistCard(title = "STORAGE PIPELINE", titleTag = "SCOPED") {
+    SectionCard(title = "STORAGE PIPELINE", titleTag = "SCOPED") {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

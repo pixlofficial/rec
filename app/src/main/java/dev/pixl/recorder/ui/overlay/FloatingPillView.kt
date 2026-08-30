@@ -72,10 +72,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 /**
- * Ultra-slick Dark Neo-Brutalist Floating Game Pill Overlay.
- * Supports:
- * 1. Expanded Brutalist Pill Controls
- * 2. Collapsible 6dp Pulsing Micro-Dot HUD for Gaming
+ * High-performance Floating Game Pill Overlay.
+ *
+ * Supports three reactive visual presentation modes:
+ * 1. Expanded Pill Controls (Live Timer, Pause/Resume, Stop Action)
+ * 2. Collapsible Micro-Dot HUD for Gaming
  * 3. Invisible Ghost Mode with Gesture Recall (Edge Swipe, Edge Tap, Double Tap).
  */
 @Composable
@@ -235,7 +236,7 @@ fun FloatingPillView(
             }
         }
 
-        // --- 3. EXPANDED CYBERPUNK NEO-BRUTALIST PILL MODE ---
+        // --- 3. EXPANDED PILL CONTROLS MODE ---
         else -> {
             Box(
                 modifier = Modifier

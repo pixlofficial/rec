@@ -43,9 +43,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.pixl.recorder.ui.components.BrutalistButton
-import dev.pixl.recorder.ui.components.BrutalistButtonVariant
-import dev.pixl.recorder.ui.components.BrutalistCard
+import dev.pixl.recorder.ui.components.ActionButton
+import dev.pixl.recorder.ui.components.ActionButtonVariant
+import dev.pixl.recorder.ui.components.SectionCard
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.theme.BitcountPropSingle
 import dev.pixl.recorder.ui.theme.BorderHighlight
@@ -142,7 +142,7 @@ fun VaultScreen(
                         .padding(bottom = 80.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    BrutalistCard(
+                    SectionCard(
                         title = "ZERO RECORDINGS",
                         titleTag = "STANDBY",
                         tagColor = Color.White
@@ -176,10 +176,10 @@ fun VaultScreen(
                                 lineHeight = 16.sp
                             )
                             Spacer(modifier = Modifier.height(18.dp))
-                            BrutalistButton(
+                            ActionButton(
                                 text = "START FIRST RECORDING",
                                 onClick = onRequestRecord,
-                                variant = BrutalistButtonVariant.PRIMARY,
+                                variant = ActionButtonVariant.PRIMARY,
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.FiberManualRecord,

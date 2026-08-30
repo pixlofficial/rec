@@ -5,7 +5,7 @@
   # REC
   ### Zero-Copy • Hardware-Accelerated • 120+ FPS • Nanosecond Audio Sync
   
-  **An uncompromising, cyber-brutalist screen recording engine engineered in Kotlin & Jetpack Compose.**
+  **A high-performance Android screen recording engine engineered in Kotlin & Jetpack Compose.**
 
   <br />
 
@@ -53,9 +53,9 @@
 <div align="center">
   <img src="./assets/screenshots/dashboard.png" width="30%" alt="REC Telemetry Dashboard" />
   &nbsp;&nbsp;
-  <img src="./assets/screenshots/vault.png" width="30%" alt="Cyber Brutalist Media Vault" />
+  <img src="./assets/screenshots/vault.png" width="30%" alt="Local Media Vault" />
   &nbsp;&nbsp;
-  <img src="./assets/screenshots/telemetry.png" width="30%" alt="Hardware Probe & Capabilities" />
+  <img src="./assets/screenshots/telemetry.png" width="30%" alt="Hardware Diagnostics & Capabilities" />
 </div>
 
 ---
@@ -122,7 +122,7 @@ REC/
 │       │   ├── storage/         # Scoped Storage & File Bitrate Estimator
 │       │   └── model/           # StateFlow models & configurations
 │       ├── service/             # MediaProjection Foreground & Floating Overlay Services
-│       └── ui/                  # Cyber-Brutalist Jetpack Compose Screens & Components
+│       └── ui/                  # Clean Dark Jetpack Compose Screens & Components
 │
 ├── assets/
 │   ├── branding/                # High-res logos and vectors
