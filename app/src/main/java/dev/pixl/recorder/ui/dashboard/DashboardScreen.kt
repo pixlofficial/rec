@@ -71,12 +71,12 @@ import dev.pixl.recorder.ui.components.BrutalistButtonVariant
 import dev.pixl.recorder.ui.components.BrutalistCard
 import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
+import dev.pixl.recorder.ui.theme.BitcountPropSingle
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
-import dev.pixl.recorder.ui.theme.LexendTera
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
 import dev.pixl.recorder.ui.theme.SpaceMono
 import dev.pixl.recorder.ui.theme.SurfaceElevated
@@ -186,9 +186,9 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "REC",
                     color = Color.White,
-                    fontSize = 22.sp,
-                    lineHeight = 24.sp,
-                    fontFamily = LexendTera,
+                    fontSize = 26.sp,
+                    lineHeight = 26.sp,
+                    fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
@@ -249,8 +249,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     Text(
                         text = "HARDWARE ENGINE ACTIVE",
                         color = TextPrimary,
-                        fontSize = 10.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 14.sp,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -332,11 +332,11 @@ private fun HeroRecordingCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = StorageCalculator.formatDuration(durationMs),
-                        fontSize = 36.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 42.sp,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
-                        letterSpacing = (-0.5).sp
+                        letterSpacing = 1.sp
                     )
                 }
 
@@ -445,9 +445,9 @@ private fun HeroRecordingCard(
                 Text(
                     text = "${recorderState.formattedSize} • ${StorageCalculator.formatDuration(recorderState.durationMs)}",
                     color = ToxicLime,
-                    fontFamily = LexendTera,
+                    fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 18.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 BrutalistButton(
@@ -575,8 +575,8 @@ private fun OverlayAndCleanCanvasSection(
                     Text(
                         text = "RECALL GESTURE",
                         color = TextSecondary,
-                        fontSize = 9.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 12.sp,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -654,8 +654,8 @@ private fun OverlayAndCleanCanvasSection(
                         Text(
                             text = "SINGLE-APP ISOLATED CAPTURE",
                             color = if (isAndroid14Plus) TextPrimary else TextMuted,
-                            fontSize = 10.sp,
-                            fontFamily = LexendTera,
+                            fontSize = 14.sp,
+                            fontFamily = BitcountPropSingle,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -671,8 +671,8 @@ private fun OverlayAndCleanCanvasSection(
                             Text(
                                 text = "REQUIRES ANDROID 14+",
                                 color = TextMuted,
-                                fontSize = 8.sp,
-                                fontFamily = LexendTera,
+                                fontSize = 11.sp,
+                                fontFamily = BitcountPropSingle,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -899,8 +899,8 @@ private fun SelectableTag(
         Text(
             text = text.uppercase(),
             color = textColor,
-            fontSize = 10.sp,
-            fontFamily = LexendTera,
+            fontSize = 13.sp,
+            fontFamily = BitcountPropSingle,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )

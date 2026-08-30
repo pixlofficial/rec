@@ -131,8 +131,8 @@ fun BrutalistButton(
                 Text(
                     text = text.uppercase(),
                     color = resolvedContent,
-                    fontSize = 13.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontSize = 17.sp,
+                    fontFamily = dev.pixl.recorder.ui.theme.BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )

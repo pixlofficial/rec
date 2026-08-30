@@ -8,16 +8,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
-// Lexend Tera: Display Font for Titles, Brand, Badges, Chips, Timers, Buttons
-val LexendTera = FontFamily(
-    Font(R.font.lexend_tera, FontWeight.Normal),
-    Font(R.font.lexend_tera, FontWeight.Medium),
-    Font(R.font.lexend_tera, FontWeight.SemiBold),
-    Font(R.font.lexend_tera, FontWeight.Bold),
-    Font(R.font.lexend_tera, FontWeight.Black)
+// Bitcount Prop Single: Proportional Dot-Matrix Marquee for Headings, Brand, Badges & Buttons
+val BitcountPropSingle = FontFamily(
+    Font(R.font.bitcount_prop_single, FontWeight.Normal),
+    Font(R.font.bitcount_prop_single, FontWeight.Medium),
+    Font(R.font.bitcount_prop_single, FontWeight.SemiBold),
+    Font(R.font.bitcount_prop_single, FontWeight.Bold),
+    Font(R.font.bitcount_prop_single, FontWeight.Black)
 )
 
-// Space Mono: Developer / Technical Font for Settings, Switches & Descriptions
+val BitcountSingle = FontFamily(
+    Font(R.font.bitcount_single, FontWeight.Normal),
+    Font(R.font.bitcount_single, FontWeight.Medium),
+    Font(R.font.bitcount_single, FontWeight.SemiBold),
+    Font(R.font.bitcount_single, FontWeight.Bold),
+    Font(R.font.bitcount_single, FontWeight.Black)
+)
+
+// Space Mono: Crisp Developer / Technical Font for Settings, Switches & Descriptions
 val SpaceMono = FontFamily(
     Font(R.font.space_mono_regular, FontWeight.Normal),
     Font(R.font.space_mono_bold, FontWeight.Bold)
@@ -31,44 +39,52 @@ val Handjet = FontFamily(
     Font(R.font.handjet, FontWeight.Black)
 )
 
+val LexendTera = FontFamily(
+    Font(R.font.lexend_tera, FontWeight.Normal),
+    Font(R.font.lexend_tera, FontWeight.Medium),
+    Font(R.font.lexend_tera, FontWeight.SemiBold),
+    Font(R.font.lexend_tera, FontWeight.Bold),
+    Font(R.font.lexend_tera, FontWeight.Black)
+)
+
 val BrutalistTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 42.sp,
+        lineHeight = 44.sp,
+        letterSpacing = 1.sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp,
+        fontSize = 28.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BitcountPropSingle,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.5.sp,
+        color = TextPrimary
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
         lineHeight = 22.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
-    headlineMedium = TextStyle(
-        fontFamily = LexendTera,
-        fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.5.sp,
-        color = TextPrimary
-    ),
     titleLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 17.sp,
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
@@ -97,10 +113,10 @@ val BrutalistTypography = Typography(
         color = TextSecondary
     ),
     labelLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
+        fontSize = 14.sp,
+        lineHeight = 17.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
