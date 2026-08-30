@@ -73,6 +73,7 @@ import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.CaptureTarget
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
+import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.ui.components.ActionButton
@@ -121,71 +122,67 @@ fun DashboardScreen(
         }
     }
 
-    Scaffold(
-        containerColor = ObsidianCanvas
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .graphicsLayer {
-                    alpha = contentAlpha.value
-                    translationY = contentOffsetY.value * density
-                }
-                .verticalScroll(scrollState)
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .graphicsLayer {
+                alpha = contentAlpha.value
+                translationY = contentOffsetY.value * density
+            }
+            .verticalScroll(scrollState)
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Top Bar Header
-            HeaderBar(uiState = uiState)
+        // 1. Top Bar Header
+        HeaderBar(uiState = uiState)
 
-            Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. Hardware Capabilities & SoC Status
-            HardwareSpecsCard(uiState = uiState)
+        // 2. Hardware Capabilities & SoC Status
+        HardwareSpecsCard(uiState = uiState)
 
-            Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-            // 3. Hero Recording / Live Telemetry Card
-            HeroRecordingCard(
-                recorderState = recorderState,
-                uiState = uiState,
-                onStartClick = onRequestRecordPermission,
-                onStopClick = { viewModel.stopRecording() },
-                onPauseClick = { viewModel.pauseRecording() },
-                onResumeClick = { viewModel.resumeRecording() }
-            )
+        // 3. Hero Recording / Live Telemetry Card
+        HeroRecordingCard(
+            recorderState = recorderState,
+            uiState = uiState,
+            onStartClick = onRequestRecordPermission,
+            onStopClick = { viewModel.stopRecording() },
+            onPauseClick = { viewModel.pauseRecording() },
+            onResumeClick = { viewModel.resumeRecording() }
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. Overlay & Clean Canvas Controls
-            OverlayAndCleanCanvasSection(
-                uiState = uiState,
-                isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
-                onToggleFloatingPill = { viewModel.toggleFloatingPill(it) },
-                onToggleAutoHide = { viewModel.toggleAutoHidePill(it) },
-                onSelectGesture = { viewModel.updatePillRecallGesture(it) },
-                onToggleShake = { viewModel.toggleShakeToStop(it) },
-                onToggleScreenOff = { viewModel.toggleStopOnScreenOff(it) },
-                onSelectTarget = { viewModel.updateCaptureTarget(it) }
-            )
+        // 4. Overlay & Clean Canvas Controls
+        OverlayAndCleanCanvasSection(
+            uiState = uiState,
+            isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
+            onToggleFloatingPill = { viewModel.toggleFloatingPill(it) },
+            onToggleAutoHide = { viewModel.toggleAutoHidePill(it) },
+            onSelectGesture = { viewModel.updatePillRecallGesture(it) },
+            onToggleShake = { viewModel.toggleShakeToStop(it) },
+            onToggleScreenOff = { viewModel.toggleStopOnScreenOff(it) },
+            onSelectTarget = { viewModel.updateCaptureTarget(it) }
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // 5. Codec, Resolution & Framerate Deck
-            ConfigSection(
-                uiState = uiState,
-                isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
-                onFramerateSelect = { viewModel.updateFramerate(it) },
-                onResolutionSelect = { w, h -> viewModel.updateResolution(w, h) },
-                onCodecSelect = { viewModel.updateVideoCodec(it) },
-                onAudioSourceSelect = { viewModel.updateAudioSource(it) },
-                onBitrateSelect = { viewModel.updateVideoBitrate(it) }
-            )
+        // 5. Codec, Resolution & Framerate Deck
+        ConfigSection(
+            uiState = uiState,
+            isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
+            onOrientationSelect = { viewModel.updateRecordingOrientation(it) },
+            onFramerateSelect = { viewModel.updateFramerate(it) },
+            onResolutionSelect = { w, h -> viewModel.updateResolution(w, h) },
+            onCodecSelect = { viewModel.updateVideoCodec(it) },
+            onAudioSourceSelect = { viewModel.updateAudioSource(it) },
+            onBitrateSelect = { viewModel.updateVideoBitrate(it) }
+        )
 
-            Spacer(modifier = Modifier.height(80.dp))
-        }
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
@@ -816,6 +813,7 @@ private fun SwitchRow(
 private fun ConfigSection(
     uiState: DashboardUiState,
     isRecordingActive: Boolean,
+    onOrientationSelect: (RecordingOrientation) -> Unit,
     onFramerateSelect: (Int) -> Unit,
     onResolutionSelect: (Int, Int) -> Unit,
     onCodecSelect: (VideoCodec) -> Unit,
@@ -825,7 +823,28 @@ private fun ConfigSection(
     val config = uiState.config
     val capabilities = uiState.capabilities
 
-    // 1. Framerate Deck
+    // 1. Recording Orientation Deck
+    SectionCard(title = "RECORDING ORIENTATION", titleTag = config.recordingOrientation.displayName) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RecordingOrientation.entries.forEach { orientation ->
+                val isSelected = config.recordingOrientation == orientation
+                SelectableTag(
+                    text = orientation.displayName,
+                    isSelected = isSelected,
+                    enabled = !isRecordingActive,
+                    onClick = { onOrientationSelect(orientation) }
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Framerate Deck
     SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),

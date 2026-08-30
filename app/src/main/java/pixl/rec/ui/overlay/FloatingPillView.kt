@@ -83,16 +83,42 @@ import kotlinx.coroutines.isActive
 fun FloatingPillView(
     config: RecordingConfig = RecordingConfig(),
     onDrag: (dx: Float, dy: Float) -> Unit,
+    onDragEnd: () -> Unit = {},
+    onExpandChanged: (Boolean) -> Unit = {},
+    onRecordClick: () -> Unit = {},
+    onScreenshotClick: () -> Unit = {},
+    onVaultClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onStopClick: () -> Unit,
     onPauseClick: () -> Unit,
     onResumeClick: () -> Unit
 ) {
+    val serviceState by RecordingService.serviceState.collectAsState()
+    val isRecordingActive = serviceState is RecorderState.Recording || serviceState is RecorderState.Paused
+
+    // Standby Mode: Render Edge-Snapping Radial Menu Overlay
+    if (!isRecordingActive) {
+        var isRadialExpanded by remember { mutableStateOf(false) }
+        FloatingRadialMenuView(
+            isExpanded = isRadialExpanded,
+            onToggleExpand = { expanded ->
+                isRadialExpanded = expanded
+                onExpandChanged(expanded)
+            },
+            onDrag = onDrag,
+            onDragEnd = onDragEnd,
+            onRecordClick = onRecordClick,
+            onScreenshotClick = onScreenshotClick,
+            onVaultClick = onVaultClick,
+            onSettingsClick = onSettingsClick
+        )
+        return
+    }
+
     var isCollapsed by remember { mutableStateOf(false) }
-    var isInvisibleGhost by remember { mutableStateOf(false) }
+    var isInvisibleGhost by remember { mutableStateOf(config.hidePillDuringRecording) }
 
     val haptics = LocalHapticFeedback.current
-    val serviceState by RecordingService.serviceState.collectAsState()
-
     val isPaused = serviceState is RecorderState.Paused
     val stateDurationMs = when (val s = serviceState) {
         is RecorderState.Recording -> s.durationMs

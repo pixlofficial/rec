@@ -1,9 +1,16 @@
 package pixl.rec.ui.vault
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,12 +37,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -71,146 +82,208 @@ fun VaultScreen(
     val recordings by vaultViewModel.recordings.collectAsState()
     val isLoading by vaultViewModel.isLoading.collectAsState()
 
-    Scaffold(
-        containerColor = ObsidianCanvas
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
+    // Auto-refresh when Vault screen is entered
+    LaunchedEffect(Unit) {
+        vaultViewModel.refreshRecordings()
+    }
 
-            // 1. Vault Header Row
+    val spinTransition = rememberInfiniteTransition(label = "VaultRefreshSpin")
+    val spinAngle by spinTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "SpinAngle"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 1. Vault Header Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "RECORDING VAULT",
+                    color = TextPrimary,
+                    fontSize = 24.sp,
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "LOCAL SCOPED STORAGE // MOVIES",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontFamily = BitcountPropSingle
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TelemetryBadge(
+                    label = "CLIPS",
+                    value = "${recordings.size}",
+                    accentColor = if (recordings.isNotEmpty()) ToxicLime else TextMuted
+                )
+
+                // Sleek Telemetry-style Refresh Button with spin animation
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(SurfaceElevated, RoundedCornerShape(6.dp))
+                        .border(
+                            1.5.dp,
+                            if (isLoading) ToxicLime else BorderStark,
+                            RoundedCornerShape(6.dp)
+                        )
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = true),
+                            onClick = { vaultViewModel.refreshRecordings() }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh Recordings",
+                        tint = if (isLoading) ToxicLime else TextSecondary,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .rotate(if (isLoading) spinAngle else 0f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Storage Path Banner Card
+        SectionCard(
+            title = "STORAGE TARGET",
+            titleTag = "LOCAL",
+            tagColor = CyberYellow
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Icon(
+                    imageVector = Icons.Default.FolderOpen,
+                    contentDescription = "Folder",
+                    tint = CyberYellow,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "RECORDING VAULT",
+                        text = "Movies/REC",
                         color = TextPrimary,
-                        fontSize = 24.sp,
+                        fontSize = 14.sp,
                         fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "LOCAL SCOPED STORAGE // MOVIES",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
+                        text = "Zero cloud sync • Fully private scoped storage",
+                        color = TextMuted,
+                        fontSize = 11.sp,
                         fontFamily = BitcountPropSingle
                     )
                 }
+            }
+        }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Vault Clips List / Empty State
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "SCANNING STORAGE...",
+                    color = TextMuted,
+                    fontSize = 14.sp,
+                    fontFamily = BitcountPropSingle
+                )
+            }
+        } else if (recordings.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceElevated, RoundedCornerShape(12.dp))
+                        .border(1.5.dp, BorderStark, RoundedCornerShape(12.dp))
+                        .padding(24.dp)
                 ) {
-                    TelemetryBadge(
-                        label = "CLIPS",
-                        value = "${recordings.size}",
-                        accentColor = if (recordings.isNotEmpty()) ToxicLime else TextMuted
+                    Icon(
+                        imageVector = Icons.Default.FiberManualRecord,
+                        contentDescription = "No clips",
+                        tint = TextMuted,
+                        modifier = Modifier.size(48.dp)
                     )
-
-                    IconButton(
-                        onClick = { vaultViewModel.refreshRecordings() },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(SurfaceElevated, RoundedCornerShape(8.dp))
-                            .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh Recordings",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "NO RECORDINGS YET",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Recorded game clips and videos will appear here.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        fontFamily = BitcountPropSingle
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ActionButton(
+                        text = "START FIRST RECORDING",
+                        variant = ActionButtonVariant.PRIMARY,
+                        onClick = onRequestRecord
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 2. Content List or Empty State
-            if (recordings.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 80.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    SectionCard(
-                        title = "ZERO RECORDINGS",
-                        titleTag = "STANDBY",
-                        tagColor = Color.White
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FolderOpen,
-                                contentDescription = null,
-                                tint = TextMuted,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "No local screen recordings found.",
-                                color = TextPrimary,
-                                fontSize = 15.sp,
-                                fontFamily = BitcountPropSingle,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Videos captured with REC will automatically appear here in full quality.",
-                                color = TextSecondary,
-                                fontSize = 12.sp,
-                                fontFamily = BitcountPropSingle,
-                                lineHeight = 16.sp
-                            )
-                            Spacer(modifier = Modifier.height(18.dp))
-                            ActionButton(
-                                text = "START FIRST RECORDING",
-                                onClick = onRequestRecord,
-                                variant = ActionButtonVariant.PRIMARY,
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.FiberManualRecord,
-                                        contentDescription = null,
-                                        tint = HyperCrimson,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                        }
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = recordings,
+                    key = { it.id }
+                ) { item ->
+                    RecordingCard(
+                        item = item,
+                        onPlay = { vaultViewModel.playRecording(context, item) },
+                        onShare = { vaultViewModel.shareRecording(context, item) },
+                        onDelete = { vaultViewModel.deleteRecording(context, item) }
+                    )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(
-                        items = recordings,
-                        key = { it.id }
-                    ) { item ->
-                        RecordingCard(
-                            item = item,
-                            onPlay = { vaultViewModel.playRecording(context, item) },
-                            onShare = { vaultViewModel.shareRecording(context, item) },
-                            onDelete = { vaultViewModel.deleteRecording(context, item) }
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }

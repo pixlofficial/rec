@@ -11,6 +11,7 @@ import pixl.rec.core.model.DeviceCapabilities
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.RecordingService
@@ -85,6 +86,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun updateResolution(width: Int, height: Int) {
         val current = _uiState.value.config
         val updated = current.copy(width = width, height = height).withMacroblockAlignment()
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateRecordingOrientation(orientation: RecordingOrientation) {
+        val current = _uiState.value.config
+        val updated = current.copy(recordingOrientation = orientation)
         updateConfigAndStorage(updated)
     }
 

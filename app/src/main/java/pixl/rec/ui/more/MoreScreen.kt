@@ -66,94 +66,49 @@ fun MoreScreen(
     val capabilities = uiState.capabilities
     val scrollState = rememberScrollState()
 
-    Scaffold(
-        containerColor = ObsidianCanvas
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .verticalScroll(scrollState)
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 1. Header
+        Text(
+            text = "SYSTEM // ABOUT",
+            color = TextPrimary,
+            fontSize = 24.sp,
+            fontFamily = BitcountPropSingle,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = "PIXL REC • ZERO-COPY ARCHITECTURE",
+            color = TextSecondary,
+            fontSize = 12.sp,
+            fontFamily = BitcountPropSingle
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. 100% Offline Privacy Guarantee Badge Card
+        SectionCard(
+            title = "PRIVACY & SECURITY GUARANTEE",
+            titleTag = "100% OFFLINE",
+            tagColor = ToxicLime
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 1. Header
-            Text(
-                text = "SYSTEM // ABOUT",
-                color = TextPrimary,
-                fontSize = 24.sp,
-                fontFamily = BitcountPropSingle,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = "PIXL REC • ZERO-COPY ARCHITECTURE",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                fontFamily = BitcountPropSingle
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 2. 100% Offline Privacy Guarantee Badge Card
-            SectionCard(
-                title = "PRIVACY & SECURITY GUARANTEE",
-                titleTag = "100% OFFLINE",
-                tagColor = ToxicLime
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(ToxicLime.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        .border(1.5.dp, ToxicLime, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(ToxicLime.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                            .border(1.5.dp, ToxicLime, RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = ToxicLime,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Zero Cloud Sync • Zero Tracking",
-                            color = TextPrimary,
-                            fontSize = 14.sp,
-                            fontFamily = BitcountPropSingle,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "100% offline and private. No mandatory accounts, telemetry SDKs, or cloud uploads. Your recordings never leave your device storage.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontFamily = BitcountPropSingle,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 3. Support & Community Action Rows
-            SectionCard(title = "COMMUNITY & FEEDBACK", titleTag = "OPEN SOURCE") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SupportActionRow(
-                        icon = Icons.Default.BugReport,
-                        title = "Report a Bug",
-                        subtitle = "Found an issue? Open a GitHub ticket",
-                        onClick = {
-                            openUrl(context, "https://github.com/PixL/REC/issues/new?template=bug_report.md")
-                        }
-                    )
 
                     SupportActionRow(
                         icon = Icons.Default.Lightbulb,
@@ -214,7 +169,7 @@ fun MoreScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

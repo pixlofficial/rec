@@ -51,6 +51,7 @@ import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.CaptureTarget
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
+import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.ui.components.SectionCard
@@ -84,99 +85,94 @@ fun SettingsScreen(
     var selectedSubTab by remember { mutableStateOf(SettingsTab.VIDEO) }
     val scrollState = rememberScrollState()
 
-    Scaffold(
-        containerColor = ObsidianCanvas
-    ) { padding ->
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .verticalScroll(scrollState)
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 1. Settings Header
+        Text(
+            text = "CONFIG // SETTINGS",
+            color = TextPrimary,
+            fontSize = 24.sp,
+            fontFamily = BitcountPropSingle,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = "ZERO-COPY PIPELINE & HARDWARE DECK",
+            color = TextSecondary,
+            fontSize = 12.sp,
+            fontFamily = BitcountPropSingle
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 2. Segmented Sub-Tab Switcher (VIDEO, AUDIO, CONTROLS, STORAGE)
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState)
+                .fillMaxWidth()
+                .background(SurfaceElevated, RoundedCornerShape(10.dp))
+                .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 1. Settings Header
-            Text(
-                text = "CONFIG // SETTINGS",
-                color = TextPrimary,
-                fontSize = 24.sp,
-                fontFamily = BitcountPropSingle,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = "ZERO-COPY PIPELINE & HARDWARE DECK",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                fontFamily = BitcountPropSingle
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 2. Segmented Sub-Tab Switcher (VIDEO, AUDIO, CONTROLS, STORAGE)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceElevated, RoundedCornerShape(10.dp))
-                    .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                SettingsTab.entries.forEach { tab ->
-                    val isSelected = selectedSubTab == tab
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                color = if (isSelected) TextPrimary else Color.Transparent,
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .clickable { selectedSubTab = tab }
-                            .padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = tab.title,
-                            color = if (isSelected) TextInverse else TextSecondary,
-                            fontSize = 11.sp,
-                            fontFamily = BitcountPropSingle,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            letterSpacing = 0.5.sp,
-                            maxLines = 1
+            SettingsTab.entries.forEach { tab ->
+                val isSelected = selectedSubTab == tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            color = if (isSelected) TextPrimary else Color.Transparent,
+                            shape = RoundedCornerShape(6.dp)
                         )
-                    }
+                        .clickable { selectedSubTab = tab }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tab.title,
+                        color = if (isSelected) TextInverse else TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        letterSpacing = 0.5.sp,
+                        maxLines = 1
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 3. Sub-Tab Content
-            when (selectedSubTab) {
-                SettingsTab.VIDEO -> VideoSettingsSection(
-                    uiState = uiState,
-                    isRecordingActive = isRecordingActive,
-                    viewModel = viewModel
-                )
-                SettingsTab.AUDIO -> AudioSettingsSection(
-                    uiState = uiState,
-                    isRecordingActive = isRecordingActive,
-                    recorderState = recorderState,
-                    viewModel = viewModel
-                )
-                SettingsTab.CONTROLS -> ControlsSettingsSection(
-                    uiState = uiState,
-                    isRecordingActive = isRecordingActive,
-                    viewModel = viewModel
-                )
-                SettingsTab.STORAGE -> StorageSettingsSection(
-                    uiState = uiState,
-                    viewModel = viewModel
-                )
-            }
-
-            Spacer(modifier = Modifier.height(80.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Sub-Tab Content
+        when (selectedSubTab) {
+            SettingsTab.VIDEO -> VideoSettingsSection(
+                uiState = uiState,
+                isRecordingActive = isRecordingActive,
+                viewModel = viewModel
+            )
+            SettingsTab.AUDIO -> AudioSettingsSection(
+                uiState = uiState,
+                isRecordingActive = isRecordingActive,
+                recorderState = recorderState,
+                viewModel = viewModel
+            )
+            SettingsTab.CONTROLS -> ControlsSettingsSection(
+                uiState = uiState,
+                isRecordingActive = isRecordingActive,
+                viewModel = viewModel
+            )
+            SettingsTab.STORAGE -> StorageSettingsSection(
+                uiState = uiState,
+                viewModel = viewModel
+            )
+        }
+
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
@@ -190,7 +186,28 @@ private fun VideoSettingsSection(
     val config = uiState.config
     val capabilities = uiState.capabilities
 
-    // 1. Framerate Selection
+    // 1. Orientation Selection
+    SectionCard(title = "RECORDING ORIENTATION", titleTag = config.recordingOrientation.displayName) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RecordingOrientation.entries.forEach { orientation ->
+                val isSelected = config.recordingOrientation == orientation
+                SettingsTag(
+                    text = orientation.displayName,
+                    isSelected = isSelected,
+                    enabled = !isRecordingActive,
+                    onClick = { viewModel.updateRecordingOrientation(orientation) }
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Framerate Selection
     SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),

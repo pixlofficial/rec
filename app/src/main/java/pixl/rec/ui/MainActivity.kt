@@ -15,19 +15,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import pixl.rec.R
+import pixl.rec.service.FloatingOverlayService
 import pixl.rec.ui.dashboard.DashboardViewModel
 import pixl.rec.ui.main.MainScreen
+import pixl.rec.ui.navigation.NavigationTab
 import pixl.rec.ui.theme.RECTheme
 
 /**
- * Main entry activity handling Compose dashboard initialization and Android 14/15
- * single-use MediaProjection consent negotiations.
+ * Main entry activity handling Compose dashboard initialization, overlay auto-start,
+ * and Android single-use MediaProjection consent negotiations.
  */
 class MainActivity : ComponentActivity() {
 
     private val viewModel: DashboardViewModel by viewModels()
+    private var currentNavTab by mutableStateOf(NavigationTab.DASHBOARD)
 
     // 1. MediaProjection Screen Capture Permission Contract
     private val projectionLauncher = registerForActivityResult(
@@ -59,6 +65,10 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         hasPromptedOverlay = true
+        val config = viewModel.uiState.value.config
+        if (config.alwaysOnFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
+            FloatingOverlayService.start(this, config)
+        }
         // Proceed to audio/notification permissions regardless of overlay grant
         checkAudioAndRecordPermissions()
     }
@@ -68,15 +78,48 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_REC)
         super.onCreate(savedInstanceState)
 
+        handleIntent(intent)
+
         setContent {
             RECTheme {
                 MainScreen(
                     dashboardViewModel = viewModel,
+                    initialTab = currentNavTab,
                     onRequestRecordPermission = {
                         checkAndRequestPermissions()
                     }
                 )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // If always-on floating pill is enabled and permission is granted, ensure overlay is active
+        val config = viewModel.uiState.value.config
+        if (config.alwaysOnFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
+            FloatingOverlayService.start(this, config)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val tabExtra = intent?.getStringExtra(EXTRA_TARGET_TAB)
+        if (tabExtra != null) {
+            when (tabExtra) {
+                "VAULT" -> currentNavTab = NavigationTab.VAULT
+                "SETTINGS" -> currentNavTab = NavigationTab.SETTINGS
+                "MORE" -> currentNavTab = NavigationTab.MORE
+                else -> currentNavTab = NavigationTab.DASHBOARD
+            }
+        }
+        if (intent?.getBooleanExtra(EXTRA_START_RECORD, false) == true) {
+            checkAndRequestPermissions()
         }
     }
 
@@ -117,5 +160,10 @@ class MainActivity : ComponentActivity() {
     private fun requestScreenCapturePermission() {
         val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+    }
+
+    companion object {
+        const val EXTRA_TARGET_TAB = "EXTRA_TARGET_TAB"
+        const val EXTRA_START_RECORD = "EXTRA_START_RECORD"
     }
 }

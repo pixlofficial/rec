@@ -58,6 +58,15 @@ enum class CaptureTarget(val displayName: String) {
 }
 
 /**
+ * Canvas orientation locking modes for screen recording.
+ */
+enum class RecordingOrientation(val displayName: String) {
+    AUTO("Auto (match device)"),       // Current behavior: use orientation at record start
+    LANDSCAPE("Landscape"),            // Always max×min — gamers' pick
+    PORTRAIT("Portrait");              // Always min×max — vertical content creators
+}
+
+/**
  * Master configuration profile for zero-copy recording session.
  */
 data class RecordingConfig(
@@ -75,9 +84,12 @@ data class RecordingConfig(
     val audioChannelCount: Int = 2, // Stereo
     val micGain: Float = 1.0f,
     val internalAudioGain: Float = 1.0f,
+    val recordingOrientation: RecordingOrientation = RecordingOrientation.AUTO,
 
     // Overlay & Clean Canvas Controls
     val showFloatingPill: Boolean = true,
+    val alwaysOnFloatingPill: Boolean = true,
+    val hidePillDuringRecording: Boolean = false,
     val autoHidePill: Boolean = false,
     val pillRecallGesture: PillRecallGesture = PillRecallGesture.EDGE_SWIPE,
     val shakeToStop: Boolean = true,

@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="./assets/branding/logo.png" alt="PixL REC Logo" width="120" height="120" style="border-radius: 24px;" />
+  <img src="./assets/branding/icon.png" alt="PixL REC Logo" width="120" height="120" style="border-radius: 24px;" />
 
   # REC
   ### Zero-Copy • Hardware-Accelerated • 120+ FPS • Nanosecond Audio Sync

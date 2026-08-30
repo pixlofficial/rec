@@ -15,9 +15,22 @@ class RecordingConfigTest {
         assertEquals(16_000_000, config.videoBitrate)
         assertEquals(VideoCodec.HEVC, config.videoCodec)
         assertEquals(AudioSource.INTERNAL_AND_MIC, config.audioSource)
+        assertEquals(RecordingOrientation.AUTO, config.recordingOrientation)
         assertTrue(config.audioSource.hasInternal)
         assertTrue(config.audioSource.hasMic)
         assertTrue(config.audioSource.hasAudio)
+    }
+
+    @Test
+    fun testRecordingOrientationSelection() {
+        val autoConfig = RecordingConfig(recordingOrientation = RecordingOrientation.AUTO)
+        assertEquals(RecordingOrientation.AUTO, autoConfig.recordingOrientation)
+
+        val landscapeConfig = autoConfig.copy(recordingOrientation = RecordingOrientation.LANDSCAPE)
+        assertEquals(RecordingOrientation.LANDSCAPE, landscapeConfig.recordingOrientation)
+
+        val portraitConfig = autoConfig.copy(recordingOrientation = RecordingOrientation.PORTRAIT)
+        assertEquals(RecordingOrientation.PORTRAIT, portraitConfig.recordingOrientation)
     }
 
     @Test

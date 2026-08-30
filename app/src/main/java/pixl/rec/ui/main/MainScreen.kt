@@ -7,10 +7,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,13 +40,19 @@ import pixl.rec.ui.vault.VaultViewModel
 fun MainScreen(
     dashboardViewModel: DashboardViewModel,
     vaultViewModel: VaultViewModel = viewModel(),
+    initialTab: NavigationTab = NavigationTab.DASHBOARD,
     onRequestRecordPermission: () -> Unit
 ) {
-    var currentTab by rememberSaveable { mutableStateOf(NavigationTab.DASHBOARD) }
+    var currentTab by rememberSaveable { mutableStateOf(initialTab) }
     val recorderState by dashboardViewModel.recorderState.collectAsState()
+
+    LaunchedEffect(initialTab) {
+        currentTab = initialTab
+    }
 
     Scaffold(
         containerColor = ObsidianCanvas,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             BottomNavBar(
                 currentTab = currentTab,
@@ -60,6 +73,8 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(ObsidianCanvas)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             AnimatedContent(

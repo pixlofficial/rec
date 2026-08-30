@@ -13,6 +13,7 @@ import android.util.Log
 import pixl.rec.core.audio.AudioCaptureManager
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.storage.MediaStoreWriter
 import pixl.rec.core.storage.StorageCalculator
 import kotlinx.coroutines.CoroutineScope
@@ -99,13 +100,40 @@ class ScreenRecorderEngine(
             isMuxerStarted.set(false)
             pendingSamples.clear()
 
-            // 1. Initialize MediaStore Scoped Storage Writer
-            val writer = MediaStoreWriter(context, config)
+            // 0. Compute Canvas Dimensions based on orientation policy & current rotation
+            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+            val defaultDisplay = displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
+            val currentRotation = defaultDisplay?.rotation ?: android.view.Surface.ROTATION_0
+            lastRecordedRotation = currentRotation
+
+            val isLandscape = currentRotation == android.view.Surface.ROTATION_90 || currentRotation == android.view.Surface.ROTATION_270
+            val portraitWidth = kotlin.math.min(config.width, config.height)
+            val portraitHeight = kotlin.math.max(config.width, config.height)
+
+            val (canvasWidth, canvasHeight) = when (config.recordingOrientation) {
+                RecordingOrientation.AUTO -> if (isLandscape) {
+                    portraitHeight to portraitWidth
+                } else {
+                    portraitWidth to portraitHeight
+                }
+                RecordingOrientation.LANDSCAPE -> portraitHeight to portraitWidth
+                RecordingOrientation.PORTRAIT -> portraitWidth to portraitHeight
+            }
+
+            val activeConfig = config.copy(
+                width = canvasWidth,
+                height = canvasHeight
+            ).withMacroblockAlignment()
+
+            Log.i(tag, "Configuring recording canvas: ${activeConfig.width}x${activeConfig.height} (Policy: ${config.recordingOrientation.displayName}, Device Landscape: $isLandscape)")
+
+            // 1. Initialize MediaStore Scoped Storage Writer with active canvas config
+            val writer = MediaStoreWriter(context, activeConfig)
             mediaStoreWriter = writer
             mediaMuxer = writer.open()
 
-            // 2. Initialize Video Encoder
-            val vEncoder = VideoEncoder(config, object : VideoEncoder.OutputListener {
+            // 2. Initialize Video Encoder with active canvas configuration
+            val vEncoder = VideoEncoder(activeConfig, object : VideoEncoder.OutputListener {
                 override fun onVideoFormatChanged(format: MediaFormat) {
                     handleVideoFormat(format)
                 }
@@ -126,8 +154,8 @@ class ScreenRecorderEngine(
             videoEncoder = vEncoder
 
             // 3. Initialize Audio Pipeline if enabled
-            if (config.audioSource.hasAudio) {
-                val aEncoder = AudioEncoder(config, object : AudioEncoder.OutputListener {
+            if (activeConfig.audioSource.hasAudio) {
+                val aEncoder = AudioEncoder(activeConfig, object : AudioEncoder.OutputListener {
                     override fun onAudioFormatChanged(format: MediaFormat) {
                         handleAudioFormat(format)
                     }
@@ -145,7 +173,7 @@ class ScreenRecorderEngine(
 
                 val aCapture = AudioCaptureManager(
                     context = context,
-                    config = config,
+                    config = activeConfig,
                     mediaProjection = mediaProjection,
                     listener = object : AudioCaptureManager.AudioDataListener {
                         override fun onPcmAudioData(pcmBytes: ByteArray, length: Int, ptsUs: Long) {
@@ -167,15 +195,7 @@ class ScreenRecorderEngine(
             }
 
             // 4. Create VirtualDisplay piped directly to VideoEncoder Input Surface (Zero-Copy)
-            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
-            val defaultDisplay = displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
-            val currentRotation = defaultDisplay?.rotation ?: android.view.Surface.ROTATION_0
-            lastRecordedRotation = currentRotation
-
-            val isLandscape = currentRotation == android.view.Surface.ROTATION_90 || currentRotation == android.view.Surface.ROTATION_270
-            val portraitWidth = kotlin.math.min(config.width, config.height)
-            val portraitHeight = kotlin.math.max(config.width, config.height)
-            val (initialWidth, initialHeight) = if (isLandscape) {
+            val (initialSourceWidth, initialSourceHeight) = if (isLandscape) {
                 portraitHeight to portraitWidth
             } else {
                 portraitWidth to portraitHeight
@@ -184,9 +204,9 @@ class ScreenRecorderEngine(
             val surface = vEncoder.inputSurface ?: throw IllegalStateException("Encoder surface is null")
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "PixL-REC-Display",
-                initialWidth,
-                initialHeight,
-                config.dpi,
+                initialSourceWidth,
+                initialSourceHeight,
+                activeConfig.dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface,
                 null,
@@ -209,8 +229,8 @@ class ScreenRecorderEngine(
                             } else {
                                 portraitWidth to portraitHeight
                             }
-                            Log.i(tag, "Display rotation changed to $newRotation -> Resizing VirtualDisplay to ${w}x${h} @ ${config.dpi} DPI")
-                            virtualDisplay?.resize(w, h, config.dpi)
+                            Log.i(tag, "Display rotation changed to $newRotation -> Resizing VirtualDisplay source to ${w}x${h} @ ${activeConfig.dpi} DPI (Canvas locked at ${activeConfig.width}x${activeConfig.height})")
+                            virtualDisplay?.resize(w, h, activeConfig.dpi)
                         }
                     }
                 }

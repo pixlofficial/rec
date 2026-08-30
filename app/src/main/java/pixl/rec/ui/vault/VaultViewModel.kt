@@ -11,8 +11,11 @@ import android.util.Log
 import android.util.Size
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import pixl.rec.core.model.RecorderState
+import pixl.rec.service.RecordingService
 import pixl.rec.ui.vault.model.RecordingItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +34,18 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         refreshRecordings()
+        observeRecordingFinished()
+    }
+
+    private fun observeRecordingFinished() {
+        viewModelScope.launch {
+            RecordingService.serviceState.collect { state ->
+                if (state is RecorderState.Finished) {
+                    delay(350)
+                    refreshRecordings()
+                }
+            }
+        }
     }
 
     fun refreshRecordings() {
