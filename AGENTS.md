@@ -61,6 +61,8 @@ PixL-Recorder/
 │       │   │   ├── audio/             # Internal audio loopback & mic mixing
 │       │   │   │   ├── AudioCaptureManager.kt
 │       │   │   │   └── PcmAudioMixer.kt
+│       │   │   ├── sensor/            # Accelerometer shake detection
+│       │   │   │   └── ShakeDetector.kt
 │       │   │   ├── storage/           # Scoped storage & file estimation
 │       │   │   │   ├── MediaStoreWriter.kt
 │       │   │   │   └── StorageCalculator.kt
@@ -72,11 +74,11 @@ PixL-Recorder/
 │       │   │   ├── RecordingService.kt       # MediaProjection Foreground Service
 │       │   │   └── FloatingOverlayService.kt # Draggable Compose Overlay Pill
 │       │   └── ui/
-│       │       ├── theme/             # Cyberpunk dark theme & glassmorphism
+│       │       ├── theme/             # Cyberpunk dark theme, Lexend Tera & glassmorphism
 │       │       ├── dashboard/         # Main telemetry dashboard & controls
 │       │       ├── overlay/           # Floating pill composable views
 │       │       └── components/        # Audio visualizer, neon buttons, telemetry cards
-│       └── res/                       # Drawables, layout, strings
+│       └── res/                       # Drawables, layout, strings, font
 ```
 
 ---
@@ -89,6 +91,7 @@ PixL-Recorder/
 2. **Jetpack Compose UI:**
    * Strictly adhere to Material 3 guidelines and unidirectional data flow (MVI / State Hoisting).
    * Do not hardcode dimensions or strings; utilize theme tokens (`MaterialTheme.colorScheme`) and resource references.
+   * **Typography Hierarchy:** Pair display typefaces (`LexendTera`) strictly for hero titles, badges, and digital timers, with clean proportional sans-serif (`BodyFont`) for subtitles, switches, and paragraph text to prevent horizontal overflow/wrapping.
 3. **MediaCodec & NDK Safety:**
    * Always verify `MediaCodecInfo.isHardwareAccelerated` before initializing encoders.
    * Catch and safely handle `MediaCodec.CodecException` with automatic fallback from HEVC $\rightarrow$ AVC.
@@ -112,3 +115,24 @@ PixL-Recorder/
   ```
 * **GitHub Actions Workflow:**
   * Pushing to `main` triggers `.github/workflows/build-apk.yml`, building the debug and release APKs and attaching them as downloadable artifacts.
+
+---
+
+## 6. Agent Collaboration & Behavioral Constraints
+
+All AI agents interacting with this repository MUST strictly follow these collaboration rules:
+
+1. **No Code Edits During Questions or Discussions:**
+   * When the user is asking for **opinions, thoughts, design feedback, analysis, or questions** (e.g. *"What do you think of this idea?"*, *"Is X better than Y?"*, *"Can we do Z?"*), **DO NOT make file edits, modify code, or run modifying build commands**.
+   * Only provide articulate analysis, discuss trade-offs, and suggest options in chat.
+   * **Wait for the user's explicit confirmation or instruction** before modifying any source files.
+
+2. **Respect User Intent & Scope:**
+   * Never execute speculative or unrequested changes beyond the exact task assigned.
+   * Always clarify ambiguity instead of assuming and rewriting functional code.
+
+3. **Verify Changes Before Handoff:**
+   * When instructed to implement changes, always compile with `./gradlew assembleDebug test` and verify that no regressions were introduced.
+
+4. **Preserve Established Zero-Copy & Sync Patterns:**
+   * Never re-introduce raw CPU pixel copying or break relative monotonic PTS timestamp normalization.
