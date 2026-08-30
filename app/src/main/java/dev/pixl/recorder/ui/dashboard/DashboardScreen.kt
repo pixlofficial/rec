@@ -181,12 +181,14 @@ private fun HeaderBar(uiState: DashboardUiState) {
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Column {
+            Column(
+                verticalArrangement = Arrangement.spacedBy((-2).dp)
+            ) {
                 Text(
                     text = "REC",
                     color = Color.White,
                     fontSize = 26.sp,
-                    lineHeight = 26.sp,
+                    lineHeight = 22.sp,
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -195,7 +197,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
                     text = "by PixL",
                     color = TextSecondary,
                     fontSize = 13.sp,
-                    lineHeight = 16.sp,
+                    lineHeight = 13.sp,
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
