@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
+// Display Font for Headings, Hero Stats, Brand & Timers
 val LexendTera = FontFamily(
     Font(R.font.lexend_tera, FontWeight.Normal),
     Font(R.font.lexend_tera, FontWeight.Medium),
@@ -16,93 +17,96 @@ val LexendTera = FontFamily(
     Font(R.font.lexend_tera, FontWeight.Black)
 )
 
+// Clean Proportional Sans for Body, Subtitles & Switch labels (Linear / Vercel style)
+val BodyFont = FontFamily.SansSerif
+
 val BrutalistTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = LexendTera,
-        fontWeight = FontWeight.Black,
-        fontSize = 36.sp,
-        lineHeight = 42.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 36.sp,
         letterSpacing = (-0.5).sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
         fontFamily = LexendTera,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 24.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp,
         color = TextPrimary
     ),
     headlineLarge = TextStyle(
         fontFamily = LexendTera,
-        fontWeight = FontWeight.Black,
-        fontSize = 22.sp,
-        lineHeight = 26.sp,
-        letterSpacing = 0.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        lineHeight = 22.sp,
+        letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineMedium = TextStyle(
         fontFamily = LexendTera,
         fontWeight = FontWeight.Bold,
-        fontSize = 16.sp,
-        lineHeight = 20.sp,
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     titleLarge = TextStyle(
         fontFamily = LexendTera,
         fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
+        fontSize = 13.sp,
+        lineHeight = 17.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     titleMedium = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.25.sp,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.2.sp,
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
+        fontSize = 13.sp,
         lineHeight = 18.sp,
-        letterSpacing = 0.25.sp,
+        letterSpacing = 0.2.sp,
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        lineHeight = 15.sp,
-        letterSpacing = 0.2.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.15.sp,
         color = TextSecondary
     ),
     labelLarge = TextStyle(
         fontFamily = LexendTera,
-        fontWeight = FontWeight.Black,
-        fontSize = 12.sp,
-        lineHeight = 15.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = LexendTera,
-        fontWeight = FontWeight.Bold,
-        fontSize = 10.sp,
-        lineHeight = 13.sp,
-        letterSpacing = 0.5.sp,
+        fontFamily = BodyFont,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 0.2.sp,
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = LexendTera,
-        fontWeight = FontWeight.Bold,
-        fontSize = 8.sp,
-        lineHeight = 11.sp,
-        letterSpacing = 0.5.sp,
+        fontFamily = BodyFont,
+        fontWeight = FontWeight.Medium,
+        fontSize = 10.sp,
+        lineHeight = 13.sp,
+        letterSpacing = 0.2.sp,
         color = TextMuted
     )
 )

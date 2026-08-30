@@ -13,16 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.pixl.recorder.ui.theme.BodyFont
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
-import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
-import dev.pixl.recorder.ui.theme.TextPrimary
 import dev.pixl.recorder.ui.theme.ToxicLime
 
 @Composable
@@ -37,25 +35,29 @@ fun TelemetryBadge(
         modifier = modifier
             .background(if (isHighlighted) accentColor else SurfaceElevated, RoundedCornerShape(6.dp))
             .border(1.5.dp, if (isHighlighted) BorderHighlight else BorderStark, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 5.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = label.uppercase(),
-                color = if (isHighlighted) TextInverse.copy(alpha = 0.7f) else dev.pixl.recorder.ui.theme.TextSecondary,
-                fontSize = 9.sp,
-                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                fontWeight = FontWeight.Medium
+                color = if (isHighlighted) TextInverse.copy(alpha = 0.75f) else dev.pixl.recorder.ui.theme.TextSecondary,
+                fontSize = 10.sp,
+                fontFamily = BodyFont,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                maxLines = 1
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(5.dp))
             Text(
                 text = value.uppercase(),
                 color = if (isHighlighted) TextInverse else accentColor,
-                fontSize = 10.sp,
-                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                fontWeight = FontWeight.Bold
+                fontSize = 11.sp,
+                fontFamily = BodyFont,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp,
+                maxLines = 1
             )
         }
     }

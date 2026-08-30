@@ -53,11 +53,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,11 +71,13 @@ import dev.pixl.recorder.ui.components.BrutalistButtonVariant
 import dev.pixl.recorder.ui.components.BrutalistCard
 import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
+import dev.pixl.recorder.ui.theme.BodyFont
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
+import dev.pixl.recorder.ui.theme.LexendTera
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
@@ -171,11 +171,13 @@ private fun HeaderBar(uiState: DashboardUiState) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         // App Identity Brand Badge (Pure Glowing Red Core Logo)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_logo_core),
                 contentDescription = "REC Logo Core",
-                modifier = Modifier.size(42.dp)
+                modifier = Modifier.size(38.dp)
             )
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -185,22 +187,22 @@ private fun HeaderBar(uiState: DashboardUiState) {
                     text = "ZERO-COPY VPU",
                     color = ToxicLime,
                     fontSize = 11.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontFamily = LexendTera,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
                 Text(
                     text = "BY PIXL",
                     color = TextSecondary,
-                    fontSize = 9.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                    fontWeight = FontWeight.Normal,
+                    fontSize = 10.sp,
+                    fontFamily = BodyFont,
+                    fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
                 )
             }
         }
 
-        // Live Badges
+        // Compact Header Badges (Single Non-Wrapping Row)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val refreshRate = uiState.capabilities?.display?.currentRefreshRate?.roundToInt() ?: 60
             TelemetryBadge(label = "FPS", value = "$refreshRate HZ", accentColor = ToxicLime, isHighlighted = true)
@@ -223,34 +225,38 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
             .fillMaxWidth()
             .background(SurfaceElevated, RoundedCornerShape(10.dp))
             .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
-            .padding(12.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Memory,
                     contentDescription = null,
                     tint = ToxicLime,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
                         text = "HARDWARE ENGINE ACTIVE",
                         color = TextPrimary,
                         fontSize = 10.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontFamily = LexendTera,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
                         color = TextSecondary,
-                        fontSize = 9.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera
+                        fontSize = 11.sp,
+                        fontFamily = BodyFont,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -259,13 +265,13 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                 modifier = Modifier
                     .background(ToxicLime.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
                     .border(1.dp, ToxicLime, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = "0% CPU",
                     color = ToxicLime,
-                    fontSize = 8.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontSize = 10.sp,
+                    fontFamily = BodyFont,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -309,7 +315,7 @@ private fun HeroRecordingCard(
                 tagTextColor = TextPrimary,
                 borderColor = if (isPaused) CyberYellow else HyperCrimson
             ) {
-                // Giant Monospace Digital Timer
+                // Giant Digital Timer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -325,14 +331,14 @@ private fun HeroRecordingCard(
                     Text(
                         text = StorageCalculator.formatDuration(durationMs),
                         fontSize = 36.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontFamily = LexendTera,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
                         letterSpacing = (-0.5).sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Realtime Telemetry Grid
                 Row(
@@ -414,8 +420,8 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Allocating zero-copy GraphicBuffer surface & MediaCodec...",
                     color = TextSecondary,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                    fontSize = 11.sp
+                    fontFamily = BodyFont,
+                    fontSize = 13.sp
                 )
             }
         }
@@ -429,14 +435,14 @@ private fun HeroRecordingCard(
                 Text(
                     text = "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
-                    fontSize = 11.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera
+                    fontSize = 12.sp,
+                    fontFamily = BodyFont
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${recorderState.formattedSize} • ${StorageCalculator.formatDuration(recorderState.durationMs)}",
                     color = ToxicLime,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontFamily = LexendTera,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -467,8 +473,9 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
+                    fontFamily = BodyFont,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -482,15 +489,15 @@ private fun HeroRecordingCard(
                     Text(
                         text = "ESTIMATED RATE:",
                         color = TextSecondary,
-                        fontSize = 9.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontSize = 10.sp,
+                        fontFamily = LexendTera,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
                         color = CyberYellow,
-                        fontSize = 9.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontSize = 10.sp,
+                        fontFamily = LexendTera,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -566,7 +573,7 @@ private fun OverlayAndCleanCanvasSection(
                         text = "RECALL GESTURE",
                         color = TextSecondary,
                         fontSize = 9.sp,
-                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontFamily = LexendTera,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -630,7 +637,10 @@ private fun OverlayAndCleanCanvasSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Layers,
                             contentDescription = null,
@@ -642,12 +652,13 @@ private fun OverlayAndCleanCanvasSection(
                             text = "SINGLE-APP ISOLATED CAPTURE",
                             color = if (isAndroid14Plus) TextPrimary else TextMuted,
                             fontSize = 10.sp,
-                            fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                            fontFamily = LexendTera,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
                     if (!isAndroid14Plus) {
+                        Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
                                 .background(Color(0xFF282834), RoundedCornerShape(4.dp))
@@ -658,8 +669,9 @@ private fun OverlayAndCleanCanvasSection(
                                 text = "REQUIRES ANDROID 14+",
                                 color = TextMuted,
                                 fontSize = 8.sp,
-                                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-                                fontWeight = FontWeight.Bold
+                                fontFamily = LexendTera,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                     }
@@ -672,8 +684,9 @@ private fun OverlayAndCleanCanvasSection(
                     else
                         "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
                     color = if (isAndroid14Plus) TextSecondary else TextMuted,
-                    fontSize = 10.sp,
-                    lineHeight = 14.sp
+                    fontSize = 11.sp,
+                    fontFamily = BodyFont,
+                    lineHeight = 15.sp
                 )
 
                 if (isAndroid14Plus) {
@@ -710,7 +723,7 @@ private fun SwitchRow(
             .background(SurfaceElevated, RoundedCornerShape(8.dp))
             .border(1.5.dp, if (checked) CyberYellow else BorderStark, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -724,25 +737,28 @@ private fun SwitchRow(
                 tint = if (checked) CyberYellow else TextSecondary,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
                     text = title,
                     color = if (checked) TextPrimary else TextSecondary,
-                    fontSize = 11.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontSize = 13.sp,
+                    fontFamily = BodyFont,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     color = TextMuted,
-                    fontSize = 9.sp,
-                    lineHeight = 12.sp
+                    fontSize = 11.sp,
+                    fontFamily = BodyFont,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 14.sp
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         Switch(
             checked = checked,
@@ -881,7 +897,7 @@ private fun SelectableTag(
             text = text.uppercase(),
             color = textColor,
             fontSize = 10.sp,
-            fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+            fontFamily = LexendTera,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )
@@ -911,9 +927,9 @@ private fun SelectableRow(
         Text(
             text = text,
             color = if (isSelected) TextPrimary else TextSecondary,
-            fontSize = 11.sp,
-            fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontSize = 12.sp,
+            fontFamily = BodyFont,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
         if (isSelected) {
             Box(
