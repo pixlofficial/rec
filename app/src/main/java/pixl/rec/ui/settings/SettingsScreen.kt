@@ -276,7 +276,7 @@ private fun VideoSettingsSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf(20, 35, 50, 80, 100).forEach { mbps ->
+            listOf(8, 16, 28, 50, 80).forEach { mbps ->
                 val isSelected = config.videoBitrate == mbps * 1_000_000
                 SettingsTag(
                     text = "$mbps Mbps",
