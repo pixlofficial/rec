@@ -136,3 +136,39 @@ All AI agents interacting with this repository MUST strictly follow these collab
 
 4. **Preserve Established Zero-Copy & Sync Patterns:**
    * Never re-introduce raw CPU pixel copying or break relative monotonic PTS timestamp normalization.
+
+---
+
+## 7. Version Bumping & Release Protocol
+
+All AI agents must strictly follow this protocol whenever bumping the version or preparing a release:
+
+1. **Update `version.properties` (Single Source of Truth):**
+   * Bump `VERSION_NAME` following [Semantic Versioning](https://semver.org/) (e.g. `0.1.0` $\rightarrow$ `0.1.1` for patches, `0.2.0` for features, `1.0.0` for major releases).
+   * Increment `VERSION_CODE` by `+1` (monotonic integer required by Google Play Console).
+   * *Do NOT hardcode versions in `build.gradle.kts` or Compose files; `app/build.gradle.kts` dynamically reads `version.properties` and exposes `BuildConfig.VERSION_NAME` to the UI.*
+
+2. **Update `CHANGELOG.md`:**
+   * Add a new version header `## [X.Y.Z] - YYYY-MM-DD` at the top of [CHANGELOG.md](file:///home/neeraj/Dev/REC/CHANGELOG.md).
+   * Document all notable additions, changes, and fixes using standard Keep a Changelog categories:
+     * `### 🚀 Added` — for new features.
+     * `### ⚡ Changed` — for changes in existing functionality.
+     * `### 🐛 Fixed` — for bug fixes.
+     * `### 🔒 Security` — for security patches.
+   * Update the release diff link at the bottom of `CHANGELOG.md`.
+
+3. **Verify Local Build & Test Suite:**
+   * Always validate the build before committing:
+     ```bash
+     ./gradlew assembleDebug assembleRelease test
+     ```
+
+4. **Commit & Tag Convention:**
+   * Commit format: `chore(release): bump version to X.Y.Z`
+   * Release Tag format: `vX.Y.Z` (e.g. `git tag v0.1.0`)
+   * Pushing the tag (`git push origin vX.Y.Z`) triggers `.github/workflows/build-apk.yml`, automatically building:
+     * `PixL-REC-vX.Y.Z.aab` (Google Play App Bundle)
+     * `PixL-REC-vX.Y.Z.apk` (Universal standalone release APK)
+     * `SHA256SUMS.txt` (Cryptographic verification checksums)
+     * GitHub Release with auto-generated release notes.
+
