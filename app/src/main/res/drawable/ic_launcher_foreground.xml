@@ -1,0 +1,49 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer Concentric Aperture Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0"
+        android:strokeWidth="0.8"
+        android:strokeColor="#25FF2A54" />
+
+    <!-- Outer Faint Red Glow Halo -->
+    <path
+        android:fillColor="#15FF2A54"
+        android:pathData="M54,54m-22,0a22,22 0 1,0 44,0a22,22 0 1,0 -44,0" />
+
+    <!-- Secondary Soft Glow -->
+    <path
+        android:fillColor="#35FF2A54"
+        android:pathData="M54,54m-18,0a18,18 0 1,0 36,0a18,18 0 1,0 -36,0" />
+
+    <!-- Primary Vivid Red Record Dot -->
+    <path
+        android:pathData="M54,54m-14,0a14,14 0 1,0 28,0a14,14 0 1,0 -28,0"
+        android:strokeWidth="1"
+        android:strokeColor="#80FF6B8B">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="40"
+                android:startY="40"
+                android:endX="68"
+                android:endY="68"
+                android:type="linear">
+                <item android:color="#FFFF3355" android:offset="0.0" />
+                <item android:color="#FFFF1744" android:offset="0.5" />
+                <item android:color="#FFD50000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Top Specular Highlight Arc -->
+    <path
+        android:pathData="M46,47a8,4 0 0,1 16,0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#60FFFFFF" />
+</vector>
