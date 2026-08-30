@@ -15,13 +15,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import dev.pixl.recorder.ui.dashboard.DashboardScreen
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
+import dev.pixl.recorder.ui.splash.SplashScreen
 import dev.pixl.recorder.ui.theme.RECTheme
 
 /**
- * Main entry activity handling Compose dashboard initialization and Android 14/15
+ * Main entry activity handling Compose dashboard initialization, splash screen, and Android 14/15
  * single-use MediaProjection consent negotiations.
  */
 class MainActivity : ComponentActivity() {
@@ -67,12 +77,28 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RECTheme {
-                DashboardScreen(
-                    viewModel = viewModel,
-                    onRequestRecordPermission = {
-                        checkAndRequestPermissions()
+                var showSplash by rememberSaveable { mutableStateOf(true) }
+
+                AnimatedContent(
+                    targetState = showSplash,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                    },
+                    label = "SplashToDashboardTransition"
+                ) { isSplash ->
+                    if (isSplash) {
+                        SplashScreen(
+                            onSplashFinished = { showSplash = false }
+                        )
+                    } else {
+                        DashboardScreen(
+                            viewModel = viewModel,
+                            onRequestRecordPermission = {
+                                checkAndRequestPermissions()
+                            }
+                        )
                     }
-                )
+                }
             }
         }
     }
