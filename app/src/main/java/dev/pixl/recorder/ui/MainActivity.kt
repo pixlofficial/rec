@@ -16,7 +16,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import dev.pixl.recorder.service.FloatingOverlayService
 import dev.pixl.recorder.ui.dashboard.DashboardScreen
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
 import dev.pixl.recorder.ui.theme.RECTheme
@@ -34,12 +33,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            // Start overlay pill if permission is granted
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
-                FloatingOverlayService.start(this)
-            }
-
-            // Start Foreground Recording Service
+            // Start Foreground Recording Service (which handles Overlay, Sensors & MediaCodec)
             viewModel.startRecording(result.resultCode, result.data!!)
 
             // Move to background to reveal game / home screen immediately
@@ -84,8 +78,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        // 1. Check Floating Overlay Permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+        val config = viewModel.uiState.value.config
+
+        // 1. Check Floating Overlay Permission only if floating pill is enabled
+        if (config.showFloatingPill && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")

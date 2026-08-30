@@ -3,8 +3,10 @@ package dev.pixl.recorder.service
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
@@ -18,6 +20,7 @@ import dev.pixl.recorder.R
 import dev.pixl.recorder.core.engine.ScreenRecorderEngine
 import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.core.model.RecordingConfig
+import dev.pixl.recorder.core.sensor.ShakeDetector
 import dev.pixl.recorder.core.storage.StorageCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,7 @@ import kotlinx.coroutines.launch
 /**
  * Android 14/15/16 Foreground Service hosting the zero-copy [ScreenRecorderEngine].
  * Implements [FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION] and [FOREGROUND_SERVICE_TYPE_MICROPHONE].
+ * Integrates [ShakeDetector] and Screen-Off broadcast receiver for Clean Canvas mode.
  */
 class RecordingService : Service() {
 
@@ -42,6 +46,9 @@ class RecordingService : Service() {
 
     private var mediaProjection: MediaProjection? = null
     private var engine: ScreenRecorderEngine? = null
+    private var shakeDetector: ShakeDetector? = null
+
+    private var screenOffReceiver: BroadcastReceiver? = null
 
     private val binder = LocalBinder()
 
@@ -57,7 +64,12 @@ class RecordingService : Service() {
         when (action) {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-                val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
                 val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent.getSerializableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
                 } else {
@@ -124,7 +136,36 @@ class RecordingService : Service() {
             }
         }, null)
 
-        // 3. Initialize and start master recording engine
+        // 3. Register Shake-to-Stop detector if configured
+        if (config.shakeToStop) {
+            shakeDetector = ShakeDetector(this) {
+                Log.i(tag, "Shake detected -> Stopping recording")
+                stopRecordingSession()
+            }.also { it.start() }
+        }
+
+        // 4. Register Screen-Off-to-Stop receiver if configured
+        if (config.stopOnScreenOff) {
+            val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+            screenOffReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                        Log.i(tag, "Screen turned off -> Finalizing recording")
+                        stopRecordingSession()
+                    }
+                }
+            }
+            registerReceiver(screenOffReceiver, filter)
+        }
+
+        // 5. Manage Floating Overlay Pill visibility
+        if (config.showFloatingPill) {
+            FloatingOverlayService.start(this, config)
+        } else {
+            FloatingOverlayService.stop(this)
+        }
+
+        // 6. Initialize and start master recording engine
         val recEngine = ScreenRecorderEngine(applicationContext, config, projection)
         engine = recEngine
 
@@ -146,10 +187,12 @@ class RecordingService : Service() {
                         )
                     }
                     is RecorderState.Finished -> {
+                        FloatingOverlayService.stop(this@RecordingService)
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
                     is RecorderState.Error -> {
+                        FloatingOverlayService.stop(this@RecordingService)
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
@@ -162,6 +205,19 @@ class RecordingService : Service() {
     }
 
     private fun stopRecordingSession() {
+        shakeDetector?.stop()
+        shakeDetector = null
+
+        if (screenOffReceiver != null) {
+            try {
+                unregisterReceiver(screenOffReceiver)
+            } catch (e: Exception) {
+                Log.w(tag, "Error unregistering screenOffReceiver", e)
+            }
+            screenOffReceiver = null
+        }
+
+        FloatingOverlayService.stop(this)
         engine?.stop()
     }
 
@@ -205,6 +261,20 @@ class RecordingService : Service() {
         super.onDestroy()
         stateCollectionJob?.cancel()
         serviceScope.cancel()
+
+        shakeDetector?.stop()
+        shakeDetector = null
+
+        if (screenOffReceiver != null) {
+            try {
+                unregisterReceiver(screenOffReceiver)
+            } catch (e: Exception) {
+                Log.w(tag, "Error unregistering screenOffReceiver in onDestroy", e)
+            }
+            screenOffReceiver = null
+        }
+
+        FloatingOverlayService.stop(this)
 
         engine?.release()
         engine = null

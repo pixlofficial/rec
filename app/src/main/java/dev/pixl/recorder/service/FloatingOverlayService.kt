@@ -18,6 +18,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import dev.pixl.recorder.core.model.RecordingConfig
 import dev.pixl.recorder.ui.overlay.FloatingPillView
 import dev.pixl.recorder.ui.theme.RECTheme
 
@@ -35,13 +36,29 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     private var windowManager: WindowManager? = null
     private var overlayView: ComposeView? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
+    private var config: RecordingConfig = RecordingConfig()
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent != null) {
+            val passedConfig = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getSerializableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getSerializableExtra(EXTRA_CONFIG) as? RecordingConfig
+            }
+            if (passedConfig != null) {
+                config = passedConfig
+            }
+        }
+        return START_NOT_STICKY
+    }
 
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             stopSelf()
@@ -74,6 +91,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             setContent {
                 RECTheme {
                     FloatingPillView(
+                        config = config,
                         onDrag = { dx, dy ->
                             val params = this@FloatingOverlayService.layoutParams
                             params.x = (params.x + dx.toInt()).coerceAtLeast(0)
@@ -96,27 +114,35 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
 
         overlayView = composeView
-        windowManager?.addView(composeView, layoutParams)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        try {
+            windowManager?.addView(composeView, layoutParams)
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingOverlayService", "Failed to add overlay view", e)
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
 
         if (overlayView != null) {
-            windowManager?.removeView(overlayView)
+            try {
+                windowManager?.removeView(overlayView)
+            } catch (e: Exception) {
+                android.util.Log.w("FloatingOverlayService", "Error removing overlay view", e)
+            }
             overlayView = null
         }
     }
 
     companion object {
-        fun start(context: Context) {
+        const val EXTRA_CONFIG = "extra_config"
+
+        fun start(context: Context, config: RecordingConfig = RecordingConfig()) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
-                val intent = Intent(context, FloatingOverlayService::class.java)
+                val intent = Intent(context, FloatingOverlayService::class.java).apply {
+                    putExtra(EXTRA_CONFIG, config)
+                }
                 context.startService(intent)
             }
         }

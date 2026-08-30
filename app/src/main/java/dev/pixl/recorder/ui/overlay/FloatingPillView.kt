@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -26,11 +27,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,12 +46,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.pixl.recorder.core.model.PillRecallGesture
 import dev.pixl.recorder.core.model.RecorderState
+import dev.pixl.recorder.core.model.RecordingConfig
 import dev.pixl.recorder.core.storage.StorageCalculator
 import dev.pixl.recorder.service.RecordingService
 import dev.pixl.recorder.ui.theme.BorderHighlight
@@ -69,16 +73,23 @@ import kotlinx.coroutines.isActive
 
 /**
  * Ultra-slick Dark Neo-Brutalist Floating Game Pill Overlay.
- * Supports smooth spring dragging and collapsible 6dp pulsing micro-dot HUD widget for gaming.
+ * Supports:
+ * 1. Expanded Brutalist Pill Controls
+ * 2. Collapsible 6dp Pulsing Micro-Dot HUD for Gaming
+ * 3. Invisible Ghost Mode with Gesture Recall (Edge Swipe, Edge Tap, Double Tap).
  */
 @Composable
 fun FloatingPillView(
+    config: RecordingConfig = RecordingConfig(),
     onDrag: (dx: Float, dy: Float) -> Unit,
     onStopClick: () -> Unit,
     onPauseClick: () -> Unit,
     onResumeClick: () -> Unit
 ) {
     var isCollapsed by remember { mutableStateOf(false) }
+    var isInvisibleGhost by remember { mutableStateOf(false) }
+
+    val haptics = LocalHapticFeedback.current
     val serviceState by RecordingService.serviceState.collectAsState()
 
     val isPaused = serviceState is RecorderState.Paused
@@ -88,13 +99,19 @@ fun FloatingPillView(
         else -> 0L
     }
 
-    // Local smooth clock to guarantee timer progression even with service flow latency
+    // Smooth local clock
     var localTimerMs by remember { mutableLongStateOf(0L) }
     var recordingStartTimestamp by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(serviceState) {
         if (serviceState is RecorderState.Recording && recordingStartTimestamp == 0L) {
             recordingStartTimestamp = System.currentTimeMillis() - stateDurationMs
+
+            // Auto-hide to completely invisible state after 2.5 seconds if configured
+            if (config.autoHidePill) {
+                delay(2500)
+                isInvisibleGhost = true
+            }
         }
     }
 
@@ -133,164 +150,227 @@ fun FloatingPillView(
     val currentDuration = if (localTimerMs > 0L) localTimerMs else stateDurationMs
     val accentColor = if (isPaused) CyberYellow else HyperCrimson
 
-    if (isCollapsed) {
-        // --- 1. COLLAPSED MICRO-DOT HUD MODE (Ultra-compact glowing dot for gaming) ---
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        onDrag(dragAmount.x, dragAmount.y)
-                    }
-                }
-                .clickable { isCollapsed = false },
-            contentAlignment = Alignment.Center
-        ) {
-            // Radar pulse ring
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .scale(if (isPaused) 1f else radarScale)
-                    .alpha(if (isPaused) 0f else (1.8f - radarScale).coerceIn(0f, 0.6f))
-                    .background(accentColor, CircleShape)
-            )
+    fun recallPill() {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        isInvisibleGhost = false
+        isCollapsed = false
+    }
 
-            // Outer Core
+    when {
+        // --- 1. INVISIBLE GHOST MODE (Zero On-Screen Capture with Gesture Recall) ---
+        isInvisibleGhost -> {
             Box(
                 modifier = Modifier
-                    .size(20.dp)
-                    .background(ObsidianCanvas, CircleShape)
-                    .border(2.dp, accentColor, CircleShape),
+                    .size(width = 36.dp, height = 72.dp)
+                    .pointerInput(config.pillRecallGesture) {
+                        when (config.pillRecallGesture) {
+                            PillRecallGesture.EDGE_SWIPE -> {
+                                detectDragGestures { change, dragAmount ->
+                                    if (kotlin.math.abs(dragAmount.x) > 12f || kotlin.math.abs(dragAmount.y) > 12f) {
+                                        change.consume()
+                                        recallPill()
+                                    }
+                                }
+                            }
+                            PillRecallGesture.EDGE_TAP -> {
+                                detectTapGestures(onTap = { recallPill() })
+                            }
+                            PillRecallGesture.DOUBLE_TAP -> {
+                                detectTapGestures(onDoubleTap = { recallPill() })
+                            }
+                        }
+                    }
+                    .padding(2.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Inner Glowing Dot
+                // Faint 2% edge indicator so user knows where trigger is without affecting recording
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .alpha(if (isPaused) 1f else pulseAlpha)
-                        .background(accentColor, CircleShape)
+                        .size(width = 3.dp, height = 36.dp)
+                        .alpha(0.04f)
+                        .background(CyberYellow, RoundedCornerShape(2.dp))
                 )
             }
         }
-    } else {
-        // --- 2. EXPANDED CYBERPUNK NEO-BRUTALIST PILL MODE ---
-        Box(
-            modifier = Modifier
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        onDrag(dragAmount.x, dragAmount.y)
-                    }
-                }
-        ) {
-            // Hard Drop Shadow
+
+        // --- 2. COLLAPSED MICRO-DOT HUD MODE (Ultra-compact glowing dot for gaming) ---
+        isCollapsed -> {
             Box(
                 modifier = Modifier
-                    .matchParentSize()
-                    .offset(x = 3.dp, y = 3.dp)
-                    .background(ShadowSolid, RoundedCornerShape(24.dp))
-                    .border(1.5.dp, BorderStark, RoundedCornerShape(24.dp))
-            )
-
-            // Front Main Pill Surface
-            Row(
-                modifier = Modifier
-                    .background(ObsidianCanvas, RoundedCornerShape(24.dp))
-                    .border(2.dp, accentColor, RoundedCornerShape(24.dp))
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    .size(44.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
+                        }
+                    }
+                    .clickable { isCollapsed = false },
+                contentAlignment = Alignment.Center
             ) {
-                // Live Pulsing Record Badge
+                // Radar pulse ring
                 Box(
                     modifier = Modifier
-                        .background(
-                            if (isPaused) CyberYellow.copy(alpha = 0.2f) else HyperCrimson.copy(alpha = 0.2f),
-                            RoundedCornerShape(6.dp)
-                        )
-                        .border(1.dp, accentColor, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .alpha(if (isPaused) 1f else pulseAlpha)
-                                .background(accentColor, CircleShape)
-                        )
-                        Text(
-                            text = if (isPaused) "PAUSED" else "REC",
-                            color = accentColor,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-
-                // Digital Monospace Timer Counter
-                Text(
-                    text = StorageCalculator.formatDuration(currentDuration),
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
+                        .size(16.dp)
+                        .scale(if (isPaused) 1f else radarScale)
+                        .alpha(if (isPaused) 0f else (1.8f - radarScale).coerceIn(0f, 0.6f))
+                        .background(accentColor, CircleShape)
                 )
 
-                // 1. Pause / Resume Button
+                // Outer Core
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(if (isPaused) ToxicLime else HyperCyan, CircleShape)
-                        .border(1.5.dp, BorderHighlight, CircleShape)
-                        .clickable { if (isPaused) onResumeClick() else onPauseClick() },
+                        .size(20.dp)
+                        .background(ObsidianCanvas, CircleShape)
+                        .border(2.dp, accentColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = "Pause/Resume",
-                        tint = TextInverse,
-                        modifier = Modifier.size(16.dp)
+                    // Inner Glowing Dot
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .alpha(if (isPaused) 1f else pulseAlpha)
+                            .background(accentColor, CircleShape)
                     )
                 }
+            }
+        }
 
-                // 2. Stop Recording Button
+        // --- 3. EXPANDED CYBERPUNK NEO-BRUTALIST PILL MODE ---
+        else -> {
+            Box(
+                modifier = Modifier
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
+                        }
+                    }
+            ) {
+                // Hard Drop Shadow
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(HyperCrimson, CircleShape)
-                        .border(1.5.dp, BorderHighlight, CircleShape)
-                        .clickable { onStopClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Stop,
-                        contentDescription = "Stop",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                        .matchParentSize()
+                        .offset(x = 3.dp, y = 3.dp)
+                        .background(ShadowSolid, RoundedCornerShape(24.dp))
+                        .border(1.5.dp, BorderStark, RoundedCornerShape(24.dp))
+                )
 
-                // 3. Minimize to Micro-Dot Button
-                Box(
+                // Front Main Pill Surface
+                Row(
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(Color(0xFF20202E), CircleShape)
-                        .border(1.5.dp, BorderStark, CircleShape)
-                        .clickable { isCollapsed = true },
-                    contentAlignment = Alignment.Center
+                        .background(ObsidianCanvas, RoundedCornerShape(24.dp))
+                        .border(2.dp, accentColor, RoundedCornerShape(24.dp))
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CloseFullscreen,
-                        contentDescription = "Minimize",
-                        tint = dev.pixl.recorder.ui.theme.TextSecondary,
-                        modifier = Modifier.size(14.dp)
+                    // Live Pulsing Record Badge
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (isPaused) CyberYellow.copy(alpha = 0.2f) else HyperCrimson.copy(alpha = 0.2f),
+                                RoundedCornerShape(6.dp)
+                            )
+                            .border(1.dp, accentColor, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .alpha(if (isPaused) 1f else pulseAlpha)
+                                    .background(accentColor, CircleShape)
+                            )
+                            Text(
+                                text = if (isPaused) "PAUSED" else "REC",
+                                color = accentColor,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+
+                    // Digital Monospace Timer Counter
+                    Text(
+                        text = StorageCalculator.formatDuration(currentDuration),
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
                     )
+
+                    // 1. Pause / Resume Button
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(if (isPaused) ToxicLime else HyperCyan, CircleShape)
+                            .border(1.5.dp, BorderHighlight, CircleShape)
+                            .clickable { if (isPaused) onResumeClick() else onPauseClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = "Pause/Resume",
+                            tint = TextInverse,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // 2. Stop Recording Button
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(HyperCrimson, CircleShape)
+                            .border(1.5.dp, BorderHighlight, CircleShape)
+                            .clickable { onStopClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Stop,
+                            contentDescription = "Stop",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // 3. Invisible Ghost Hide Button (if autoHide enabled)
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(Color(0xFF20202E), CircleShape)
+                            .border(1.5.dp, BorderStark, CircleShape)
+                            .clickable { isInvisibleGhost = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VisibilityOff,
+                            contentDescription = "Hide to Invisible",
+                            tint = CyberYellow,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    // 4. Minimize to Micro-Dot Button
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(Color(0xFF20202E), CircleShape)
+                            .border(1.5.dp, BorderStark, CircleShape)
+                            .clickable { isCollapsed = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CloseFullscreen,
+                            contentDescription = "Collapse",
+                            tint = dev.pixl.recorder.ui.theme.TextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
         }

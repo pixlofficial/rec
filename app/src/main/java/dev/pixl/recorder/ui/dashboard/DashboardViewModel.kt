@@ -6,8 +6,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.pixl.recorder.core.engine.CodecProbe
 import dev.pixl.recorder.core.model.AudioSource
+import dev.pixl.recorder.core.model.CaptureTarget
 import dev.pixl.recorder.core.model.DeviceCapabilities
-import dev.pixl.recorder.core.model.DisplayProfile
+import dev.pixl.recorder.core.model.PillRecallGesture
 import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.core.model.RecordingConfig
 import dev.pixl.recorder.core.model.VideoCodec
@@ -50,7 +51,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 framerate = probedCapabilities.recommendedFramerate,
                 videoCodec = probedCapabilities.recommendedCodec,
                 videoBitrate = 50_000_000,
-                audioSource = AudioSource.INTERNAL_AND_MIC
+                audioSource = AudioSource.INTERNAL_AND_MIC,
+                showFloatingPill = true,
+                autoHidePill = false,
+                pillRecallGesture = PillRecallGesture.EDGE_SWIPE,
+                shakeToStop = true,
+                stopOnScreenOff = true,
+                captureTarget = CaptureTarget.ENTIRE_SCREEN
             ).withMacroblockAlignment()
 
             val remainingMin = StorageCalculator.estimateRemainingMinutes(
@@ -96,6 +103,42 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun updateVideoBitrate(bitrateMbps: Int) {
         val current = _uiState.value.config
         val updated = current.copy(videoBitrate = bitrateMbps * 1_000_000)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleFloatingPill(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(showFloatingPill = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleAutoHidePill(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(autoHidePill = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updatePillRecallGesture(gesture: PillRecallGesture) {
+        val current = _uiState.value.config
+        val updated = current.copy(pillRecallGesture = gesture)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleShakeToStop(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(shakeToStop = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleStopOnScreenOff(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(stopOnScreenOff = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateCaptureTarget(target: CaptureTarget) {
+        val current = _uiState.value.config
+        val updated = current.copy(captureTarget = target)
         updateConfigAndStorage(updated)
     }
 

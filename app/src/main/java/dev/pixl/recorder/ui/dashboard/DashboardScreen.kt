@@ -1,5 +1,6 @@
 package dev.pixl.recorder.ui.dashboard
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -27,16 +28,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,13 +52,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.core.model.AudioSource
+import dev.pixl.recorder.core.model.CaptureTarget
+import dev.pixl.recorder.core.model.PillRecallGesture
 import dev.pixl.recorder.core.model.RecorderState
 import dev.pixl.recorder.core.model.VideoCodec
 import dev.pixl.recorder.core.storage.StorageCalculator
@@ -61,12 +71,10 @@ import dev.pixl.recorder.ui.components.SteppedVuMeter
 import dev.pixl.recorder.ui.components.TelemetryBadge
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
-import dev.pixl.recorder.ui.theme.BrutalistSurface
 import dev.pixl.recorder.ui.theme.CyberYellow
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
-import dev.pixl.recorder.ui.theme.ShadowSolid
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextMuted
@@ -99,12 +107,12 @@ fun DashboardScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Header Bar
+            // 1. Top Bar Header
             HeaderBar(uiState = uiState)
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. Hardware Capabilities & SoC Status Banner
+            // 2. Hardware Capabilities & SoC Status
             HardwareSpecsCard(uiState = uiState)
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -121,7 +129,21 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. Configuration Controls Grid
+            // 4. Overlay & Clean Canvas Controls
+            OverlayAndCleanCanvasSection(
+                uiState = uiState,
+                isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
+                onToggleFloatingPill = { viewModel.toggleFloatingPill(it) },
+                onToggleAutoHide = { viewModel.toggleAutoHidePill(it) },
+                onSelectGesture = { viewModel.updatePillRecallGesture(it) },
+                onToggleShake = { viewModel.toggleShakeToStop(it) },
+                onToggleScreenOff = { viewModel.toggleStopOnScreenOff(it) },
+                onSelectTarget = { viewModel.updateCaptureTarget(it) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 5. Codec, Resolution & Framerate Deck
             ConfigSection(
                 uiState = uiState,
                 isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
@@ -492,6 +514,248 @@ private fun HeroRecordingCard(
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OverlayAndCleanCanvasSection(
+    uiState: DashboardUiState,
+    isRecordingActive: Boolean,
+    onToggleFloatingPill: (Boolean) -> Unit,
+    onToggleAutoHide: (Boolean) -> Unit,
+    onSelectGesture: (PillRecallGesture) -> Unit,
+    onToggleShake: (Boolean) -> Unit,
+    onToggleScreenOff: (Boolean) -> Unit,
+    onSelectTarget: (CaptureTarget) -> Unit
+) {
+    val config = uiState.config
+    val isAndroid14Plus = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+
+    BrutalistCard(
+        title = "CLEAN CANVAS & OVERLAY CONTROLS",
+        titleTag = if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
+        tagColor = if (!config.showFloatingPill) ToxicLime else if (config.autoHidePill) HyperCyan else CyberYellow,
+        borderColor = BorderStark
+    ) {
+        // 1. Solution 1: Floating Pill Toggle (Clean Canvas Mode)
+        SwitchRow(
+            icon = if (config.showFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            title = "Floating Game Pill Overlay",
+            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden (control via Shake/Notification)",
+            checked = config.showFloatingPill,
+            enabled = !isRecordingActive,
+            onCheckedChange = onToggleFloatingPill
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 2. Solution 2: Auto-Hide Pill into Invisible Ghost with Gesture Recall
+        AnimatedVisibility(visible = config.showFloatingPill) {
+            Column {
+                SwitchRow(
+                    icon = Icons.Default.Gesture,
+                    title = "Auto-Hide Pill to Invisible",
+                    subtitle = "Pill disappears completely after 2s; recall anytime with gesture",
+                    checked = config.autoHidePill,
+                    enabled = !isRecordingActive,
+                    onCheckedChange = onToggleAutoHide
+                )
+
+                if (config.autoHidePill) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "RECALL GESTURE",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PillRecallGesture.entries.forEach { gesture ->
+                            val isSelected = config.pillRecallGesture == gesture
+                            SelectableTag(
+                                text = gesture.displayName,
+                                isSelected = isSelected,
+                                enabled = !isRecordingActive,
+                                onClick = { onSelectGesture(gesture) }
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+
+        // 3. Shake to Stop Gesture
+        SwitchRow(
+            icon = Icons.Default.Vibration,
+            title = "Shake to Stop",
+            subtitle = "Quick wrist flick stops and saves recording",
+            checked = config.shakeToStop,
+            enabled = !isRecordingActive,
+            onCheckedChange = onToggleShake
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 4. Screen Off to Stop
+        SwitchRow(
+            icon = Icons.Default.PowerSettingsNew,
+            title = "Screen Off to Stop",
+            subtitle = "Pressing power button cleanly finalizes recording",
+            checked = config.stopOnScreenOff,
+            enabled = !isRecordingActive,
+            onCheckedChange = onToggleScreenOff
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 5. Solution 3: Single App Capture (Android 14+)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(if (isAndroid14Plus) SurfaceElevated else ObsidianCanvas, RoundedCornerShape(8.dp))
+                .border(1.5.dp, if (isAndroid14Plus) BorderHighlight else BorderStark, RoundedCornerShape(8.dp))
+                .padding(12.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = null,
+                            tint = if (isAndroid14Plus) ToxicLime else TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SINGLE-APP ISOLATED CAPTURE",
+                            color = if (isAndroid14Plus) TextPrimary else TextMuted,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+
+                    if (!isAndroid14Plus) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFF282834), RoundedCornerShape(4.dp))
+                                .border(1.dp, Color(0xFF404054), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "REQUIRES ANDROID 14+",
+                                color = TextMuted,
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (isAndroid14Plus)
+                        "Hardware-isolates target game window without capturing overlays, notifications, or status bar."
+                    else
+                        "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
+                    color = if (isAndroid14Plus) TextSecondary else TextMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+
+                if (isAndroid14Plus) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CaptureTarget.entries.forEach { target ->
+                            val isSelected = config.captureTarget == target
+                            SelectableTag(
+                                text = target.displayName,
+                                isSelected = isSelected,
+                                enabled = !isRecordingActive,
+                                onClick = { onSelectTarget(target) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceElevated, RoundedCornerShape(8.dp))
+            .border(1.5.dp, if (checked) CyberYellow else BorderStark, RoundedCornerShape(8.dp))
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (checked) CyberYellow else TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = title,
+                    color = if (checked) TextPrimary else TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    color = TextMuted,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = TextInverse,
+                checkedTrackColor = CyberYellow,
+                uncheckedThumbColor = TextMuted,
+                uncheckedTrackColor = ObsidianCanvas
+            )
+        )
     }
 }
 

@@ -2,7 +2,6 @@ package dev.pixl.recorder.core.model
 
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
-import android.os.Parcelable
 import java.io.Serializable
 
 /**
@@ -42,6 +41,23 @@ enum class BitrateMode(val androidMode: Int, val displayName: String) {
 }
 
 /**
+ * Gestures used to recall the floating pill when invisible/auto-hidden during recording.
+ */
+enum class PillRecallGesture(val displayName: String, val description: String) {
+    EDGE_SWIPE("Edge Swipe", "Swipe inward from screen edge"),
+    EDGE_TAP("Edge Tap", "Tap subtle edge trigger zone"),
+    DOUBLE_TAP("Double Tap", "Double-tap the edge trigger");
+}
+
+/**
+ * Target display or application capture scope.
+ */
+enum class CaptureTarget(val displayName: String) {
+    ENTIRE_SCREEN("Entire Screen"),
+    SINGLE_APP("Single App (Android 14+)");
+}
+
+/**
  * Master configuration profile for zero-copy recording session.
  */
 data class RecordingConfig(
@@ -58,7 +74,15 @@ data class RecordingConfig(
     val audioSampleRate: Int = 48_000, // 48 kHz standard studio rate
     val audioChannelCount: Int = 2, // Stereo
     val micGain: Float = 1.0f,
-    val internalAudioGain: Float = 1.0f
+    val internalAudioGain: Float = 1.0f,
+
+    // Overlay & Clean Canvas Controls
+    val showFloatingPill: Boolean = true,
+    val autoHidePill: Boolean = false,
+    val pillRecallGesture: PillRecallGesture = PillRecallGesture.EDGE_SWIPE,
+    val shakeToStop: Boolean = true,
+    val stopOnScreenOff: Boolean = true,
+    val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN
 ) : Serializable {
 
     val aspectRatio: Float
