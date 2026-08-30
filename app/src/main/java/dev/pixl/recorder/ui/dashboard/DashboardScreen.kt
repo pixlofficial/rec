@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,10 +56,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.pixl.recorder.R
 import dev.pixl.recorder.core.model.AudioSource
 import dev.pixl.recorder.core.model.CaptureTarget
 import dev.pixl.recorder.core.model.PillRecallGesture
@@ -161,107 +164,19 @@ fun DashboardScreen(
 }
 
 @Composable
-fun AppLogoGraphic(
-    modifier: Modifier = Modifier,
-    size: androidx.compose.ui.unit.Dp = 46.dp
-) {
-    androidx.compose.foundation.Canvas(modifier = modifier.size(size)) {
-        val center = androidx.compose.ui.geometry.Offset(this.size.width / 2f, this.size.height / 2f)
-        val maxRadius = this.size.minDimension / 2f
-
-        // 1. Faint Outer Guide Circle
-        val ring1Radius = maxRadius * 0.94f
-        drawCircle(
-            color = Color.White.copy(alpha = 0.08f),
-            radius = ring1Radius,
-            center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-        )
-
-        // 2. Dotted Red Aperture Orbit Ring
-        val ring2Radius = maxRadius * 0.76f
-        drawCircle(
-            color = Color(0xFFFF0019).copy(alpha = 0.45f),
-            radius = ring2Radius,
-            center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = 1.2.dp.toPx(),
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
-                    floatArrayOf(3.5.dp.toPx(), 3.5.dp.toPx()), 0f
-                )
-            )
-        )
-
-        // 3. Ambient Scarlet Red Glow Halo
-        val glowRadius = maxRadius * 0.68f
-        drawCircle(
-            brush = Brush.radialGradient(
-                colorStops = arrayOf(
-                    0.0f to Color(0xFFFF0019).copy(alpha = 0.6f),
-                    0.5f to Color(0xFFE60000).copy(alpha = 0.3f),
-                    1.0f to Color.Transparent
-                ),
-                center = center,
-                radius = glowRadius
-            ),
-            radius = glowRadius,
-            center = center
-        )
-
-        // 4. Primary Pure Scarlet Red Record Core
-        val coreRadius = maxRadius * 0.48f
-        drawCircle(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFFFF1A2A),
-                    Color(0xFFE60000),
-                    Color(0xFFB80000),
-                    Color(0xFF730000)
-                ),
-                start = androidx.compose.ui.geometry.Offset(center.x - coreRadius, center.y - coreRadius),
-                end = androidx.compose.ui.geometry.Offset(center.x + coreRadius, center.y + coreRadius)
-            ),
-            radius = coreRadius,
-            center = center
-        )
-
-        // 5. Crisp Core Stroke
-        drawCircle(
-            color = Color(0xFFFF2E3E).copy(alpha = 0.9f),
-            radius = coreRadius,
-            center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
-        )
-
-        // 6. Top Specular Glass Refraction Arc
-        val specWidth = coreRadius * 1.1f
-        val specHeight = coreRadius * 0.52f
-        drawOval(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.45f),
-                    Color(0xFFFF6666).copy(alpha = 0.15f),
-                    Color.Transparent
-                ),
-                startY = center.y - coreRadius * 0.85f,
-                endY = center.y - coreRadius * 0.85f + specHeight
-            ),
-            topLeft = androidx.compose.ui.geometry.Offset(center.x - specWidth / 2f, center.y - coreRadius * 0.85f),
-            size = androidx.compose.ui.geometry.Size(specWidth, specHeight)
-        )
-    }
-}
-
-@Composable
 private fun HeaderBar(uiState: DashboardUiState) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // App Identity Brand Badge (Exact 1:1 Replica of Logo)
+        // App Identity Brand Badge (Pure Glowing Red Core Logo)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AppLogoGraphic(size = 46.dp)
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo_core),
+                contentDescription = "REC Logo Core",
+                modifier = Modifier.size(42.dp)
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 

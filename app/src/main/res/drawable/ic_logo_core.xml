@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- 1. Outer Faint Scarlet Red Glow Halo -->
+    <path
+        android:fillColor="#22FF0000"
+        android:pathData="M24,24m-22,0a22,22 0 1,0 44,0a22,22 0 1,0 -44,0" />
+
+    <!-- 2. Secondary Soft Red Glow -->
+    <path
+        android:fillColor="#44E60000"
+        android:pathData="M24,24m-18,0a18,18 0 1,0 36,0a18,18 0 1,0 -36,0" />
+
+    <!-- 3. Primary Pure Scarlet Red Record Core -->
+    <path
+        android:pathData="M24,24m-14,0a14,14 0 1,0 28,0a14,14 0 1,0 -28,0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#90FF2E3E">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="12"
+                android:startY="10"
+                android:endX="36"
+                android:endY="38"
+                android:type="linear">
+                <item android:color="#FFFF1A2A" android:offset="0.0" />
+                <item android:color="#FFE60000" android:offset="0.5" />
+                <item android:color="#FF8A0000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4. Top Specular Arc Highlight (Warm White-Red) -->
+    <path
+        android:pathData="M16,17a8,4 0 0,1 16,0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#60FFFFFF" />
+</vector>

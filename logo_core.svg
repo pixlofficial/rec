@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="100%" height="100%">
+  <defs>
+    <!-- Outer Deep Scarlet Red Glow Filter -->
+    <filter id="crimsonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="24" result="blur1" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Pure Vibrant Blood-Red / Scarlet Gradient -->
+    <linearGradient id="redDotGradient" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FF1A2A" />
+      <stop offset="45%" stop-color="#E60000" />
+      <stop offset="85%" stop-color="#B80000" />
+      <stop offset="100%" stop-color="#730000" />
+    </linearGradient>
+
+    <!-- Warm Glass Specular Arc -->
+    <linearGradient id="specularGlow" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.36" />
+      <stop offset="60%" stop-color="#FF6666" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#E60000" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Wide Ambient Scarlet Glow Layer (Outer Glow) -->
+  <circle 
+    cx="160" 
+    cy="160" 
+    r="125" 
+    fill="#E60000" 
+    opacity="0.32" 
+    filter="url(#crimsonGlow)" 
+  />
+
+  <!-- Secondary Tighter Glow Layer (Inner Glow) -->
+  <circle 
+    cx="160" 
+    cy="160" 
+    r="110" 
+    fill="#FF0019" 
+    opacity="0.48" 
+    filter="url(#crimsonGlow)" 
+  />
+
+  <!-- Primary Pure Scarlet Red Record Core -->
+  <circle 
+    cx="160" 
+    cy="160" 
+    r="96" 
+    fill="url(#redDotGradient)" 
+    stroke="#FF2E3E" 
+    stroke-width="2.6" 
+    stroke-opacity="0.85" 
+  />
+
+  <!-- Top Specular Refraction Arc -->
+  <ellipse 
+    cx="160" 
+    cy="118" 
+    rx="50" 
+    ry="24" 
+    fill="url(#specularGlow)" 
+  />
+</svg>
