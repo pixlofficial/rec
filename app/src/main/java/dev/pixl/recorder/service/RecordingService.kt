@@ -162,11 +162,11 @@ class RecordingService : Service() {
             registerReceiver(screenOffReceiver, filter)
         }
 
-        // 5. Manage Floating Overlay Pill visibility
-        if (config.showFloatingPill) {
+        // 5. Manage Floating Overlay Pill visibility ONLY if permission is granted
+        if (config.showFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this))) {
             FloatingOverlayService.start(this, config)
         } else {
-            FloatingOverlayService.stop(this)
+            // Do NOT call FloatingOverlayService.stop() if it was never started to avoid lifecycle state change
         }
 
         // 6. Initialize and start master recording engine
