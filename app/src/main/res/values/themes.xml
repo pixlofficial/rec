@@ -4,4 +4,9 @@
         <item name="android:navigationBarColor">@color/obsidian_background</item>
         <item name="android:windowBackground">@color/obsidian_background</item>
     </style>
+
+    <!-- Native Zero-Latency Cold Start Splash Theme -->
+    <style name="Theme.REC.Splash" parent="Theme.REC">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 </resources>

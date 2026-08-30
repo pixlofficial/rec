@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import dev.pixl.recorder.R
 import dev.pixl.recorder.ui.dashboard.DashboardScreen
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
 import dev.pixl.recorder.ui.splash.SplashScreen
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_REC)
         super.onCreate(savedInstanceState)
 
         setContent {
