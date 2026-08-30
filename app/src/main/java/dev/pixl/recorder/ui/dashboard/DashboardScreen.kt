@@ -212,7 +212,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
             ) {
                 Text(
                     text = "REC",
-                    color = Color.White,
+                    color = HyperCrimson,
                     fontSize = 26.sp,
                     lineHeight = 22.sp,
                     fontFamily = BitcountPropSingle,
@@ -224,7 +224,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
                         withStyle(SpanStyle(color = TextSecondary)) {
                             append("by ")
                         }
-                        withStyle(SpanStyle(color = Color.White)) {
+                        withStyle(SpanStyle(color = HyperCrimson)) {
                             append("PixL")
                         }
                     },
@@ -368,7 +368,7 @@ private fun HeroRecordingCard(
                         fontSize = 42.sp,
                         fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = HyperCrimson,
                         letterSpacing = 1.sp
                     )
                 }
@@ -757,7 +757,7 @@ private fun SwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceElevated, RoundedCornerShape(8.dp))
-            .border(1.5.dp, if (checked) HyperCrimson else BorderStark, RoundedCornerShape(8.dp))
+            .border(1.5.dp, if (checked) BorderHighlight else BorderStark, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -770,7 +770,7 @@ private fun SwitchRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (checked) HyperCrimson else TextSecondary,
+                tint = if (checked) BorderHighlight else TextSecondary,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -801,8 +801,8 @@ private fun SwitchRow(
             onCheckedChange = onCheckedChange,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = TextPrimary,
-                checkedTrackColor = HyperCrimson,
+                checkedThumbColor = TextInverse,
+                checkedTrackColor = TextPrimary,
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = ObsidianCanvas
             )
@@ -917,9 +917,9 @@ private fun SelectableTag(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (isSelected) HyperCrimson else SurfaceElevated
-    val border = if (isSelected) BorderHighlight else BorderStark
-    val textColor = if (isSelected) TextPrimary else if (enabled) TextPrimary else TextMuted
+    val bg = if (isSelected) TextPrimary else SurfaceElevated
+    val border = if (isSelected) HyperCrimson else BorderStark
+    val textColor = if (isSelected) TextInverse else if (enabled) TextPrimary else TextMuted
 
     Box(
         modifier = Modifier
@@ -947,7 +947,7 @@ private fun SelectableRow(
     onClick: () -> Unit
 ) {
     val bg = if (isSelected) SurfaceElevated else ObsidianCanvas
-    val border = if (isSelected) HyperCrimson else BorderStark
+    val border = if (isSelected) BorderHighlight else BorderStark
 
     Row(
         modifier = Modifier
@@ -971,8 +971,8 @@ private fun SelectableRow(
             Box(
                 modifier = Modifier
                     .size(10.dp)
-                    .background(HyperCrimson, CircleShape)
-                    .border(1.dp, BorderHighlight, CircleShape)
+                    .background(BorderHighlight, CircleShape)
+                    .border(1.dp, BorderStark, CircleShape)
             )
         }
     }

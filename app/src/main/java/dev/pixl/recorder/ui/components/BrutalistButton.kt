@@ -69,7 +69,7 @@ fun BrutalistButton(
     )
 
     val resolvedBg = containerColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> dev.pixl.recorder.ui.theme.HyperCrimson
+        BrutalistButtonVariant.PRIMARY -> dev.pixl.recorder.ui.theme.TextPrimary
         BrutalistButtonVariant.DANGER -> dev.pixl.recorder.ui.theme.HyperCrimson
         BrutalistButtonVariant.SUCCESS -> dev.pixl.recorder.ui.theme.ToxicLime
         BrutalistButtonVariant.WARNING -> CyberYellow
@@ -77,7 +77,7 @@ fun BrutalistButton(
     }
 
     val resolvedContent = contentColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> TextPrimary
+        BrutalistButtonVariant.PRIMARY -> TextInverse
         BrutalistButtonVariant.DANGER -> TextPrimary
         BrutalistButtonVariant.SUCCESS -> TextInverse
         BrutalistButtonVariant.WARNING -> TextInverse
