@@ -2,6 +2,8 @@ package dev.pixl.recorder.ui.dashboard
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -48,12 +50,15 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -62,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import dev.pixl.recorder.R
 import dev.pixl.recorder.core.model.AudioSource
 import dev.pixl.recorder.core.model.CaptureTarget
@@ -101,6 +107,19 @@ fun DashboardScreen(
 
     val scrollState = rememberScrollState()
 
+    // Smooth Micro-Entrance Transition from Native Splash
+    val contentAlpha = remember { Animatable(0f) }
+    val contentOffsetY = remember { Animatable(20f) }
+
+    LaunchedEffect(Unit) {
+        launch {
+            contentAlpha.animateTo(1f, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+        launch {
+            contentOffsetY.animateTo(0f, animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+        }
+    }
+
     Scaffold(
         containerColor = ObsidianCanvas
     ) { padding ->
@@ -109,6 +128,10 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp)
+                .graphicsLayer {
+                    alpha = contentAlpha.value
+                    translationY = contentOffsetY.value * density
+                }
                 .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
