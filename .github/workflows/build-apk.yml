@@ -1,49 +1,128 @@
-name: Build REC APK
+name: Build Android APK & Release
 
 on:
-  push:
-    branches: [ "main", "master" ]
-    tags:
-      - 'v*'
-  pull_request:
-    branches: [ "main", "master" ]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build Type (debug / release / both)"
+        required: true
+        default: "both"
+        type: choice
+        options:
+          - debug
+          - release
+          - both
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build & Package APKs
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: "temurin"
+          java-version: "17"
+          cache: "gradle"
 
-      - name: Grant execute permissions for Gradle Wrapper
+      - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
 
-      - name: Assemble Debug and Release APKs
-        run: ./gradlew assembleRelease assembleDebug --stacktrace
+      - name: Build Debug APK
+        if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          echo "Building Debug APK for version: $VERSION"
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          mkdir -p build-output
+          cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug-v${VERSION}.apk
+          cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug.apk
 
-      - name: Upload Debug APK
+      - name: Build and Sign Release APK
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both' }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          echo "Building Release APK for version: $VERSION"
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          mkdir -p build-output
+
+          # Find Android SDK build-tools apksigner and zipalign
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | sort -V | tail -n 1)
+
+          echo "Using zipalign: $ZIPALIGN"
+          echo "Using apksigner: $APKSIGNER"
+
+          # Check if keystore secrets are configured or use Gradle signed release
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > rec-release.jks
+            STORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+            KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
+            KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
+            
+            # Align and re-sign with custom production keystore
+            $ZIPALIGN -f -v -p 4 app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-release-aligned.apk
+            $APKSIGNER sign --ks rec-release.jks --ks-pass pass:$STORE_PASS --ks-key-alias $KEY_ALIAS --key-pass pass:$KEY_PASS --out build-output/PixL-REC-v${VERSION}.apk build-output/PixL-REC-release-aligned.apk
+            rm -f build-output/PixL-REC-release-aligned.apk rec-release.jks
+          else
+            # Default to Gradle-signed distribution release
+            cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-v${VERSION}.apk
+          fi
+
+          # Provide latest unversioned alias
+          cp build-output/PixL-REC-v${VERSION}.apk build-output/PixL-REC.apk
+
+          # Verify signature
+          $APKSIGNER verify -v build-output/PixL-REC-v${VERSION}.apk
+          echo "Release APK successfully built and verified as PixL-REC-v${VERSION}.apk and PixL-REC.apk!"
+
+      - name: Generate Checksums & Build Manifest
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | awk '{print $3}' | tr -d '\r\n')
+          
+          cd build-output
+          sha256sum *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          cd ..
+
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: PixL-REC-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: PixL-REC-Android-APKs
+          path: build-output/*.apk
           retention-days: 30
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: PixL-REC-Release-APK
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
+          files: |
+            build-output/*.apk
+            build-output/SHA256SUMS.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
