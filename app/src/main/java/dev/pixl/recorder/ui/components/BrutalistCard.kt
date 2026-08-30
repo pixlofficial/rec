@@ -2,6 +2,7 @@ package dev.pixl.recorder.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -67,7 +68,8 @@ fun BrutalistCard(
             if (title != null || titleTag != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     if (title != null) {
                         Text(
@@ -76,11 +78,12 @@ fun BrutalistCard(
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
+                            letterSpacing = 0.5.sp,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                     }
-                    Spacer(modifier = Modifier.weight(1f))
                     if (titleTag != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
                                 .background(tagColor, RoundedCornerShape(4.dp))
@@ -93,7 +96,8 @@ fun BrutalistCard(
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 0.5.sp
+                                letterSpacing = 0.5.sp,
+                                maxLines = 1
                             )
                         }
                     }

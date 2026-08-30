@@ -52,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
@@ -166,38 +167,72 @@ private fun HeaderBar(uiState: DashboardUiState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // App Identity Brand Badge
+        // App Identity Brand Badge (Glowing Scarlet Red Logo Core)
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Glowing Red Center Logo Icon
             Box(
                 modifier = Modifier
-                    .background(CyberYellow, RoundedCornerShape(6.dp))
-                    .border(2.dp, BorderHighlight, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .size(38.dp)
+                    .background(Color(0xFF14141E), CircleShape)
+                    .border(1.5.dp, Color(0xFF28283C), CircleShape)
+                    .padding(3.5.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "REC",
-                    color = TextInverse,
-                    fontSize = 18.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
+                // Red Glow Layer
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF1A2A),
+                                    Color(0xFFE60000),
+                                    Color(0xFF8A0000)
+                                )
+                            ),
+                            CircleShape
+                        )
+                        .border(1.5.dp, Color(0xFFFF2E3E), CircleShape)
+                ) {
+                    // Specular Highlight Arc
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 2.dp)
+                            .width(18.dp)
+                            .height(8.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.45f),
+                                        Color(0xFFFF6666).copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                ),
+                                RoundedCornerShape(50)
+                            )
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+
+            Spacer(modifier = Modifier.width(10.dp))
+
             Column {
                 Text(
                     text = "ZERO-COPY VPU",
                     color = ToxicLime,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.5.sp
                 )
                 Text(
                     text = "BY PIXL",
                     color = TextSecondary,
                     fontSize = 9.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
             }
         }
@@ -467,7 +502,7 @@ private fun HeroRecordingCard(
                 borderColor = BorderStark
             ) {
                 Text(
-                    text = "Direct GPU $\\rightarrow$ MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
+                    text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
