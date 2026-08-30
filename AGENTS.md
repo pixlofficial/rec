@@ -50,7 +50,7 @@ PixL-Recorder/
 │   ├── build.gradle.kts               # App dependencies (Compose, Coroutines, Media)
 │   └── src/main/
 │       ├── AndroidManifest.xml        # MediaProjection FGS, permissions, QS Tiles
-│       ├── java/rec/pixl/
+│       ├── java/pixl/rec/
 │       │   ├── RecApp.kt              # Application class
 │       │   ├── core/
 │       │   │   ├── engine/            # Zero-copy MediaCodec & VirtualDisplay pipeline

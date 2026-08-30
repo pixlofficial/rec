@@ -17,11 +17,11 @@ val appVersionName: String = versionProps.getProperty("VERSION_NAME", "1.0.0")
 val appVersionCode: Int = versionProps.getProperty("VERSION_CODE", "1").toInt()
 
 android {
-    namespace = "rec.pixl"
+    namespace = "pixl.rec"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "rec.pixl"
+        applicationId = "pixl.rec"
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode

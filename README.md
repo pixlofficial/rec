@@ -114,7 +114,7 @@ cd rec
 ```
 REC/
 ├── app/
-│   └── src/main/java/rec/pixl/
+│   └── src/main/java/pixl/rec/
 │       ├── core/
 │       │   ├── engine/          # MediaCodec Surface, CodecProbe & Master Orchestrator
 │       │   ├── audio/           # AudioPlaybackCapture & 16-bit PCM Audio Mixer
