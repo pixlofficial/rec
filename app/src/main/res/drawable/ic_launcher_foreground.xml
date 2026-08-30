@@ -10,40 +10,40 @@
         android:fillColor="#00000000"
         android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0"
         android:strokeWidth="0.8"
-        android:strokeColor="#25FF2A54" />
+        android:strokeColor="#25FF0019" />
 
-    <!-- Outer Faint Red Glow Halo -->
+    <!-- Outer Faint Scarlet Red Glow Halo -->
     <path
-        android:fillColor="#15FF2A54"
+        android:fillColor="#15FF0000"
         android:pathData="M54,54m-22,0a22,22 0 1,0 44,0a22,22 0 1,0 -44,0" />
 
-    <!-- Secondary Soft Glow -->
+    <!-- Secondary Soft Red Glow -->
     <path
-        android:fillColor="#35FF2A54"
+        android:fillColor="#35E60000"
         android:pathData="M54,54m-18,0a18,18 0 1,0 36,0a18,18 0 1,0 -36,0" />
 
-    <!-- Primary Vivid Red Record Dot -->
+    <!-- Primary Pure Scarlet Red Record Dot -->
     <path
         android:pathData="M54,54m-14,0a14,14 0 1,0 28,0a14,14 0 1,0 -28,0"
         android:strokeWidth="1"
-        android:strokeColor="#80FF6B8B">
+        android:strokeColor="#80FF2E3E">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="40"
-                android:startY="40"
-                android:endX="68"
-                android:endY="68"
+                android:startX="42"
+                android:startY="38"
+                android:endX="66"
+                android:endY="70"
                 android:type="linear">
-                <item android:color="#FFFF3355" android:offset="0.0" />
-                <item android:color="#FFFF1744" android:offset="0.5" />
-                <item android:color="#FFD50000" android:offset="1.0" />
+                <item android:color="#FFFF1A2A" android:offset="0.0" />
+                <item android:color="#FFE60000" android:offset="0.5" />
+                <item android:color="#FF8A0000" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Top Specular Highlight Arc -->
+    <!-- Top Specular Arc Highlight (Warm White-Red, No Pink) -->
     <path
         android:pathData="M46,47a8,4 0 0,1 16,0"
-        android:strokeWidth="1.2"
-        android:strokeColor="#60FFFFFF" />
+        android:strokeWidth="1"
+        android:strokeColor="#50FFFFFF" />
 </vector>
