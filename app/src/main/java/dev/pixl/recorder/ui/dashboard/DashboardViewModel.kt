@@ -50,7 +50,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 dpi = probedCapabilities.display.densityDpi,
                 framerate = probedCapabilities.recommendedFramerate,
                 videoCodec = probedCapabilities.recommendedCodec,
-                videoBitrate = 50_000_000,
+                videoBitrate = 16_000_000,
                 audioSource = AudioSource.INTERNAL_AND_MIC,
                 showFloatingPill = true,
                 autoHidePill = false,

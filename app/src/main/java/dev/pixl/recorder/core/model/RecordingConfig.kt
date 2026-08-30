@@ -65,7 +65,7 @@ data class RecordingConfig(
     val height: Int = 2400,
     val dpi: Int = 420,
     val framerate: Int = 60,
-    val videoBitrate: Int = 50_000_000, // 50 Mbps default for 1080p high quality
+    val videoBitrate: Int = 16_000_000, // 16 Mbps standard balanced default
     val videoCodec: VideoCodec = VideoCodec.HEVC,
     val bitrateMode: BitrateMode = BitrateMode.VBR,
     val iFrameIntervalSeconds: Int = 1,
