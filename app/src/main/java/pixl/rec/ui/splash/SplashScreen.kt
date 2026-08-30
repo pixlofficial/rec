@@ -8,34 +8,21 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import pixl.rec.R
-import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.ObsidianCanvas
-import pixl.rec.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -75,40 +62,15 @@ fun SplashScreen(
                 .scale(pulseScale)
         )
 
-        // Bottom: Brand Identity Typography
-        Column(
+        // Bottom: Brand Identity Vector (Matches native cold-start splash 1:1)
+        Image(
+            painter = painterResource(id = R.drawable.ic_splash_branding),
+            contentDescription = "REC by PixL",
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = 48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-4).dp)
-        ) {
-            Text(
-                text = "REC",
-                color = Color.White,
-                fontSize = 32.sp,
-                lineHeight = 28.sp,
-                fontFamily = BitcountPropSingle,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(color = TextSecondary)) {
-                        append("by ")
-                    }
-                    withStyle(SpanStyle(color = Color.White)) {
-                        append("PixL")
-                    }
-                },
-                fontSize = 15.sp,
-                lineHeight = 15.sp,
-                fontFamily = BitcountPropSingle,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-        }
+                .padding(bottom = 48.dp)
+                .size(width = 200.dp, height = 50.dp)
+        )
     }
 }
