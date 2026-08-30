@@ -17,8 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import dev.pixl.recorder.R
-import dev.pixl.recorder.ui.dashboard.DashboardScreen
 import dev.pixl.recorder.ui.dashboard.DashboardViewModel
+import dev.pixl.recorder.ui.main.MainScreen
 import dev.pixl.recorder.ui.theme.RECTheme
 
 /**
@@ -70,8 +70,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RECTheme {
-                DashboardScreen(
-                    viewModel = viewModel,
+                MainScreen(
+                    dashboardViewModel = viewModel,
                     onRequestRecordPermission = {
                         checkAndRequestPermissions()
                     }

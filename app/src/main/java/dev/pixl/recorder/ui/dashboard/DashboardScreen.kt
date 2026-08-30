@@ -100,7 +100,8 @@ import kotlin.math.roundToInt
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onRequestRecordPermission: () -> Unit
+    onRequestRecordPermission: () -> Unit,
+    onNavigateToSettings: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by viewModel.recorderState.collectAsState()
@@ -183,7 +184,7 @@ fun DashboardScreen(
                 onBitrateSelect = { viewModel.updateVideoBitrate(it) }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
