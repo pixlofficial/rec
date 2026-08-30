@@ -196,7 +196,7 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             // 5. About PixL Card
-            BrutalistCard(title = "ABOUT PIXL REC", titleTag = "v1.0.0") {
+            BrutalistCard(title = "ABOUT PIXL REC", titleTag = "v${dev.pixl.recorder.BuildConfig.VERSION_NAME}") {
                 Text(
                     text = "High-performance, zero-copy, hardware-accelerated screen recorder engineered in Kotlin and Jetpack Compose.",
                     color = TextSecondary,

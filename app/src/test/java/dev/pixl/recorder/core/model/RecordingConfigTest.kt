@@ -12,7 +12,7 @@ class RecordingConfigTest {
         assertEquals(1080, config.width)
         assertEquals(2400, config.height)
         assertEquals(60, config.framerate)
-        assertEquals(50_000_000, config.videoBitrate)
+        assertEquals(16_000_000, config.videoBitrate)
         assertEquals(VideoCodec.HEVC, config.videoCodec)
         assertEquals(AudioSource.INTERNAL_AND_MIC, config.audioSource)
         assertTrue(config.audioSource.hasInternal)

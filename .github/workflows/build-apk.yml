@@ -53,7 +53,7 @@ jobs:
       - name: Build Google Play Android App Bundle (AAB)
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'aab' || github.event.inputs.build_target == 'both' }}
         run: |
-          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          VERSION=$(grep 'VERSION_NAME' version.properties | awk -F'=' '{print $2}' | tr -d '\r\n')
           echo "Building Google Play App Bundle (AAB) for version: $VERSION"
           ./gradlew bundleRelease --no-daemon --stacktrace
           mkdir -p build-output
@@ -63,7 +63,7 @@ jobs:
       - name: Build Standalone Debug & Release APKs
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'apk' || github.event.inputs.build_target == 'both' }}
         run: |
-          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          VERSION=$(grep 'VERSION_NAME' version.properties | awk -F'=' '{print $2}' | tr -d '\r\n')
           echo "Building APKs for version: $VERSION"
           ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
           mkdir -p build-output
