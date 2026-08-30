@@ -75,10 +75,10 @@ import dev.pixl.recorder.ui.theme.BitcountPropSingle
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.CyberYellow
+import dev.pixl.recorder.ui.theme.GeistPixel
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
-import dev.pixl.recorder.ui.theme.SpaceMono
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextMuted
@@ -195,9 +195,9 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "by PixL",
                     color = TextSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
-                    fontFamily = SpaceMono,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    fontFamily = GeistPixel,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
@@ -256,8 +256,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     Text(
                         text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
                         color = TextSecondary,
-                        fontSize = 10.sp,
-                        fontFamily = SpaceMono,
+                        fontSize = 12.sp,
+                        fontFamily = GeistPixel,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -272,8 +272,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                 Text(
                     text = "0% CPU",
                     color = ToxicLime,
-                    fontSize = 10.sp,
-                    fontFamily = SpaceMono,
+                    fontSize = 11.sp,
+                    fontFamily = GeistPixel,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -422,9 +422,9 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Allocating zero-copy GraphicBuffer surface & MediaCodec...",
                     color = TextSecondary,
-                    fontFamily = SpaceMono,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
+                    fontFamily = GeistPixel,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp
                 )
             }
         }
@@ -438,8 +438,8 @@ private fun HeroRecordingCard(
                 Text(
                     text = "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
-                    fontSize = 11.sp,
-                    fontFamily = SpaceMono
+                    fontSize = 13.sp,
+                    fontFamily = GeistPixel
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -476,9 +476,9 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
-                    fontFamily = SpaceMono,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
+                    fontFamily = GeistPixel,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -492,15 +492,15 @@ private fun HeroRecordingCard(
                     Text(
                         text = "ESTIMATED RATE:",
                         color = TextSecondary,
-                        fontSize = 10.sp,
-                        fontFamily = SpaceMono,
+                        fontSize = 12.sp,
+                        fontFamily = GeistPixel,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
                         color = CyberYellow,
-                        fontSize = 11.sp,
-                        fontFamily = SpaceMono,
+                        fontSize = 13.sp,
+                        fontFamily = GeistPixel,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -687,9 +687,9 @@ private fun OverlayAndCleanCanvasSection(
                     else
                         "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
                     color = if (isAndroid14Plus) TextSecondary else TextMuted,
-                    fontSize = 10.sp,
-                    fontFamily = SpaceMono,
-                    lineHeight = 15.sp
+                    fontSize = 12.sp,
+                    fontFamily = GeistPixel,
+                    lineHeight = 16.sp
                 )
 
                 if (isAndroid14Plus) {
@@ -745,18 +745,18 @@ private fun SwitchRow(
                 Text(
                     text = title,
                     color = if (checked) TextPrimary else TextSecondary,
-                    fontSize = 12.sp,
-                    fontFamily = SpaceMono,
+                    fontSize = 14.sp,
+                    fontFamily = GeistPixel,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     color = TextMuted,
-                    fontSize = 10.sp,
-                    fontFamily = SpaceMono,
+                    fontSize = 12.sp,
+                    fontFamily = GeistPixel,
                     fontWeight = FontWeight.Normal,
-                    lineHeight = 14.sp
+                    lineHeight = 15.sp
                 )
             }
         }
@@ -930,8 +930,8 @@ private fun SelectableRow(
         Text(
             text = text,
             color = if (isSelected) TextPrimary else TextSecondary,
-            fontSize = 12.sp,
-            fontFamily = SpaceMono,
+            fontSize = 13.sp,
+            fontFamily = GeistPixel,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
         if (isSelected) {

@@ -25,7 +25,15 @@ val BitcountSingle = FontFamily(
     Font(R.font.bitcount_single, FontWeight.Black)
 )
 
-// Space Mono: Crisp Developer / Technical Font for Settings, Switches & Descriptions
+// Geist Pixel: Vercel's Pixel Font for Settings, Switches & Descriptions
+val GeistPixel = FontFamily(
+    Font(R.font.geist_pixel, FontWeight.Normal),
+    Font(R.font.geist_pixel, FontWeight.Medium),
+    Font(R.font.geist_pixel, FontWeight.SemiBold),
+    Font(R.font.geist_pixel, FontWeight.Bold),
+    Font(R.font.geist_pixel, FontWeight.Black)
+)
+
 val SpaceMono = FontFamily(
     Font(R.font.space_mono_regular, FontWeight.Normal),
     Font(R.font.space_mono_bold, FontWeight.Bold)
@@ -89,26 +97,26 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     titleMedium = TextStyle(
-        fontFamily = SpaceMono,
+        fontFamily = GeistPixel,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 17.sp,
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.sp,
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = SpaceMono,
+        fontFamily = GeistPixel,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
         letterSpacing = 0.sp,
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = SpaceMono,
+        fontFamily = GeistPixel,
         fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        lineHeight = 15.sp,
+        fontSize = 13.sp,
+        lineHeight = 17.sp,
         letterSpacing = 0.sp,
         color = TextSecondary
     ),
@@ -121,18 +129,18 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = SpaceMono,
+        fontFamily = GeistPixel,
         fontWeight = FontWeight.Bold,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
+        fontSize = 13.sp,
+        lineHeight = 16.sp,
         letterSpacing = 0.sp,
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = SpaceMono,
+        fontFamily = GeistPixel,
         fontWeight = FontWeight.Normal,
-        fontSize = 9.sp,
-        lineHeight = 12.sp,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.sp,
         color = TextMuted
     )
