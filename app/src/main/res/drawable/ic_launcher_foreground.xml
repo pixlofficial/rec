@@ -4,12 +4,7 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Ambient Glow Ring -->
-    <path
-        android:fillColor="#25FF0033"
-        android:pathData="M54,54m-32,0a32,32 0 1,0 64,0a32,32 0 1,0 -64,0" />
-
-    <!-- 100% Solid High-Density Pixel Circle -->
+    <!-- Pure Crisp Solid Red Pixel Circle (Matches logo.svg 1:1) -->
     <path
         android:fillColor="#FFFF0033"
         android:pathData="M46.30,28.00 h2.20 a0.70,0.70 0 0 1 0.70,0.70 v2.20 a0.70,0.70 0 0 1 -0.70,0.70 h-2.20 a0.70,0.70 0 0 1 -0.70,-0.70 v-2.20 a0.70,0.70 0 0 1 0.70,-0.70 Z
