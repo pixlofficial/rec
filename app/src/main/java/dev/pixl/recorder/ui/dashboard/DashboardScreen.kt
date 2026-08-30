@@ -56,7 +56,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
@@ -194,8 +197,14 @@ private fun HeaderBar(uiState: DashboardUiState) {
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "by PixL",
-                    color = TextSecondary,
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = TextSecondary)) {
+                            append("by ")
+                        }
+                        withStyle(SpanStyle(color = Color.White)) {
+                            append("PixL")
+                        }
+                    },
                     fontSize = 13.sp,
                     lineHeight = 13.sp,
                     fontFamily = BitcountPropSingle,
