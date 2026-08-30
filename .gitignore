@@ -19,3 +19,4 @@ local.properties
 test_recordings/
 rec_google_profile_pic.*
 .agents/mcp_config.json
+PROJECT_BLUEPRINT.md
