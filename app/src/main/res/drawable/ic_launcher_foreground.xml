@@ -8,31 +8,31 @@
     <!-- Outer Concentric Aperture Ring -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0"
-        android:strokeWidth="0.8"
-        android:strokeColor="#25FF0019" />
+        android:pathData="M54,54m-31,0a31,31 0 1,0 62,0a31,31 0 1,0 -62,0"
+        android:strokeWidth="0.9"
+        android:strokeColor="#28FF0019" />
 
     <!-- Outer Faint Scarlet Red Glow Halo -->
     <path
-        android:fillColor="#15FF0000"
-        android:pathData="M54,54m-22,0a22,22 0 1,0 44,0a22,22 0 1,0 -44,0" />
+        android:fillColor="#18FF0000"
+        android:pathData="M54,54m-26,0a26,26 0 1,0 52,0a26,26 0 1,0 -52,0" />
 
     <!-- Secondary Soft Red Glow -->
     <path
-        android:fillColor="#35E60000"
-        android:pathData="M54,54m-18,0a18,18 0 1,0 36,0a18,18 0 1,0 -36,0" />
+        android:fillColor="#38E60000"
+        android:pathData="M54,54m-22,0a22,22 0 1,0 44,0a22,22 0 1,0 -44,0" />
 
-    <!-- Primary Pure Scarlet Red Record Dot -->
+    <!-- Primary Pure Scarlet Red Record Dot (Enlarged) -->
     <path
-        android:pathData="M54,54m-14,0a14,14 0 1,0 28,0a14,14 0 1,0 -28,0"
-        android:strokeWidth="1"
-        android:strokeColor="#80FF2E3E">
+        android:pathData="M54,54m-18,0a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#90FF2E3E">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="42"
-                android:startY="38"
-                android:endX="66"
-                android:endY="70"
+                android:startX="38"
+                android:startY="34"
+                android:endX="70"
+                android:endY="74"
                 android:type="linear">
                 <item android:color="#FFFF1A2A" android:offset="0.0" />
                 <item android:color="#FFE60000" android:offset="0.5" />
@@ -41,9 +41,9 @@
         </aapt:attr>
     </path>
 
-    <!-- Top Specular Arc Highlight (Warm White-Red, No Pink) -->
+    <!-- Top Specular Arc Highlight -->
     <path
-        android:pathData="M46,47a8,4 0 0,1 16,0"
-        android:strokeWidth="1"
+        android:pathData="M44,45a10,5 0 0,1 20,0"
+        android:strokeWidth="1.2"
         android:strokeColor="#50FFFFFF" />
 </vector>
