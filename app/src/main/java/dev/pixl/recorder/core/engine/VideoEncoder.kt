@@ -73,25 +73,6 @@ class VideoEncoder(
             setInteger(MediaFormat.KEY_FRAME_RATE, config.framerate)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
             setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
-
-            // Real-time clocking and execution priority
-            setInteger(MediaFormat.KEY_PRIORITY, 0)
-            setInteger(MediaFormat.KEY_OPERATING_RATE, config.framerate)
-
-            // Configure optimal profile for compression efficiency
-            when (config.videoCodec) {
-                VideoCodec.HEVC -> {
-                    setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain)
-                }
-                VideoCodec.AVC -> {
-                    setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileHigh)
-                }
-                VideoCodec.AV1 -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AV1ProfileMain8)
-                    }
-                }
-            }
         }
 
         try {

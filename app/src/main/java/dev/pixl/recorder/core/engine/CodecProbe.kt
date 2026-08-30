@@ -35,11 +35,11 @@ object CodecProbe {
         val codecMap = mutableMapOf<VideoCodec, CodecCapabilityInfo>()
 
         for (codec in VideoCodec.entries) {
-            val capability = probeCodec(codec)
+            val capability = probeCodec(codec, displayProfile.physicalWidth, displayProfile.physicalHeight)
             codecMap[codec] = capability
         }
 
-        // Determine maximum hardware-supported framerate across hardware encoders
+        // Determine maximum hardware-supported framerate across hardware encoders for this display
         val maxHardwareFps = codecMap.values
             .filter { it.isHardwareAccelerated }
             .flatMap { it.supportedFramerates }
@@ -52,7 +52,7 @@ object CodecProbe {
             else -> VideoCodec.AVC
         }
 
-        // Match recommended framerate to active display refresh rate, capped at hardware encoder limit
+        // Match recommended framerate to active display refresh rate, capped strictly at hardware encoder limit
         val displayRefresh = displayProfile.currentRefreshRate.roundToInt()
         val recommendedFramerate = min(displayRefresh, maxHardwareFps).coerceAtLeast(30)
 
@@ -132,7 +132,7 @@ object CodecProbe {
     /**
      * Probes capabilities of a specific video codec on the SoC.
      */
-    fun probeCodec(codec: VideoCodec): CodecCapabilityInfo {
+    fun probeCodec(codec: VideoCodec, targetWidth: Int = 1080, targetHeight: Int = 1920): CodecCapabilityInfo {
         val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType)
 
         if (codecInfo == null) {
@@ -170,10 +170,16 @@ object CodecProbe {
             val maxHeight = videoCaps?.supportedHeights?.upper ?: 1080
             val maxBitrate = videoCaps?.bitrateRange?.upper ?: 50_000_000
 
+            val testW = min(targetWidth, maxWidth).coerceAtLeast(16)
+            val testH = min(targetHeight, maxHeight).coerceAtLeast(16)
+
             val supportedFps = mutableListOf<Int>()
             for (fps in STANDARD_FPS_TIERS) {
-                val isFpsSupported = videoCaps?.supportedFrameRates?.contains(fps) == true ||
-                        videoCaps?.areSizeAndRateSupported(min(1080, maxWidth), min(1920, maxHeight), fps.toDouble()) == true
+                val isFpsSupported = try {
+                    videoCaps?.areSizeAndRateSupported(testW, testH, fps.toDouble()) == true
+                } catch (e: Exception) {
+                    fps <= 60
+                }
                 if (isFpsSupported) {
                     supportedFps.add(fps)
                 }
