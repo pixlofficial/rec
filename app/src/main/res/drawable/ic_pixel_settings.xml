@@ -6,12 +6,12 @@
 
     <!-- PixL REC - White Pixel Config / Gear Icon (Exact Reference Match) -->
     <group>
-        <!-- Row 0: Top Tooth Cap (Cols 4, 5, 6) -->
+        <!-- Row 0: Top Tooth Cap -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,15.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,15.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 64.9,15.7 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 1: Top-Left Bracket, Top Tooth Walls, Top-Right Bracket -->
+        <!-- Row 1: Top-Left Bracket, Top Tooth Sides, Top-Right Bracket -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,23.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,23.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,23.9 h 6.6 v 6.6 h -6.6 Z" />
@@ -19,55 +19,55 @@
         <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,23.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,23.9 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 2: Corner Verticals, Ring Nodes, Top Spoke -->
+        <!-- Row 2: Corner Left, Connectors, Corner Right -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,32.1 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 40.3,32.1 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,32.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,32.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 64.9,32.1 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 73.1,32.1 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,32.1 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 3: Ring Nodes, Top Spoke Base -->
+        <!-- Row 3: Vertical Wall Connectors -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,40.3 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,40.3 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,40.3 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 4: Left Tooth Top, Center Hub Top, Right Tooth Top -->
+        <!-- Row 4: Left Tooth Top, Floating Hub Top, Right Tooth Top -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 15.7,48.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,48.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,48.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,48.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 97.7,48.5 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 5: Left Tooth Tip & Spoke, Hub Left/Right, Right Tooth Tip & Spoke -->
+        <!-- Row 5: Left Tooth Tip, Floating Hub Left/Right, Right Tooth Tip -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 15.7,56.7 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,56.7 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 40.3,56.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,56.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 64.9,56.7 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 73.1,56.7 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,56.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 97.7,56.7 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 6: Left Tooth Bottom, Center Hub Bottom, Right Tooth Bottom -->
+        <!-- Row 6: Left Tooth Bottom, Floating Hub Bottom, Right Tooth Bottom -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 15.7,64.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,64.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,64.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,64.9 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 97.7,64.9 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 7: Ring Nodes, Bottom Spoke Top -->
+        <!-- Row 7: Vertical Wall Connectors -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,73.1 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,73.1 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,73.1 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 8: Corner Verticals, Ring Nodes, Bottom Spoke -->
+        <!-- Row 8: Corner Left, Connectors, Corner Right -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,81.3 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 40.3,81.3 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 64.9,81.3 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 73.1,81.3 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,81.3 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 9: Bottom-Left Bracket, Bottom Tooth Walls, Bottom-Right Bracket -->
+        <!-- Row 9: Bottom-Left Bracket, Bottom Tooth Sides, Bottom-Right Bracket -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 23.9,89.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 32.1,89.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,89.5 h 6.6 v 6.6 h -6.6 Z" />
@@ -75,7 +75,7 @@
         <path android:fillColor="#FFFFFFFF" android:pathData="M 81.3,89.5 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 89.5,89.5 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 10: Bottom Tooth Cap (Cols 4, 5, 6) -->
+        <!-- Row 10: Bottom Tooth Cap -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 48.5,97.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,97.7 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 64.9,97.7 h 6.6 v 6.6 h -6.6 Z" />
