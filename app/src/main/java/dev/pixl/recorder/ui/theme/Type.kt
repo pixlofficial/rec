@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
-// Bitcount Prop Single: Proportional Dot-Matrix Marquee for Headings, Brand, Badges & Buttons
+// Bitcount Prop Single: Proportional Dot-Matrix Marquee for Headings, Brand, Badges, Timers & Buttons
 val BitcountPropSingle = FontFamily(
     Font(R.font.bitcount_prop_single, FontWeight.Normal),
     Font(R.font.bitcount_prop_single, FontWeight.Medium),
@@ -25,7 +25,15 @@ val BitcountSingle = FontFamily(
     Font(R.font.bitcount_single, FontWeight.Black)
 )
 
-// DotGothic16: Fontworks' Clean 16x16 Pixel Font for Settings, Switches & Descriptions
+// Doto: Variable Dot-Matrix Font for Descriptions, Subtitles & Paragraphs
+val Doto = FontFamily(
+    Font(R.font.doto, FontWeight.Normal),
+    Font(R.font.doto, FontWeight.Medium),
+    Font(R.font.doto, FontWeight.SemiBold),
+    Font(R.font.doto, FontWeight.Bold),
+    Font(R.font.doto, FontWeight.Black)
+)
+
 val DotGothic16 = FontFamily(
     Font(R.font.dotgothic16_regular, FontWeight.Normal),
     Font(R.font.dotgothic16_regular, FontWeight.Medium),
@@ -105,15 +113,15 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     titleMedium = TextStyle(
-        fontFamily = DotGothic16,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp,
-        lineHeight = 19.sp,
-        letterSpacing = 0.sp,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = DotGothic16,
+        fontFamily = Doto,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -121,7 +129,7 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = DotGothic16,
+        fontFamily = Doto,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
         lineHeight = 17.sp,
@@ -137,15 +145,15 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = DotGothic16,
+        fontFamily = Doto,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
+        fontSize = 12.sp,
+        lineHeight = 15.sp,
         letterSpacing = 0.sp,
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = DotGothic16,
+        fontFamily = Doto,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,

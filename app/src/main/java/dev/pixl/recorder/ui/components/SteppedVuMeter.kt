@@ -61,16 +61,16 @@ fun SteppedVuMeter(
             Text(
                 text = label.uppercase(),
                 color = TextSecondary,
-                fontSize = 13.sp,
-                fontFamily = dev.pixl.recorder.ui.theme.DotGothic16,
+                fontSize = 12.sp,
+                fontFamily = dev.pixl.recorder.ui.theme.BitcountPropSingle,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.sp
+                letterSpacing = 0.5.sp
             )
             Text(
                 text = if (dbLevel <= -59f) "SILENT" else String.format(Locale.US, "%.1f dB", dbLevel),
                 color = if (dbLevel > -3f) HyperCrimson else if (dbLevel > -12f) CyberYellow else ToxicLime,
                 fontSize = 13.sp,
-                fontFamily = dev.pixl.recorder.ui.theme.DotGothic16,
+                fontFamily = dev.pixl.recorder.ui.theme.BitcountPropSingle,
                 fontWeight = FontWeight.Bold
             )
         }
