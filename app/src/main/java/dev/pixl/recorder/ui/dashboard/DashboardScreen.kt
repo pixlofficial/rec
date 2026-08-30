@@ -75,7 +75,6 @@ import dev.pixl.recorder.ui.theme.BitcountPropSingle
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
 import dev.pixl.recorder.ui.theme.CyberYellow
-import dev.pixl.recorder.ui.theme.Doto
 import dev.pixl.recorder.ui.theme.HyperCrimson
 import dev.pixl.recorder.ui.theme.HyperCyan
 import dev.pixl.recorder.ui.theme.ObsidianCanvas
@@ -257,7 +256,7 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                         text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
                         color = TextSecondary,
                         fontSize = 12.sp,
-                        fontFamily = Doto,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -422,7 +421,7 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Allocating zero-copy GraphicBuffer surface & MediaCodec...",
                     color = TextSecondary,
-                    fontFamily = Doto,
+                    fontFamily = BitcountPropSingle,
                     fontSize = 13.sp,
                     lineHeight = 17.sp
                 )
@@ -439,7 +438,7 @@ private fun HeroRecordingCard(
                     text = "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
                     fontSize = 13.sp,
-                    fontFamily = Doto
+                    fontFamily = BitcountPropSingle
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -476,7 +475,7 @@ private fun HeroRecordingCard(
                 Text(
                     text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
                     color = TextSecondary,
-                    fontFamily = Doto,
+                    fontFamily = BitcountPropSingle,
                     fontSize = 13.sp,
                     lineHeight = 17.sp
                 )
@@ -493,14 +492,14 @@ private fun HeroRecordingCard(
                         text = "ESTIMATED RATE:",
                         color = TextSecondary,
                         fontSize = 12.sp,
-                        fontFamily = Doto,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
                         color = CyberYellow,
                         fontSize = 13.sp,
-                        fontFamily = Doto,
+                        fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -688,7 +687,7 @@ private fun OverlayAndCleanCanvasSection(
                         "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
                     color = if (isAndroid14Plus) TextSecondary else TextMuted,
                     fontSize = 12.sp,
-                    fontFamily = Doto,
+                    fontFamily = BitcountPropSingle,
                     lineHeight = 16.sp
                 )
 
@@ -747,15 +746,14 @@ private fun SwitchRow(
                     color = if (checked) TextPrimary else TextSecondary,
                     fontSize = 14.sp,
                     fontFamily = BitcountPropSingle,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     color = TextMuted,
                     fontSize = 12.sp,
-                    fontFamily = Doto,
+                    fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Normal,
                     lineHeight = 15.sp
                 )

@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
-// Bitcount Prop Single: Proportional Dot-Matrix Marquee for Headings, Brand, Badges, Timers & Buttons
+// Bitcount Prop Single: Official 100% Dot-Matrix Typography System
 val BitcountPropSingle = FontFamily(
     Font(R.font.bitcount_prop_single, FontWeight.Normal),
     Font(R.font.bitcount_prop_single, FontWeight.Medium),
@@ -25,7 +25,6 @@ val BitcountSingle = FontFamily(
     Font(R.font.bitcount_single, FontWeight.Black)
 )
 
-// Doto: Variable Dot-Matrix Font for Descriptions, Subtitles & Paragraphs
 val Doto = FontFamily(
     Font(R.font.doto, FontWeight.Normal),
     Font(R.font.doto, FontWeight.Medium),
@@ -121,19 +120,19 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = Doto,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 18.sp,
-        letterSpacing = 0.sp,
+        letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = Doto,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
         lineHeight = 17.sp,
-        letterSpacing = 0.sp,
+        letterSpacing = 0.5.sp,
         color = TextSecondary
     ),
     labelLarge = TextStyle(
@@ -145,19 +144,19 @@ val BrutalistTypography = Typography(
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = Doto,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         lineHeight = 15.sp,
-        letterSpacing = 0.sp,
+        letterSpacing = 0.5.sp,
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = Doto,
+        fontFamily = BitcountPropSingle,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 0.sp,
+        letterSpacing = 0.5.sp,
         color = TextMuted
     )
 )
