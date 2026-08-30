@@ -16,5 +16,5 @@
         android:bottom="48dp"
         android:width="200dp"
         android:height="50dp"
-        android:drawable="@drawable/ic_splash_branding" />
+        android:drawable="@drawable/ic_splash_text" />
 </layer-list>

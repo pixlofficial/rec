@@ -62,9 +62,9 @@ fun SplashScreen(
                 .scale(pulseScale)
         )
 
-        // Bottom: Brand Identity Vector (Matches native cold-start splash 1:1)
+        // Bottom: Brand Identity (Rendered from official Bitcount font)
         Image(
-            painter = painterResource(id = R.drawable.ic_splash_branding),
+            painter = painterResource(id = R.drawable.ic_splash_text),
             contentDescription = "REC by PixL",
             modifier = Modifier
                 .align(Alignment.BottomCenter)
