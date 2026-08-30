@@ -3,13 +3,15 @@ name: Build REC APK
 on:
   push:
     branches: [ "main", "master" ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Debug APK & Test
+    name: Build & Package APKs
     runs-on: ubuntu-latest
 
     steps:
@@ -23,21 +25,25 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Grant execute permissions for Gradle Wrapper
         run: chmod +x gradlew
 
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
 
-      - name: Assemble Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Assemble Debug and Release APKs
+        run: ./gradlew assembleRelease assembleDebug --stacktrace
 
-      - name: Upload Debug APK Artifact
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: REC-debug-apk
+          name: PixL-REC-Debug-APK
           path: app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixL-REC-Release-APK
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 30

@@ -16,3 +16,6 @@ build/
 local.properties
 *.apk
 *.aab
+test_recordings/
+rec_google_profile_pic.*
+.agents/mcp_config.json
