@@ -149,7 +149,7 @@ All AI agents must strictly follow this protocol whenever bumping the version or
    * *Do NOT hardcode versions in `build.gradle.kts` or Compose files; `app/build.gradle.kts` dynamically reads `version.properties` and exposes `BuildConfig.VERSION_NAME` to the UI.*
 
 2. **Update `CHANGELOG.md`:**
-   * Add a new version header `## [X.Y.Z] - YYYY-MM-DD` at the top of [CHANGELOG.md](file:///home/neeraj/Dev/REC/CHANGELOG.md).
+   * Add a new version header `## [X.Y.Z] - YYYY-MM-DD` at the top of [CHANGELOG.md](./CHANGELOG.md).
    * Document all notable additions, changes, and fixes using standard Keep a Changelog categories:
      * `### 🚀 Added` — for new features.
      * `### ⚡ Changed` — for changes in existing functionality.
