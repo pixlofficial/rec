@@ -1,56 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-  <!-- PixL REC - White Pixel Config / Gear Icon -->
+  <!-- PixL REC - White Pixel Config / Gear Icon (Exact Reference Match) -->
   <g fill="#FFFFFF">
-    <!-- Top Tooth (Row 0 - 2 squares) -->
-    <rect x="52.6" y="28.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="60.8" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 0: Top Tooth Cap (Cols 4, 5, 6) -->
+    <rect x="48.5" y="15.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="15.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="64.9" y="15.7" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Diagonal Top Teeth (Row 1 - 4 squares) -->
-    <rect x="36.2" y="36.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="36.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="36.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 1: Top-Left Bracket, Top Tooth Walls, Top-Right Bracket -->
+    <rect x="23.9" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="32.1" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="48.5" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="64.9" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="81.3" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="23.9" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Upper Rim (Row 2 - 6 squares) -->
-    <rect x="36.2" y="44.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="44.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="52.6" y="44.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="60.8" y="44.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="44.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 2: Corner Verticals, Ring Nodes, Top Spoke -->
+    <rect x="23.9" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="40.3" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="73.1" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="32.1" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Mid Rim with Left/Right Teeth & Center Hole (Row 3 - 6 squares) -->
-    <rect x="28.0" y="52.6" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="36.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="52.6" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="52.6" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="85.4" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 3: Ring Nodes, Top Spoke Base -->
+    <rect x="32.1" y="40.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="40.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="81.3" y="40.3" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Mid Rim with Left/Right Teeth & Center Hole (Row 4 - 6 squares) -->
-    <rect x="28.0" y="60.8" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="36.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="60.8" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="60.8" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="85.4" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 4: Left Tooth Top, Center Hub Top, Right Tooth Top -->
+    <rect x="15.7" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="23.9" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="97.7" y="48.5" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Lower Rim (Row 5 - 6 squares) -->
-    <rect x="36.2" y="69.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="69.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="52.6" y="69.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="60.8" y="69.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="69.0" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 5: Left Tooth Tip & Spoke, Hub Left/Right, Right Tooth Tip & Spoke -->
+    <rect x="15.7" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="32.1" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="40.3" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="48.5" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Center Hole (56.7, 56.7) is empty -->
+    <rect x="64.9" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="73.1" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="81.3" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="97.7" y="56.7" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Diagonal Bottom Teeth (Row 6 - 4 squares) -->
-    <rect x="36.2" y="77.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="44.4" y="77.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="69.0" y="77.2" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="77.2" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 6: Left Tooth Bottom, Center Hub Bottom, Right Tooth Bottom -->
+    <rect x="15.7" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="23.9" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="97.7" y="64.9" width="6.6" height="6.6" rx="1.0"/>
 
-    <!-- Bottom Tooth (Row 7 - 2 squares) -->
-    <rect x="52.6" y="85.4" width="6.6" height="6.6" rx="1.0"/>
-    <rect x="60.8" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+    <!-- Row 7: Ring Nodes, Bottom Spoke Top -->
+    <rect x="32.1" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="81.3" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Row 8: Corner Verticals, Ring Nodes, Bottom Spoke -->
+    <rect x="23.9" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="40.3" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="73.1" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Row 9: Bottom-Left Bracket, Bottom Tooth Walls, Bottom-Right Bracket -->
+    <rect x="23.9" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="32.1" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="48.5" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="64.9" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="81.3" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="89.5" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Row 10: Bottom Tooth Cap (Cols 4, 5, 6) -->
+    <rect x="48.5" y="97.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="56.7" y="97.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="64.9" y="97.7" width="6.6" height="6.6" rx="1.0"/>
   </g>
 </svg>
