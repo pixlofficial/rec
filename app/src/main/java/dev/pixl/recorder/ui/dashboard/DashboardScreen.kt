@@ -757,7 +757,7 @@ private fun SwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceElevated, RoundedCornerShape(8.dp))
-            .border(1.5.dp, if (checked) CyberYellow else BorderStark, RoundedCornerShape(8.dp))
+            .border(1.5.dp, if (checked) HyperCrimson else BorderStark, RoundedCornerShape(8.dp))
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -770,7 +770,7 @@ private fun SwitchRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (checked) CyberYellow else TextSecondary,
+                tint = if (checked) HyperCrimson else TextSecondary,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -801,8 +801,8 @@ private fun SwitchRow(
             onCheckedChange = onCheckedChange,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = TextInverse,
-                checkedTrackColor = CyberYellow,
+                checkedThumbColor = TextPrimary,
+                checkedTrackColor = HyperCrimson,
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = ObsidianCanvas
             )
@@ -821,24 +821,23 @@ private fun ConfigSection(
     onAudioSourceSelect: (AudioSource) -> Unit,
     onBitrateSelect: (Int) -> Unit
 ) {
-    val capabilities = uiState.capabilities
     val config = uiState.config
+    val capabilities = uiState.capabilities
 
-    // 1. Framerate Selection
-    BrutalistCard(title = "CAPTURE FRAMERATE", titleTag = "${config.framerate} FPS") {
-        val supportedFps = capabilities?.codecs?.get(config.videoCodec)?.supportedFramerates ?: listOf(30, 60, 90, 120)
+    // 1. Framerate Deck
+    BrutalistCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf(60, 90, 120, 144).forEach { fps ->
+            listOf(30, 60, 90, 120).forEach { fps ->
                 val isSelected = config.framerate == fps
-                val isAvailable = supportedFps.contains(fps) || fps <= (capabilities?.maxHardwareFps ?: 60)
+                val isSupported = (capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 } ?: true) || fps <= 60
                 SelectableTag(
                     text = "$fps FPS",
                     isSelected = isSelected,
-                    enabled = !isRecordingActive && isAvailable,
+                    enabled = !isRecordingActive && isSupported,
                     onClick = { onFramerateSelect(fps) }
                 )
             }
@@ -847,8 +846,8 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // 2. Video Codec Selection
-    BrutalistCard(title = "HARDWARE CODEC", titleTag = config.videoCodec.name) {
+    // 2. Hardware Video Codec Deck
+    BrutalistCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -918,9 +917,9 @@ private fun SelectableTag(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (isSelected) CyberYellow else SurfaceElevated
+    val bg = if (isSelected) HyperCrimson else SurfaceElevated
     val border = if (isSelected) BorderHighlight else BorderStark
-    val textColor = if (isSelected) TextInverse else if (enabled) TextPrimary else TextMuted
+    val textColor = if (isSelected) TextPrimary else if (enabled) TextPrimary else TextMuted
 
     Box(
         modifier = Modifier
@@ -948,7 +947,7 @@ private fun SelectableRow(
     onClick: () -> Unit
 ) {
     val bg = if (isSelected) SurfaceElevated else ObsidianCanvas
-    val border = if (isSelected) CyberYellow else BorderStark
+    val border = if (isSelected) HyperCrimson else BorderStark
 
     Row(
         modifier = Modifier
@@ -972,7 +971,7 @@ private fun SelectableRow(
             Box(
                 modifier = Modifier
                     .size(10.dp)
-                    .background(CyberYellow, CircleShape)
+                    .background(HyperCrimson, CircleShape)
                     .border(1.dp, BorderHighlight, CircleShape)
             )
         }

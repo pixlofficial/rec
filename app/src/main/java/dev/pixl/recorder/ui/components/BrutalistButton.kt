@@ -38,9 +38,10 @@ import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.TextPrimary
 
 enum class BrutalistButtonVariant {
-    PRIMARY,   // Cyber Yellow
+    PRIMARY,   // Hyper Crimson (Electric Red)
     DANGER,    // Hyper Crimson
     SUCCESS,   // Toxic Lime
+    WARNING,   // Cyber Yellow
     SURFACE    // Dark Slate
 }
 
@@ -68,16 +69,18 @@ fun BrutalistButton(
     )
 
     val resolvedBg = containerColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> CyberYellow
+        BrutalistButtonVariant.PRIMARY -> dev.pixl.recorder.ui.theme.HyperCrimson
         BrutalistButtonVariant.DANGER -> dev.pixl.recorder.ui.theme.HyperCrimson
         BrutalistButtonVariant.SUCCESS -> dev.pixl.recorder.ui.theme.ToxicLime
+        BrutalistButtonVariant.WARNING -> CyberYellow
         BrutalistButtonVariant.SURFACE -> dev.pixl.recorder.ui.theme.SurfaceElevated
     }
 
     val resolvedContent = contentColor ?: when (variant) {
-        BrutalistButtonVariant.PRIMARY -> TextInverse
+        BrutalistButtonVariant.PRIMARY -> TextPrimary
         BrutalistButtonVariant.DANGER -> TextPrimary
         BrutalistButtonVariant.SUCCESS -> TextInverse
+        BrutalistButtonVariant.WARNING -> TextInverse
         BrutalistButtonVariant.SURFACE -> TextPrimary
     }
 
