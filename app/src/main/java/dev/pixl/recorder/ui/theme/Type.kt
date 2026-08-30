@@ -8,7 +8,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
-// Pure Cyberpunk Handjet Dot-Matrix Typography System
+// Bitcount Single Dot-Matrix Typography System
+val BitcountSingle = FontFamily(
+    Font(R.font.bitcount_single, FontWeight.Normal),
+    Font(R.font.bitcount_single, FontWeight.Medium),
+    Font(R.font.bitcount_single, FontWeight.SemiBold),
+    Font(R.font.bitcount_single, FontWeight.Bold),
+    Font(R.font.bitcount_single, FontWeight.Black)
+)
+
+val BitcountPropSingle = FontFamily(
+    Font(R.font.bitcount_prop_single, FontWeight.Normal),
+    Font(R.font.bitcount_prop_single, FontWeight.Medium),
+    Font(R.font.bitcount_prop_single, FontWeight.SemiBold),
+    Font(R.font.bitcount_prop_single, FontWeight.Bold),
+    Font(R.font.bitcount_prop_single, FontWeight.Black)
+)
+
 val Handjet = FontFamily(
     Font(R.font.handjet, FontWeight.Normal),
     Font(R.font.handjet, FontWeight.Medium),
@@ -27,90 +43,90 @@ val LexendTera = FontFamily(
 
 val BrutalistTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 46.sp,
-        lineHeight = 48.sp,
+        fontSize = 44.sp,
+        lineHeight = 46.sp,
         letterSpacing = 1.sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 36.sp,
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineLarge = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 28.sp,
+        fontSize = 22.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineMedium = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
-        lineHeight = 24.sp,
+        fontSize = 18.sp,
+        lineHeight = 22.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     titleLarge = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 17.sp,
-        lineHeight = 21.sp,
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     titleMedium = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 16.sp,
-        lineHeight = 20.sp,
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = Handjet,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 20.sp,
+        fontFamily = BitcountSingle,
+        fontWeight = FontWeight.Normal,
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
+        fontSize = 13.sp,
+        lineHeight = 17.sp,
         letterSpacing = 0.5.sp,
         color = TextSecondary
     ),
     labelLarge = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp,
-        lineHeight = 18.sp,
+        fontSize = 14.sp,
+        lineHeight = 17.sp,
         letterSpacing = 1.sp,
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
+        fontSize = 12.sp,
+        lineHeight = 15.sp,
         letterSpacing = 0.5.sp,
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = Handjet,
+        fontFamily = BitcountSingle,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 15.sp,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.5.sp,
         color = TextMuted
     )

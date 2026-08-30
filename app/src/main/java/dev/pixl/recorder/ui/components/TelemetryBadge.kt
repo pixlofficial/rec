@@ -16,9 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.pixl.recorder.ui.theme.BitcountSingle
 import dev.pixl.recorder.ui.theme.BorderHighlight
 import dev.pixl.recorder.ui.theme.BorderStark
-import dev.pixl.recorder.ui.theme.Handjet
 import dev.pixl.recorder.ui.theme.SurfaceElevated
 import dev.pixl.recorder.ui.theme.TextInverse
 import dev.pixl.recorder.ui.theme.ToxicLime
@@ -43,8 +43,8 @@ fun TelemetryBadge(
             Text(
                 text = label.uppercase(),
                 color = if (isHighlighted) TextInverse.copy(alpha = 0.75f) else dev.pixl.recorder.ui.theme.TextSecondary,
-                fontSize = 13.sp,
-                fontFamily = Handjet,
+                fontSize = 12.sp,
+                fontFamily = BitcountSingle,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp,
                 maxLines = 1
@@ -53,8 +53,8 @@ fun TelemetryBadge(
             Text(
                 text = value.uppercase(),
                 color = if (isHighlighted) TextInverse else accentColor,
-                fontSize = 15.sp,
-                fontFamily = Handjet,
+                fontSize = 14.sp,
+                fontFamily = BitcountSingle,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 maxLines = 1
