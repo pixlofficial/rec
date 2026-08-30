@@ -1,16 +1,16 @@
-name: Build Android APK & Release
+name: Build Android Binaries & Release
 
 on:
   workflow_dispatch:
     inputs:
-      build_type:
-        description: "Build Type (debug / release / both)"
+      build_target:
+        description: "Build Target (aab / apk / both)"
         required: true
         default: "both"
         type: choice
         options:
-          - debug
-          - release
+          - aab
+          - apk
           - both
   push:
     branches:
@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   build:
-    name: Build APK
+    name: Build & Package Binaries
     runs-on: ubuntu-latest
 
     steps:
@@ -50,70 +50,45 @@ jobs:
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
 
-      - name: Build Debug APK
-        if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' }}
+      - name: Build Google Play Android App Bundle (AAB)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'aab' || github.event.inputs.build_target == 'both' }}
         run: |
           VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
-          echo "Building Debug APK for version: $VERSION"
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "Building Google Play App Bundle (AAB) for version: $VERSION"
+          ./gradlew bundleRelease --no-daemon --stacktrace
           mkdir -p build-output
+          cp app/build/outputs/bundle/release/app-release.aab build-output/PixL-REC-v${VERSION}.aab
+          cp app/build/outputs/bundle/release/app-release.aab build-output/PixL-REC.aab
+
+      - name: Build Standalone Debug & Release APKs
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'apk' || github.event.inputs.build_target == 'both' }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
+          echo "Building APKs for version: $VERSION"
+          ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
+          mkdir -p build-output
+          
+          # Standalone Release APK
+          cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-v${VERSION}.apk
+          cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC.apk
+          
+          # Standalone Debug APK
           cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug-v${VERSION}.apk
           cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug.apk
-
-      - name: Build and Sign Release APK
-        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both' }}
-        run: |
-          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
-          echo "Building Release APK for version: $VERSION"
-          ./gradlew assembleRelease --no-daemon --stacktrace
-          mkdir -p build-output
-
-          # Find Android SDK build-tools apksigner and zipalign
-          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
-          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | sort -V | tail -n 1)
-
-          echo "Using zipalign: $ZIPALIGN"
-          echo "Using apksigner: $APKSIGNER"
-
-          # Check if keystore secrets are configured or use Gradle signed release
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > rec-release.jks
-            STORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-            KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS }}"
-            KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
-            
-            # Align and re-sign with custom production keystore
-            $ZIPALIGN -f -v -p 4 app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-release-aligned.apk
-            $APKSIGNER sign --ks rec-release.jks --ks-pass pass:$STORE_PASS --ks-key-alias $KEY_ALIAS --key-pass pass:$KEY_PASS --out build-output/PixL-REC-v${VERSION}.apk build-output/PixL-REC-release-aligned.apk
-            rm -f build-output/PixL-REC-release-aligned.apk rec-release.jks
-          else
-            # Default to Gradle-signed distribution release
-            cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-v${VERSION}.apk
-          fi
-
-          # Provide latest unversioned alias
-          cp build-output/PixL-REC-v${VERSION}.apk build-output/PixL-REC.apk
-
-          # Verify signature
-          $APKSIGNER verify -v build-output/PixL-REC-v${VERSION}.apk
-          echo "Release APK successfully built and verified as PixL-REC-v${VERSION}.apk and PixL-REC.apk!"
 
       - name: Generate Checksums & Build Manifest
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' }}
         run: |
-          VERSION=$(grep 'versionName' app/build.gradle.kts | awk -F'"' '{print $2}')
-          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | awk '{print $3}' | tr -d '\r\n')
-          
           cd build-output
-          sha256sum *.apk > SHA256SUMS.txt
+          sha256sum *.{apk,aab} > SHA256SUMS.txt 2>/dev/null || sha256sum *.apk > SHA256SUMS.txt
           cat SHA256SUMS.txt
           cd ..
 
-      - name: Upload APK Artifacts
+      - name: Upload Build Artifacts (AAB & APKs)
         uses: actions/upload-artifact@v4
         with:
-          name: PixL-REC-Android-APKs
-          path: build-output/*.apk
+          name: PixL-REC-Binaries
+          path: build-output/*
           retention-days: 30
 
       - name: Create GitHub Release
@@ -121,6 +96,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            build-output/*.aab
             build-output/*.apk
             build-output/SHA256SUMS.txt
           draft: false
