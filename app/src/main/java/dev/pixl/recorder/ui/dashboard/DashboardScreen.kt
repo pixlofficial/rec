@@ -576,7 +576,7 @@ private fun OverlayAndCleanCanvasSection(
     BrutalistCard(
         title = "CLEAN CANVAS & OVERLAY CONTROLS",
         titleTag = if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
-        tagColor = if (!config.showFloatingPill) ToxicLime else if (config.autoHidePill) HyperCyan else CyberYellow,
+        tagColor = if (!config.showFloatingPill) ToxicLime else if (config.autoHidePill) HyperCyan else Color.White,
         borderColor = BorderStark
     ) {
         // 1. Solution 1: Floating Pill Toggle (Clean Canvas Mode)
