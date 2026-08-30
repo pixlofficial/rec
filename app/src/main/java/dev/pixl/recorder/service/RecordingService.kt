@@ -99,12 +99,16 @@ class RecordingService : Service() {
     }
 
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
-        // 1. Enter foreground immediately with required Android 14/15 FGS types
+        // 1. Enter foreground immediately with required Android 14/15/16 FGS types
         val initialNotification = buildNotification("Initializing recording...", isPaused = false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                if (config.audioSource.hasMic) {
+                val hasMicPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.RECORD_AUDIO
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (config.audioSource.hasMic && hasMicPermission) {
                     types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 }
                 types

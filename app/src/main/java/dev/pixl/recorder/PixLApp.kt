@@ -17,7 +17,7 @@ class PixLApp : Application() {
             val channel = NotificationChannel(
                 CHANNEL_ID_RECORDING,
                 getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = getString(R.string.notification_channel_desc)
                 setShowBadge(false)

@@ -36,9 +36,6 @@ class MainActivity : ComponentActivity() {
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             // Start Foreground Recording Service (which handles Overlay, Sensors & MediaCodec)
             viewModel.startRecording(result.resultCode, result.data!!)
-
-            // Move to background to reveal game / home screen immediately
-            moveTaskToBack(true)
         } else {
             Toast.makeText(this, "Screen recording permission was denied", Toast.LENGTH_SHORT).show()
         }
@@ -50,17 +47,20 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val micGranted = permissions[Manifest.permission.RECORD_AUDIO] ?: false
         if (!micGranted) {
-            Toast.makeText(this, "Microphone permission denied, only internal audio will record", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Microphone permission denied, only internal audio will record", Toast.LENGTH_SHORT).show()
         }
         // Launch MediaProjection screen capture prompt
         requestScreenCapturePermission()
     }
 
     // 3. Overlay Settings Launcher
+    private var hasPromptedOverlay = false
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        checkAndRequestPermissions()
+        hasPromptedOverlay = true
+        // Proceed to audio/notification permissions regardless of overlay grant
+        checkAudioAndRecordPermissions()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,8 +83,8 @@ class MainActivity : ComponentActivity() {
     private fun checkAndRequestPermissions() {
         val config = viewModel.uiState.value.config
 
-        // 1. Check Floating Overlay Permission only if floating pill is enabled
-        if (config.showFloatingPill && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+        // 1. If Floating Pill enabled and permission not granted, prompt once then proceed
+        if (config.showFloatingPill && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this) && !hasPromptedOverlay) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
@@ -93,7 +93,10 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        // 2. Check Audio & Notification Permissions
+        checkAudioAndRecordPermissions()
+    }
+
+    private fun checkAudioAndRecordPermissions() {
         val permissionsToRequest = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
