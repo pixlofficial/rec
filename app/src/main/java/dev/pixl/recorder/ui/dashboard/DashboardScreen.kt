@@ -212,7 +212,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
             ) {
                 Text(
                     text = "REC",
-                    color = HyperCrimson,
+                    color = Color.White,
                     fontSize = 26.sp,
                     lineHeight = 22.sp,
                     fontFamily = BitcountPropSingle,
@@ -224,7 +224,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
                         withStyle(SpanStyle(color = TextSecondary)) {
                             append("by ")
                         }
-                        withStyle(SpanStyle(color = HyperCrimson)) {
+                        withStyle(SpanStyle(color = Color.White)) {
                             append("PixL")
                         }
                     },
