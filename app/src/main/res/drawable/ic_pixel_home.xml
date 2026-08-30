@@ -4,60 +4,80 @@
     android:viewportWidth="120"
     android:viewportHeight="120">
 
-    <!-- PixL REC - White Pixel Home / Dashboard Icon -->
+    <!-- PixL REC - White Pixel Home / Dashboard Icon (Scaled & Balanced) -->
     <group>
-        <!-- Roof Peak (Row 0 - 2 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,28.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Roof Peak (Row 0 - 2 squares: Cols 4, 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,23.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,23.9 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Roof Slope (Row 1 - 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,36.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,36.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,36.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Roof Slope (Row 1 - 4 squares: Cols 3, 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,32.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,32.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,32.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,32.1 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Roof Slope (Row 2 - 6 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Roof Slope (Row 2 - 6 squares: Cols 2, 3, 4, 5, 6, 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,40.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,40.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,40.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,40.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,40.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,40.3 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Roof Eaves Base (Row 3 - 8 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Roof Slope (Row 3 - 8 squares: Cols 1, 2, 3, 4, 5, 6, 7, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,48.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,48.5 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Upper Walls (Row 4 - 6 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Roof Eaves Base (Row 4 - 10 squares: Cols 0..9) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,56.7 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,56.7 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Mid Walls with Doorway (Row 5 - 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Upper Walls (Row 5 - 8 squares: Cols 1..8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,64.9 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,64.9 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Lower Walls with Doorway (Row 6 - 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,77.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,77.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Mid Walls with Doorway (Row 6 - 6 squares: Cols 1, 2, 3 & 6, 7, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,73.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,73.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,73.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,73.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,73.1 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,73.1 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Base Foundation (Row 7 - 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Lower Walls with Doorway (Row 7 - 6 squares: Cols 1, 2, 3 & 6, 7, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,81.3 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,81.3 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Base Foundation (Row 8 - 6 squares: Cols 1, 2, 3 & 6, 7, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,89.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,89.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,89.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,89.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,89.5 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,89.5 h 6.6 v 6.6 h -6.6 Z" />
     </group>
 </vector>
