@@ -184,19 +184,19 @@ private fun HeaderBar(uiState: DashboardUiState) {
 
             Column {
                 Text(
-                    text = "ZERO-COPY VPU",
-                    color = ToxicLime,
-                    fontSize = 15.sp,
+                    text = "REC",
+                    color = Color.White,
+                    fontSize = 21.sp,
                     fontFamily = Handjet,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 1.sp
                 )
                 Text(
-                    text = "BY PIXL",
+                    text = "by PixL",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     fontFamily = Handjet,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     letterSpacing = 0.5.sp
                 )
             }
