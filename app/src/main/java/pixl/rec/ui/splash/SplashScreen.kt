@@ -70,7 +70,7 @@ fun SplashScreen(
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = 48.dp)
-                .size(width = 200.dp, height = 50.dp)
+                .size(width = 240.dp, height = 105.dp)
         )
     }
 }
