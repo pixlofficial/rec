@@ -45,17 +45,17 @@ fun TelemetryBadge(
             Text(
                 text = label.uppercase(),
                 color = if (isHighlighted) TextInverse.copy(alpha = 0.7f) else dev.pixl.recorder.ui.theme.TextSecondary,
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
+                fontSize = 9.sp,
+                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = value.uppercase(),
                 color = if (isHighlighted) TextInverse else accentColor,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Black
+                fontSize = 10.sp,
+                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                fontWeight = FontWeight.Bold
             )
         }
     }

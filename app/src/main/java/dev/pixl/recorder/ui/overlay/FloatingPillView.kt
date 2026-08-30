@@ -287,20 +287,20 @@ fun FloatingPillView(
                             Text(
                                 text = if (isPaused) "PAUSED" else "REC",
                                 color = accentColor,
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Black
+                                fontSize = 9.sp,
+                                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Digital Monospace Timer Counter
+                    // Digital Timer Counter
                     Text(
                         text = StorageCalculator.formatDuration(currentDuration),
                         color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp,
+                        fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
 

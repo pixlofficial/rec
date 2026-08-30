@@ -75,9 +75,9 @@ fun BrutalistCard(
                         Text(
                             text = title.uppercase(),
                             color = TextPrimary,
-                            fontSize = 13.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Black,
+                            fontSize = 11.sp,
+                            fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp,
                             modifier = Modifier.weight(1f, fill = false)
                         )
@@ -93,9 +93,9 @@ fun BrutalistCard(
                             Text(
                                 text = titleTag.uppercase(),
                                 color = tagTextColor,
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Black,
+                                fontSize = 9.sp,
+                                fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                                fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp,
                                 maxLines = 1
                             )
