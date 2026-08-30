@@ -8,16 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.pixl.recorder.R
 
-// Display Font for Headings, Brand & Primary Action Buttons
-val LexendTera = FontFamily(
-    Font(R.font.lexend_tera, FontWeight.Normal),
-    Font(R.font.lexend_tera, FontWeight.Medium),
-    Font(R.font.lexend_tera, FontWeight.SemiBold),
-    Font(R.font.lexend_tera, FontWeight.Bold),
-    Font(R.font.lexend_tera, FontWeight.Black)
-)
-
-// Cyberpunk Dot-Matrix HUD Font for Timers, Telemetry, Settings & Body Text
+// Pure Cyberpunk Handjet Dot-Matrix Typography System
 val Handjet = FontFamily(
     Font(R.font.handjet, FontWeight.Normal),
     Font(R.font.handjet, FontWeight.Medium),
@@ -26,44 +17,52 @@ val Handjet = FontFamily(
     Font(R.font.handjet, FontWeight.Black)
 )
 
+val LexendTera = FontFamily(
+    Font(R.font.lexend_tera, FontWeight.Normal),
+    Font(R.font.lexend_tera, FontWeight.Medium),
+    Font(R.font.lexend_tera, FontWeight.SemiBold),
+    Font(R.font.lexend_tera, FontWeight.Bold),
+    Font(R.font.lexend_tera, FontWeight.Black)
+)
+
 val BrutalistTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 42.sp,
-        lineHeight = 44.sp,
+        fontSize = 46.sp,
+        lineHeight = 48.sp,
         letterSpacing = 1.sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp,
+        fontSize = 32.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
-        lineHeight = 22.sp,
+        fontSize = 24.sp,
+        lineHeight = 28.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     headlineMedium = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp,
-        lineHeight = 19.sp,
+        fontSize = 20.sp,
+        lineHeight = 24.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
     titleLarge = TextStyle(
-        fontFamily = LexendTera,
+        fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 17.sp,
+        fontSize = 17.sp,
+        lineHeight = 21.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
@@ -78,7 +77,7 @@ val BrutalistTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = Handjet,
         fontWeight = FontWeight.Medium,
-        fontSize = 15.sp,
+        fontSize = 16.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.5.sp,
         color = TextPrimary
@@ -94,8 +93,8 @@ val BrutalistTypography = Typography(
     labelLarge = TextStyle(
         fontFamily = Handjet,
         fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 17.sp,
+        fontSize = 15.sp,
+        lineHeight = 18.sp,
         letterSpacing = 1.sp,
         color = TextPrimary
     ),
@@ -110,8 +109,8 @@ val BrutalistTypography = Typography(
     labelSmall = TextStyle(
         fontFamily = Handjet,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
+        fontSize = 12.sp,
+        lineHeight = 15.sp,
         letterSpacing = 0.5.sp,
         color = TextMuted
     )

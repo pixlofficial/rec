@@ -186,8 +186,8 @@ private fun HeaderBar(uiState: DashboardUiState) {
                 Text(
                     text = "ZERO-COPY VPU",
                     color = ToxicLime,
-                    fontSize = 11.sp,
-                    fontFamily = LexendTera,
+                    fontSize = 15.sp,
+                    fontFamily = Handjet,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
@@ -247,8 +247,8 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     Text(
                         text = "HARDWARE ENGINE ACTIVE",
                         color = TextPrimary,
-                        fontSize = 10.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 14.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -572,8 +572,8 @@ private fun OverlayAndCleanCanvasSection(
                     Text(
                         text = "RECALL GESTURE",
                         color = TextSecondary,
-                        fontSize = 9.sp,
-                        fontFamily = LexendTera,
+                        fontSize = 13.sp,
+                        fontFamily = Handjet,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -651,8 +651,8 @@ private fun OverlayAndCleanCanvasSection(
                         Text(
                             text = "SINGLE-APP ISOLATED CAPTURE",
                             color = if (isAndroid14Plus) TextPrimary else TextMuted,
-                            fontSize = 10.sp,
-                            fontFamily = LexendTera,
+                            fontSize = 14.sp,
+                            fontFamily = Handjet,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -668,8 +668,8 @@ private fun OverlayAndCleanCanvasSection(
                             Text(
                                 text = "REQUIRES ANDROID 14+",
                                 color = TextMuted,
-                                fontSize = 8.sp,
-                                fontFamily = LexendTera,
+                                fontSize = 11.sp,
+                                fontFamily = Handjet,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -898,8 +898,8 @@ private fun SelectableTag(
         Text(
             text = text.uppercase(),
             color = textColor,
-            fontSize = 10.sp,
-            fontFamily = LexendTera,
+            fontSize = 14.sp,
+            fontFamily = Handjet,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )

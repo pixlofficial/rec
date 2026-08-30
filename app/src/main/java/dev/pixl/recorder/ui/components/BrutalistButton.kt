@@ -131,10 +131,10 @@ fun BrutalistButton(
                 Text(
                     text = text.uppercase(),
                     color = resolvedContent,
-                    fontSize = 13.sp,
-                    fontFamily = dev.pixl.recorder.ui.theme.LexendTera,
+                    fontSize = 18.sp,
+                    fontFamily = dev.pixl.recorder.ui.theme.Handjet,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 1.sp
                 )
             }
         }
