@@ -1,118 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <defs>
-    <!-- Background Radial Obsidian Gradient -->
-    <radialGradient id="bgGradient" cx="50%" cy="36%" r="72%">
-      <stop offset="0%" stop-color="#20202E" />
-      <stop offset="55%" stop-color="#0E0E14" />
-      <stop offset="100%" stop-color="#050508" />
-    </radialGradient>
-
-    <!-- Outer Deep Scarlet Red Glow Filter -->
-    <filter id="crimsonGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="32" result="blur1" />
-      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur2" />
-      <feMerge>
-        <feMergeNode in="blur1" />
-        <feMergeNode in="blur2" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <!-- Pure Vibrant Blood-Red / Scarlet Gradient -->
-    <linearGradient id="redDotGradient" x1="15%" y1="0%" x2="85%" y2="100%">
-      <stop offset="0%" stop-color="#FF1A2A" />
-      <stop offset="45%" stop-color="#E60000" />
-      <stop offset="85%" stop-color="#B80000" />
-      <stop offset="100%" stop-color="#730000" />
-    </linearGradient>
-
-    <!-- Warm Glass Specular Arc -->
-    <linearGradient id="specularGlow" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32" />
-      <stop offset="60%" stop-color="#FF6666" stop-opacity="0.12" />
-      <stop offset="100%" stop-color="#E60000" stop-opacity="0" />
-    </linearGradient>
-
-    <!-- Subtle Bevel Border Gradient -->
-    <linearGradient id="borderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3C3C50" />
-      <stop offset="50%" stop-color="#1A1A24" />
-      <stop offset="100%" stop-color="#0E0E14" />
-    </linearGradient>
-  </defs>
-
-  <!-- Squircle App Icon Base -->
-  <rect 
-    x="16" 
-    y="16" 
-    width="480" 
-    height="480" 
-    rx="112" 
-    fill="url(#bgGradient)" 
-    stroke="url(#borderGradient)" 
-    stroke-width="3" 
-  />
-
-  <!-- Concentric Aperture Ring 1 (Faint Outer Guide) -->
-  <circle 
-    cx="256" 
-    cy="256" 
-    r="192" 
-    fill="none" 
-    stroke="#FFFFFF" 
-    stroke-opacity="0.03" 
-    stroke-width="1.5" 
-  />
-
-  <!-- Concentric Aperture Ring 2 (Deep Red Dotted Orbit) -->
-  <circle 
-    cx="256" 
-    cy="256" 
-    r="152" 
-    fill="none" 
-    stroke="#FF0019" 
-    stroke-opacity="0.18" 
-    stroke-width="2" 
-    stroke-dasharray="5 9" 
-  />
-
-  <!-- Wide Ambient Scarlet Glow Layer -->
-  <circle 
-    cx="256" 
-    cy="256" 
-    r="124" 
-    fill="#E60000" 
-    opacity="0.35" 
-    filter="url(#crimsonGlow)" 
-  />
-
-  <!-- Core Soft Red Halo -->
-  <circle 
-    cx="256" 
-    cy="256" 
-    r="110" 
-    fill="#FF0019" 
-    opacity="0.48" 
-    filter="url(#crimsonGlow)" 
-  />
-
-  <!-- Primary Pure Scarlet Red Record Core (Enlarged for bold presence) -->
-  <circle 
-    cx="256" 
-    cy="256" 
-    r="96" 
-    fill="url(#redDotGradient)" 
-    stroke="#FF2E3E" 
-    stroke-width="2.6" 
-    stroke-opacity="0.85" 
-  />
-
-  <!-- Top Specular Refraction Arc -->
-  <ellipse 
-    cx="256" 
-    cy="214" 
-    rx="50" 
-    ry="24" 
-    fill="url(#specularGlow)" 
-  />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <rect width="120" height="120" fill="#0A0A0E" rx="24"/>
+  <!-- PixL REC - Solid Pixel Art Recording Core -->
+  <g>
+    <rect x="34.4" y="7.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="7.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="7.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="7.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="21.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="7.6" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="101.4" y="34.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="7.6" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="101.4" y="47.8" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="7.6" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="101.4" y="61.2" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="7.6" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="101.4" y="74.6" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="21.0" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="88.0" y="88.0" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="34.4" y="101.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="47.8" y="101.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="61.2" y="101.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+    <rect x="74.6" y="101.4" width="11.0" height="11.0" rx="1.5" fill="#FF0033"/>
+  </g>
 </svg>
