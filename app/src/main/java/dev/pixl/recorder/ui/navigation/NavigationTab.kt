@@ -1,18 +1,14 @@
 package dev.pixl.recorder.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.DrawableRes
+import dev.pixl.recorder.R
 
 enum class NavigationTab(
     val label: String,
-    val icon: ImageVector
+    @DrawableRes val iconRes: Int
 ) {
-    DASHBOARD("DASH", Icons.Default.Home),
-    VAULT("VAULT", Icons.Default.Folder),
-    SETTINGS("CONFIG", Icons.Default.Settings),
-    MORE("SYSTEM", Icons.Default.Info)
+    DASHBOARD("DASH", R.drawable.ic_pixel_home),
+    VAULT("VAULT", R.drawable.ic_pixel_vault),
+    SETTINGS("CONFIG", R.drawable.ic_pixel_settings),
+    MORE("SYSTEM", R.drawable.ic_pixel_system)
 }

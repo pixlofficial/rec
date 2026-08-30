@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -32,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -151,10 +151,10 @@ fun BrutalistBottomNav(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.FiberManualRecord,
+                        painter = painterResource(id = dev.pixl.recorder.R.drawable.ic_pixel_record),
                         contentDescription = "Start Recording",
                         tint = HyperCrimson,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(34.dp)
                     )
                 }
             }
@@ -178,7 +178,7 @@ private fun NavTabItem(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = tab.icon,
+            painter = painterResource(id = tab.iconRes),
             contentDescription = tab.label,
             tint = if (isSelected) TextPrimary else TextMuted,
             modifier = Modifier.size(22.dp)
