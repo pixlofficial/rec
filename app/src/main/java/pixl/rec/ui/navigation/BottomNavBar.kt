@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -63,9 +65,9 @@ import pixl.rec.ui.theme.TextPrimary
  */
 class CrestedDockShape(
     private val cornerRadius: Dp = 16.dp,
-    private val crestHeight: Dp = 18.dp,
-    private val crestHalfWidth: Dp = 38.dp,
-    private val slopeWidth: Dp = 18.dp
+    private val crestHeight: Dp = 22.dp,
+    private val crestHalfWidth: Dp = 46.dp,
+    private val slopeWidth: Dp = 24.dp
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -127,71 +129,84 @@ fun BottomNavBar(
 ) {
     val navShape = remember { CrestedDockShape() }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
+            .background(Color.Transparent)
     ) {
-        // Chamfered Canopy Dock Container
+        // Upper layer: Chamfered Canopy Dock + Centered Floating Shutter
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(navShape)
-                .background(SurfaceElevated)
-                .border(
-                    width = 1.dp,
-                    color = BorderStark,
-                    shape = navShape
-                )
+                .height(76.dp)
         ) {
-            Row(
+            // Chamfered Canopy Dock Container
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 22.dp, bottom = 6.dp, start = 4.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .clip(navShape)
+                    .background(SurfaceElevated)
+                    .border(
+                        width = 1.dp,
+                        color = BorderStark,
+                        shape = navShape
+                    )
             ) {
-                // Left Tabs: DASHBOARD & VAULT
-                NavTabItem(
-                    tab = NavigationTab.DASHBOARD,
-                    isSelected = currentTab == NavigationTab.DASHBOARD,
-                    onClick = { onTabSelected(NavigationTab.DASHBOARD) },
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 24.dp, bottom = 6.dp, start = 6.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left Tabs: DASHBOARD & VAULT
+                    NavTabItem(
+                        tab = NavigationTab.DASHBOARD,
+                        isSelected = currentTab == NavigationTab.DASHBOARD,
+                        onClick = { onTabSelected(NavigationTab.DASHBOARD) },
+                        modifier = Modifier.weight(1f)
+                    )
 
-                NavTabItem(
-                    tab = NavigationTab.VAULT,
-                    isSelected = currentTab == NavigationTab.VAULT,
-                    onClick = { onTabSelected(NavigationTab.VAULT) },
-                    modifier = Modifier.weight(1f)
-                )
+                    NavTabItem(
+                        tab = NavigationTab.VAULT,
+                        isSelected = currentTab == NavigationTab.VAULT,
+                        onClick = { onTabSelected(NavigationTab.VAULT) },
+                        modifier = Modifier.weight(1f)
+                    )
 
-                // Shutter gap reservation under the canopy
-                Spacer(modifier = Modifier.weight(1.1f))
+                    // Shutter gap reservation under the canopy for larger shutter
+                    Spacer(modifier = Modifier.weight(1.5f))
 
-                // Right Tabs: SETTINGS & MORE
-                NavTabItem(
-                    tab = NavigationTab.SETTINGS,
-                    isSelected = currentTab == NavigationTab.SETTINGS,
-                    onClick = { onTabSelected(NavigationTab.SETTINGS) },
-                    modifier = Modifier.weight(1f)
-                )
+                    // Right Tabs: SETTINGS & MORE
+                    NavTabItem(
+                        tab = NavigationTab.SETTINGS,
+                        isSelected = currentTab == NavigationTab.SETTINGS,
+                        onClick = { onTabSelected(NavigationTab.SETTINGS) },
+                        modifier = Modifier.weight(1f)
+                    )
 
-                NavTabItem(
-                    tab = NavigationTab.MORE,
-                    isSelected = currentTab == NavigationTab.MORE,
-                    onClick = { onTabSelected(NavigationTab.MORE) },
-                    modifier = Modifier.weight(1f)
-                )
+                    NavTabItem(
+                        tab = NavigationTab.MORE,
+                        isSelected = currentTab == NavigationTab.MORE,
+                        onClick = { onTabSelected(NavigationTab.MORE) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
+
+            // Shutter Button positioned with equal gap from top of chamfer and phone's navbar
+            FloatingRecordShutter(
+                isRecording = isRecording,
+                onRecordAction = onRecordAction,
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
 
-        // Shutter Button positioned crowned under the canopy
-        FloatingRecordShutter(
-            isRecording = isRecording,
-            onRecordAction = onRecordAction,
+        // Solid Phone Navigation Bar Area (ObsidianCanvas)
+        Spacer(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (-6).dp)
+                .fillMaxWidth()
+                .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                .background(pixl.rec.ui.theme.ObsidianCanvas)
         )
     }
 }
@@ -224,10 +239,10 @@ fun FloatingRecordShutter(
 
     Box(
         modifier = modifier
-            .size(78.dp)
+            .size(108.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 39.dp),
+                indication = ripple(bounded = false, radius = 54.dp),
                 onClick = onRecordAction
             ),
         contentAlignment = Alignment.Center
@@ -239,7 +254,7 @@ fun FloatingRecordShutter(
             contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
             tint = HyperCrimson,
             modifier = Modifier
-                .size(72.dp)
+                .size(108.dp)
                 .scale(pulseScale)
         )
     }

@@ -132,7 +132,7 @@ fun DashboardScreen(
             }
             .verticalScroll(scrollState)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // 1. Top Bar Header
         HeaderBar(uiState = uiState)
