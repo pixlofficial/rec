@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -62,9 +63,9 @@ import pixl.rec.ui.theme.TextPrimary
  */
 class CrestedDockShape(
     private val cornerRadius: Dp = 16.dp,
-    private val crestHeight: Dp = 22.dp,
-    private val crestHalfWidth: Dp = 40.dp,
-    private val slopeWidth: Dp = 22.dp
+    private val crestHeight: Dp = 18.dp,
+    private val crestHalfWidth: Dp = 38.dp,
+    private val slopeWidth: Dp = 18.dp
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -126,25 +127,17 @@ fun BottomNavBar(
 ) {
     val navShape = remember { CrestedDockShape() }
 
-    // Insets strictly for bottom navigation bar (only when navbar is physically at the bottom)
-    val bottomNavInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
-    // Horizontal insets for side navigation bars or display cutouts in landscape
-    val horizontalInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
-
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.Transparent)
+            .navigationBarsPadding()
     ) {
         // Chamfered Canopy Dock Container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(horizontalInsets)
-                .windowInsetsPadding(bottomNavInsets)
                 .clip(navShape)
-                .background(SurfaceElevated.copy(alpha = 0.95f))
+                .background(SurfaceElevated)
                 .border(
                     width = 1.dp,
                     color = BorderStark,
@@ -154,8 +147,7 @@ fun BottomNavBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .padding(horizontal = 8.dp),
+                    .padding(top = 22.dp, bottom = 6.dp, start = 4.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Left Tabs: DASHBOARD & VAULT
@@ -174,7 +166,7 @@ fun BottomNavBar(
                 )
 
                 // Shutter gap reservation under the canopy
-                Spacer(modifier = Modifier.weight(1.3f))
+                Spacer(modifier = Modifier.weight(1.1f))
 
                 // Right Tabs: SETTINGS & MORE
                 NavTabItem(
@@ -199,7 +191,7 @@ fun BottomNavBar(
             onRecordAction = onRecordAction,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = 19.dp)
+                .offset(y = (-6).dp)
         )
     }
 }
@@ -218,7 +210,7 @@ fun FloatingRecordShutter(
         val pulseTransition = rememberInfiniteTransition(label = "ShutterPulse")
         val scale by pulseTransition.animateFloat(
             initialValue = 1f,
-            targetValue = 1.04f,
+            targetValue = 1.05f,
             animationSpec = infiniteRepeatable(
                 animation = tween(1200, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
@@ -232,10 +224,10 @@ fun FloatingRecordShutter(
 
     Box(
         modifier = modifier
-            .size(118.dp)
+            .size(78.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 59.dp),
+                indication = ripple(bounded = false, radius = 39.dp),
                 onClick = onRecordAction
             ),
         contentAlignment = Alignment.Center
@@ -247,7 +239,7 @@ fun FloatingRecordShutter(
             contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
             tint = HyperCrimson,
             modifier = Modifier
-                .size(114.dp)
+                .size(72.dp)
                 .scale(pulseScale)
         )
     }

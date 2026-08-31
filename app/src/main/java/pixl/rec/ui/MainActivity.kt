@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Transition from native 0ms splash window to app theme
         setTheme(R.style.Theme_REC)
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         handleIntent(intent)

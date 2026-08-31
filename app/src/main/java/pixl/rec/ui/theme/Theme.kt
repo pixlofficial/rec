@@ -41,10 +41,12 @@ fun RECTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = ObsidianCanvas.toArgb()
-                window.navigationBarColor = ObsidianCanvas.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = false
+                insetsController.isAppearanceLightNavigationBars = false
             }
         }
     }

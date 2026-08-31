@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,29 +52,15 @@ fun MainScreen(
         currentTab = initialTab
     }
 
-    Scaffold(
-        containerColor = ObsidianCanvas,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            BottomNavBar(
-                currentTab = currentTab,
-                onTabSelected = { currentTab = it },
-                isRecording = isRecording,
-                onRecordAction = {
-                    if (isRecording) {
-                        dashboardViewModel.stopRecording()
-                    } else {
-                        onRequestRecordPermission()
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ObsidianCanvas)
+    ) {
+        // Fullscreen edge-to-edge content layer
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(ObsidianCanvas)
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
         ) {
@@ -103,5 +90,20 @@ fun MainScreen(
                 }
             }
         }
+
+        // Floating Bottom Navigation Bar overlay
+        BottomNavBar(
+            currentTab = currentTab,
+            onTabSelected = { currentTab = it },
+            isRecording = isRecording,
+            onRecordAction = {
+                if (isRecording) {
+                    dashboardViewModel.stopRecording()
+                } else {
+                    onRequestRecordPermission()
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
