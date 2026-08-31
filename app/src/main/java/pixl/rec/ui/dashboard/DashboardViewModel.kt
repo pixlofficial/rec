@@ -13,11 +13,17 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.service.FloatingOverlayService
 import pixl.rec.service.RecordingService
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class DashboardUiState(
@@ -36,6 +42,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     val recorderState: StateFlow<RecorderState> = RecordingService.serviceState
 
+    val isRecordingActive: StateFlow<Boolean> = RecordingService.serviceState
+        .map { it is RecorderState.Recording || it is RecorderState.Paused }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     init {
         refreshHardwareCapabilities()
     }
@@ -45,7 +56,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             val probedCapabilities = CodecProbe.probeDevice(getApplication())
             val availableBytes = StorageCalculator.getAvailableStorageBytes()
 
-            val initialConfig = RecordingConfig(
+            val defaultHwConfig = RecordingConfig(
                 width = probedCapabilities.recommendedWidth,
                 height = probedCapabilities.recommendedHeight,
                 dpi = probedCapabilities.display.densityDpi,
@@ -54,6 +65,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 videoBitrate = 16_000_000,
                 audioSource = AudioSource.INTERNAL_AND_MIC,
                 showFloatingPill = true,
+                alwaysOnFloatingPill = true,
                 autoHidePill = false,
                 pillRecallGesture = PillRecallGesture.EDGE_SWIPE,
                 shakeToStop = true,
@@ -61,15 +73,18 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 captureTarget = CaptureTarget.ENTIRE_SCREEN
             ).withMacroblockAlignment()
 
+            // Restore user persisted preferences over defaults
+            val savedConfig = ConfigPreferences.loadConfig(getApplication(), defaultHwConfig)
+
             val remainingMin = StorageCalculator.estimateRemainingMinutes(
                 availableBytes = availableBytes,
-                videoBitrateBps = initialConfig.videoBitrate,
-                audioBitrateBps = initialConfig.audioBitrate
+                videoBitrateBps = savedConfig.videoBitrate,
+                audioBitrateBps = savedConfig.audioBitrate
             )
 
             _uiState.value = DashboardUiState(
                 capabilities = probedCapabilities,
-                config = initialConfig,
+                config = savedConfig,
                 availableStorageBytes = availableBytes,
                 remainingMinutes = remainingMin,
                 isStorageLow = StorageCalculator.isStorageLow(availableBytes)
@@ -111,6 +126,17 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val current = _uiState.value.config
         val updated = current.copy(videoBitrate = bitrateMbps * 1_000_000)
         updateConfigAndStorage(updated)
+    }
+
+    fun toggleAlwaysOnFloatingPill(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(alwaysOnFloatingPill = enabled)
+        updateConfigAndStorage(updated)
+        if (enabled) {
+            FloatingOverlayService.start(getApplication(), updated)
+        } else {
+            FloatingOverlayService.stop(getApplication())
+        }
     }
 
     fun toggleFloatingPill(enabled: Boolean) {
@@ -172,6 +198,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun updateConfigAndStorage(newConfig: RecordingConfig) {
+        // Persist to SharedPreferences immediately
+        ConfigPreferences.saveConfig(getApplication(), newConfig)
+
         val availableBytes = _uiState.value.availableStorageBytes
         val remainingMin = StorageCalculator.estimateRemainingMinutes(
             availableBytes = availableBytes,

@@ -8,11 +8,13 @@ import android.util.Log
 import android.view.Surface
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.VideoCodec
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -42,12 +44,17 @@ class VideoEncoder(
     private val isPaused = AtomicBoolean(false)
     private var pauseStartTimeNs: Long = 0L
     private var totalPauseOffsetNs: Long = 0L
+    private var sessionBaseTimeNs: Long = 0L
+    private var basePtsOffsetUs: Long = -1L
     private var firstFramePtsUs: Long = -1L
     private var lastPtsUs: Long = 0L
 
     // FPS measurement
     private var frameCount = 0
     private var lastFpsSampleTimeNs = 0L
+
+    // Deterministic EOS await signal
+    private var eosDeferred = CompletableDeferred<Unit>()
 
     /**
      * Initializes and configures the hardware encoder with zero-copy surface input.
@@ -73,6 +80,16 @@ class VideoEncoder(
             setInteger(MediaFormat.KEY_FRAME_RATE, config.framerate)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
             setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
+
+            // Raise hardware encoder clock for high-framerate capture (120+ FPS)
+            setInteger(MediaFormat.KEY_OPERATING_RATE, config.framerate)
+            // Real-time priority for kernel scheduler
+            setInteger(MediaFormat.KEY_PRIORITY, 0)
+
+            // Explicit Studio BT.709 sRGB Colorimetry & Full Dynamic Range Metadata
+            setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+            setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_FULL)
+            setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
         }
 
         try {
@@ -89,16 +106,19 @@ class VideoEncoder(
     /**
      * Starts the encoder hardware pipeline and begins draining output buffers.
      */
-    fun start(scope: CoroutineScope) {
+    fun start(scope: CoroutineScope, baseTimeNs: Long = System.nanoTime()) {
         val codec = mediaCodec ?: throw IllegalStateException("VideoEncoder not prepared")
         codec.start()
         isRunning.set(true)
         isPaused.set(false)
+        sessionBaseTimeNs = baseTimeNs
+        basePtsOffsetUs = -1L
         firstFramePtsUs = -1L
         lastPtsUs = 0L
         totalPauseOffsetNs = 0L
         frameCount = 0
         lastFpsSampleTimeNs = System.nanoTime()
+        eosDeferred = CompletableDeferred()
 
         drainJob = scope.launch(Dispatchers.IO) {
             drainOutputBuffers()
@@ -135,8 +155,21 @@ class VideoEncoder(
             mediaCodec?.signalEndOfInputStream()
         } catch (e: Exception) {
             Log.w(tag, "Failed to signalEndOfInputStream", e)
+            if (!eosDeferred.isCompleted) {
+                eosDeferred.complete(Unit)
+            }
         }
         drainJob?.cancel()
+    }
+
+    /**
+     * Awaits completion of EOS output buffer processing.
+     */
+    suspend fun awaitEos(timeoutMs: Long = 2000L): Boolean {
+        return withTimeoutOrNull(timeoutMs) {
+            eosDeferred.await()
+            true
+        } ?: false
     }
 
     /**
@@ -144,6 +177,9 @@ class VideoEncoder(
      */
     fun release() {
         stop()
+        if (!eosDeferred.isCompleted) {
+            eosDeferred.complete(Unit)
+        }
         try {
             mediaCodec?.stop()
         } catch (e: Exception) {
@@ -192,13 +228,16 @@ class VideoEncoder(
 
                                 if (bufferInfo.size > 0) {
                                     if (!isPaused.get()) {
-                                        // Normalize video PTS so the first frame starts at 0 microseconds
-                                        if (firstFramePtsUs < 0) {
+                                        // Calibrate video PTS relative to the unified session base time
+                                        if (basePtsOffsetUs < 0) {
+                                            val nowNs = System.nanoTime()
+                                            val elapsedSinceStartUs = ((nowNs - sessionBaseTimeNs) / 1000L).coerceAtLeast(0L)
+                                            basePtsOffsetUs = bufferInfo.presentationTimeUs - elapsedSinceStartUs
                                             firstFramePtsUs = bufferInfo.presentationTimeUs
-                                            Log.i(tag, "First video frame captured at raw PTS: ${firstFramePtsUs}us (uptime: ${firstFramePtsUs / 1_000_000}s), normalized to 0us")
+                                            Log.i(tag, "First video frame captured at raw PTS: ${firstFramePtsUs}us (calibrated with session offset: ${basePtsOffsetUs}us)")
                                         }
 
-                                        val relativePtsUs = bufferInfo.presentationTimeUs - firstFramePtsUs
+                                        val relativePtsUs = (bufferInfo.presentationTimeUs - basePtsOffsetUs).coerceAtLeast(0L)
                                         val adjustedPtsUs = (relativePtsUs - (totalPauseOffsetNs / 1_000L)).coerceAtLeast(lastPtsUs)
                                         bufferInfo.presentationTimeUs = adjustedPtsUs
                                         lastPtsUs = adjustedPtsUs
@@ -225,6 +264,9 @@ class VideoEncoder(
 
                             if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                                 Log.i(tag, "Video encoder reached EOS")
+                                if (!eosDeferred.isCompleted) {
+                                    eosDeferred.complete(Unit)
+                                }
                                 break
                             }
                         }
@@ -234,6 +276,9 @@ class VideoEncoder(
                 if (isRunning.get()) {
                     Log.e(tag, "Error in VideoEncoder drain loop", e)
                     listener.onVideoError(e)
+                }
+                if (!eosDeferred.isCompleted) {
+                    eosDeferred.complete(Unit)
                 }
                 break
             }

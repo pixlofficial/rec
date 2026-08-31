@@ -14,6 +14,7 @@ import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -24,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.ui.CapturePermissionActivity
 import pixl.rec.ui.MainActivity
 import pixl.rec.ui.overlay.FloatingPillView
 import pixl.rec.ui.theme.RECTheme
@@ -34,7 +36,7 @@ import kotlin.math.roundToInt
  * and the live recording telemetry pill.
  *
  * Full multi-orientation (Portrait & Landscape) support with unified physical screen coordinates
- * and strict system navigation bar (3-button / gesture bar) safety clearance margins.
+ * and generous touch hit-box padding for effortless one-handed gestures.
  */
 class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
@@ -48,16 +50,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     private var overlayView: ComposeView? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
     private var config: RecordingConfig = RecordingConfig()
+    private val isDockedOnLeftState = mutableStateOf(true)
+    private var standbyDockY: Int = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
             val passedConfig = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getSerializableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
+                intent.getParcelableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
             } else {
                 @Suppress("DEPRECATION")
-                intent.getSerializableExtra(EXTRA_CONFIG) as? RecordingConfig
+                intent.getParcelableExtra(EXTRA_CONFIG) as? RecordingConfig
             }
             if (passedConfig != null) {
                 config = passedConfig
@@ -102,7 +106,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
     private fun getDockBounds(): DockBounds {
         val dm = getScreenMetrics()
-        val viewHeight = overlayView?.height ?: dpToPx(44f)
+        val viewHeight = dpToPx(72f)
 
         var insetTop = 0
         var insetBottom = 0
@@ -146,18 +150,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val minY = topMargin
         val maxY = (dm.heightPixels - bottomNavMargin - viewHeight).coerceAtLeast(minY)
 
-        // Left edge: if navigation bar is on left in landscape, stay outside it; otherwise dock to physical glass edge
+        // Left edge: 68dp touch box starts at -31dp, leaving 37dp touch hit region on screen
         val minX = if (navLeft > 0) {
             navLeft + dpToPx(8f)
         } else {
             -dpToPx(31f)
         }
 
-        // Right edge: if navigation bar is on right in landscape, stay outside it; otherwise dock to physical glass edge
+        // Right edge: 68dp touch box docks at screenWidth - 37dp, leaving 37dp touch hit region on screen
         val maxX = if (navRight > 0) {
-            dm.widthPixels - navRight - dpToPx(13f) - dpToPx(16f)
+            dm.widthPixels - navRight - dpToPx(37f) - dpToPx(8f)
         } else {
-            dm.widthPixels - dpToPx(13f)
+            dm.widthPixels - dpToPx(37f)
         }
 
         return DockBounds(
@@ -188,6 +192,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        standbyDockY = dpToPx(300f)
+
         // Using FLAG_LAYOUT_IN_SCREEN to map (x, y) directly to absolute screen pixels
         layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -200,7 +206,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = -dpToPx(31f)
-            y = dpToPx(300f)
+            y = standbyDockY
         }
 
         val composeView = ComposeView(this).apply {
@@ -210,12 +216,14 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                 RECTheme {
                     FloatingPillView(
                         config = config,
+                        isDockedOnLeft = isDockedOnLeftState.value,
                         onDrag = { dx, dy ->
                             val params = this@FloatingOverlayService.layoutParams
-                            val bounds = getDockBounds()
+                            val bounds = getDockBoundsCached()
 
                             params.x = (params.x + dx.toInt()).coerceIn(bounds.minX, bounds.maxX)
                             params.y = (params.y + dy.toInt()).coerceIn(bounds.minY, bounds.maxY)
+                            standbyDockY = params.y
                             try {
                                 windowManager?.updateViewLayout(overlayView, params)
                             } catch (e: Exception) {
@@ -229,7 +237,11 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                             handleExpandChange(isExpanded)
                         },
                         onRecordClick = {
-                            openMainActivity(startRecord = true)
+                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
+                        },
+                        onReplayClick = {
+                            android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
+                            openMainActivity()
                         },
                         onScreenshotClick = {
                             openMainActivity(startRecord = false)
@@ -262,72 +274,102 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
     }
 
+    private var cachedDockBounds: DockBounds? = null
+
+    private fun getDockBoundsCached(): DockBounds {
+        return cachedDockBounds ?: getDockBounds().also { cachedDockBounds = it }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        cachedDockBounds = null // Invalidate cached screen bounds on rotation
         // Screen orientation changed (Portrait <-> Landscape)
         overlayView?.post {
             snapToNearestEdge()
         }
     }
 
-    private fun snapToNearestEdge() {
-        val bounds = getDockBounds()
-        val currentX = layoutParams.x
-        val currentY = layoutParams.y
-        val viewWidth = overlayView?.width ?: dpToPx(44f)
+    private var windowAnimator: ValueAnimator? = null
+    private var lastSnapIpcTimeMs: Long = 0L
 
-        layoutParams.y = currentY.coerceIn(bounds.minY, bounds.maxY)
+    private fun animateWindowTo(targetX: Int, targetY: Int, onEnd: (() -> Unit)? = null) {
+        windowAnimator?.cancel()
+        val startX = layoutParams.x
+        val startY = layoutParams.y
+        lastSnapIpcTimeMs = 0L
+
+        windowAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 240
+            interpolator = DecelerateInterpolator(1.2f)
+            addUpdateListener { anim ->
+                val f = anim.animatedFraction
+                val newX = (startX + (targetX - startX) * f).roundToInt()
+                val newY = (startY + (targetY - startY) * f).roundToInt()
+                val now = android.os.SystemClock.uptimeMillis()
+
+                // Throttle Binder IPC across process boundary to ~60Hz (16ms) during 120Hz snap physics
+                if (f >= 1f || now - lastSnapIpcTimeMs >= 16L) {
+                    lastSnapIpcTimeMs = now
+                    layoutParams.x = newX
+                    layoutParams.y = newY
+                    try {
+                        windowManager?.updateViewLayout(overlayView, layoutParams)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    layoutParams.x = targetX
+                    layoutParams.y = targetY
+                    try {
+                        windowManager?.updateViewLayout(overlayView, layoutParams)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                    onEnd?.invoke()
+                }
+            })
+            start()
+        }
+    }
+
+    private fun snapToNearestEdge() {
+        val bounds = getDockBoundsCached()
+        val currentX = layoutParams.x
+        val viewWidth = dpToPx(68f)
 
         val midX = bounds.screenWidth / 2
         val targetX = if (currentX + viewWidth / 2 < midX) {
+            isDockedOnLeftState.value = true
             bounds.minX
         } else {
+            isDockedOnLeftState.value = false
             bounds.maxX
         }
+        val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
 
-        val animator = ValueAnimator.ofInt(currentX, targetX).apply {
-            duration = 240
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { anim ->
-                layoutParams.x = anim.animatedValue as Int
-                try {
-                    windowManager?.updateViewLayout(overlayView, layoutParams)
-                } catch (e: Exception) {
-                    // ignore
-                }
-            }
-        }
-        animator.start()
+        animateWindowTo(targetX, targetY)
     }
 
     private fun handleExpandChange(isExpanded: Boolean) {
-        val bounds = getDockBounds()
+        val bounds = getDockBoundsCached()
         if (isExpanded) {
-            val menuWidthPx = dpToPx(220f)
-            val menuHeightPx = dpToPx(220f)
-            val currentX = layoutParams.x
-            val currentY = layoutParams.y
+            val fanWidthPx = dpToPx(140f)
 
-            val minX = (bounds.minX + dpToPx(35f)).coerceAtLeast(dpToPx(16f))
-            val maxX = (bounds.maxX - menuWidthPx - dpToPx(8f)).coerceAtLeast(minX)
-
-            val targetX = if (currentX + menuWidthPx / 2 < bounds.screenWidth / 2) {
-                minX
+            // When expanded, reveal the full 44dp hexagonal X hub flush against the glass edge
+            val targetX = if (isDockedOnLeftState.value) {
+                if (bounds.minX < 0) 0 else bounds.minX
             } else {
-                maxX
+                (bounds.maxX + dpToPx(37f) - fanWidthPx).coerceAtLeast(0)
             }
 
-            val minY = bounds.minY
-            val maxY = (bounds.maxY + dpToPx(44f) - menuHeightPx).coerceAtLeast(minY)
-            val targetY = currentY.coerceIn(minY, maxY)
+            // Align vertical center around the standby hub
+            val minY = (bounds.minY - dpToPx(98f)).coerceAtLeast(0)
+            val targetY = (standbyDockY - dpToPx(98f)).coerceIn(minY, bounds.maxY)
 
-            layoutParams.x = targetX
-            layoutParams.y = targetY
-            try {
-                windowManager?.updateViewLayout(overlayView, layoutParams)
-            } catch (e: Exception) {
-                // ignore
-            }
+            animateWindowTo(targetX, targetY)
         } else {
             snapToNearestEdge()
         }

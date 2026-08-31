@@ -169,7 +169,7 @@ fun MoreScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(100.dp))
+            Spacer(modifier = Modifier.height(116.dp))
         }
     }
 }

@@ -105,7 +105,7 @@ fun DashboardScreen(
     onNavigateToSettings: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val recorderState by viewModel.recorderState.collectAsState()
+    val isRecordingActive by viewModel.isRecordingActive.collectAsState()
 
     val scrollState = rememberScrollState()
 
@@ -144,9 +144,9 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 3. Hero Recording / Live Telemetry Card
+        // 3. Hero Recording / Live Telemetry Card (scopes 10Hz telemetry collection internally)
         HeroRecordingCard(
-            recorderState = recorderState,
+            viewModel = viewModel,
             uiState = uiState,
             onStartClick = onRequestRecordPermission,
             onStopClick = { viewModel.stopRecording() },
@@ -159,7 +159,8 @@ fun DashboardScreen(
         // 4. Overlay & Clean Canvas Controls
         OverlayAndCleanCanvasSection(
             uiState = uiState,
-            isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
+            isRecordingActive = isRecordingActive,
+            onToggleAlwaysOnPill = { viewModel.toggleAlwaysOnFloatingPill(it) },
             onToggleFloatingPill = { viewModel.toggleFloatingPill(it) },
             onToggleAutoHide = { viewModel.toggleAutoHidePill(it) },
             onSelectGesture = { viewModel.updatePillRecallGesture(it) },
@@ -173,7 +174,7 @@ fun DashboardScreen(
         // 5. Codec, Resolution & Framerate Deck
         ConfigSection(
             uiState = uiState,
-            isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused,
+            isRecordingActive = isRecordingActive,
             onOrientationSelect = { viewModel.updateRecordingOrientation(it) },
             onFramerateSelect = { viewModel.updateFramerate(it) },
             onResolutionSelect = { w, h -> viewModel.updateResolution(w, h) },
@@ -182,7 +183,7 @@ fun DashboardScreen(
             onBitrateSelect = { viewModel.updateVideoBitrate(it) }
         )
 
-        Spacer(modifier = Modifier.height(100.dp))
+        Spacer(modifier = Modifier.height(116.dp))
     }
 }
 
@@ -314,21 +315,23 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
 
 @Composable
 private fun HeroRecordingCard(
-    recorderState: RecorderState,
+    viewModel: DashboardViewModel,
     uiState: DashboardUiState,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onPauseClick: () -> Unit,
     onResumeClick: () -> Unit
 ) {
-    when (recorderState) {
+    val recorderState by viewModel.recorderState.collectAsState()
+
+    when (val state = recorderState) {
         is RecorderState.Recording, is RecorderState.Paused -> {
-            val isPaused = recorderState is RecorderState.Paused
-            val durationMs = if (recorderState is RecorderState.Recording) recorderState.durationMs else (recorderState as RecorderState.Paused).durationMs
-            val bytes = if (recorderState is RecorderState.Recording) recorderState.bytesWritten else (recorderState as RecorderState.Paused).bytesWritten
-            val currentFps = if (recorderState is RecorderState.Recording) recorderState.currentFps else 0f
-            val gameDb = if (recorderState is RecorderState.Recording) recorderState.gameAudioDb else -60f
-            val micDb = if (recorderState is RecorderState.Recording) recorderState.micAudioDb else -60f
+            val isPaused = state is RecorderState.Paused
+            val durationMs = if (state is RecorderState.Recording) state.durationMs else (state as RecorderState.Paused).durationMs
+            val bytes = if (state is RecorderState.Recording) state.bytesWritten else (state as RecorderState.Paused).bytesWritten
+            val currentFps = if (state is RecorderState.Recording) state.currentFps else 0f
+            val gameDb = if (state is RecorderState.Recording) state.gameAudioDb else -60f
+            val micDb = if (state is RecorderState.Recording) state.micAudioDb else -60f
 
             val pulseTransition = rememberInfiniteTransition(label = "Pulse")
             val pulseAlpha by pulseTransition.animateFloat(
@@ -474,7 +477,7 @@ private fun HeroRecordingCard(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "${recorderState.formattedSize} • ${StorageCalculator.formatDuration(recorderState.durationMs)}",
+                    text = "${state.formattedSize} • ${StorageCalculator.formatDuration(state.durationMs)}",
                     color = ToxicLime,
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
@@ -561,6 +564,7 @@ private fun HeroRecordingCard(
 private fun OverlayAndCleanCanvasSection(
     uiState: DashboardUiState,
     isRecordingActive: Boolean,
+    onToggleAlwaysOnPill: (Boolean) -> Unit,
     onToggleFloatingPill: (Boolean) -> Unit,
     onToggleAutoHide: (Boolean) -> Unit,
     onSelectGesture: (PillRecallGesture) -> Unit,
@@ -573,15 +577,27 @@ private fun OverlayAndCleanCanvasSection(
 
     SectionCard(
         title = "CLEAN CANVAS & OVERLAY CONTROLS",
-        titleTag = if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
-        tagColor = if (!config.showFloatingPill) ToxicLime else if (config.autoHidePill) HyperCyan else Color.White,
+        titleTag = if (config.alwaysOnFloatingPill) "STANDBY ON" else if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
+        tagColor = if (config.alwaysOnFloatingPill) ToxicLime else if (!config.showFloatingPill) TextSecondary else if (config.autoHidePill) HyperCyan else Color.White,
         borderColor = BorderStark
     ) {
-        // 1. Solution 1: Floating Pill Toggle (Clean Canvas Mode)
+        // 1. Standby Floating Pill Toggle
+        SwitchRow(
+            icon = if (config.alwaysOnFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            title = "Standby Floating Pill Overlay",
+            subtitle = if (config.alwaysOnFloatingPill) "Edge-docked bubble & radial HUD menu active on screen" else "Standby bubble disabled",
+            checked = config.alwaysOnFloatingPill,
+            enabled = !isRecordingActive,
+            onCheckedChange = onToggleAlwaysOnPill
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 2. Solution 1: Live Recording Floating Pill Toggle (Clean Canvas Mode)
         SwitchRow(
             icon = if (config.showFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            title = "Floating Game Pill Overlay",
-            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden (control via Shake/Notification)",
+            title = "Live Recording Pill Overlay",
+            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden during recording",
             checked = config.showFloatingPill,
             enabled = !isRecordingActive,
             onCheckedChange = onToggleFloatingPill

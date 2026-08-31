@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-parcelize")
 }
 
 val versionPropsFile = rootProject.file("version.properties")
@@ -18,7 +19,7 @@ val appVersionCode: Int = versionProps.getProperty("VERSION_CODE", "1").toInt()
 
 android {
     namespace = "pixl.rec"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "pixl.rec"
@@ -32,7 +33,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -66,6 +68,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val variantName = variant.buildType.name
+            val baseName = "REC-v${variant.versionName}"
+            val newName = if (variantName == "release") "$baseName.apk" else "$baseName-$variantName.apk"
+            output?.outputFileName = newName
         }
     }
 }

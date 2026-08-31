@@ -3,8 +3,9 @@ package pixl.rec.ui.vault.model
 import android.graphics.Bitmap
 import android.net.Uri
 import pixl.rec.core.storage.StorageCalculator
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 data class RecordingItem(
@@ -25,5 +26,11 @@ data class RecordingItem(
         get() = StorageCalculator.formatBytes(sizeBytes)
 
     val formattedDate: String
-        get() = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.US).format(Date(dateAddedSec * 1000))
+        get() = dateFormatter.format(Instant.ofEpochSecond(dateAddedSec))
+
+    companion object {
+        private val dateFormatter = DateTimeFormatter
+            .ofPattern("MMM dd, yyyy • HH:mm", Locale.US)
+            .withZone(ZoneId.systemDefault())
+    }
 }

@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pixl.rec.core.model.RecorderState
 import pixl.rec.ui.dashboard.DashboardScreen
@@ -44,7 +45,7 @@ fun MainScreen(
     onRequestRecordPermission: () -> Unit
 ) {
     var currentTab by rememberSaveable { mutableStateOf(initialTab) }
-    val recorderState by dashboardViewModel.recorderState.collectAsState()
+    val isRecording by dashboardViewModel.isRecordingActive.collectAsState()
 
     LaunchedEffect(initialTab) {
         currentTab = initialTab
@@ -57,9 +58,8 @@ fun MainScreen(
             BottomNavBar(
                 currentTab = currentTab,
                 onTabSelected = { currentTab = it },
-                recorderState = recorderState,
+                isRecording = isRecording,
                 onRecordAction = {
-                    val isRecording = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused
                     if (isRecording) {
                         dashboardViewModel.stopRecording()
                     } else {
@@ -72,10 +72,10 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .background(ObsidianCanvas)
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                .padding(bottom = padding.calculateBottomPadding())
         ) {
             AnimatedContent(
                 targetState = currentTab,

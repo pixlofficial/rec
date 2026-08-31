@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +28,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -61,8 +64,9 @@ class ScreenRecorderEngine(
     private val isMuxerStarted = AtomicBoolean(false)
     private val muxerLock = ReentrantLock()
 
-    // Pending sample queue for samples received before muxer starts
+    // Pending sample queue & buffer pool for samples received before muxer starts
     private val pendingSamples = mutableListOf<PendingSample>()
+    private val pendingBufferPool = ArrayDeque<ByteArray>()
 
     private data class PendingSample(
         val trackIndex: Int,
@@ -73,13 +77,24 @@ class ScreenRecorderEngine(
         val flags: Int
     )
 
+    private fun getOrCreatePendingBuffer(size: Int): ByteArray {
+        val existing = pendingBufferPool.removeFirstOrNull()
+        return if (existing != null && existing.size >= size) existing else ByteArray(size)
+    }
+
+    private fun recyclePendingBuffer(buffer: ByteArray) {
+        if (pendingBufferPool.size < 32) {
+            pendingBufferPool.addLast(buffer)
+        }
+    }
+
     private val isRecording = AtomicBoolean(false)
     private val isPaused = AtomicBoolean(false)
 
     private var startTimeMs = 0L
     private var totalPausedDurationMs = 0L
     private var pauseStartTimeMs = 0L
-    private var totalBytesWritten = 0L
+    private val totalBytesWritten = AtomicLong(0L)
     private var currentFps = 0f
     private var gameAudioDb = -60f
     private var micAudioDb = -60f
@@ -238,16 +253,18 @@ class ScreenRecorderEngine(
             displayListener = listener
             displayManager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
 
-            // 5. Start all pipelines
+            // 5. Start all pipelines with unified monotonic session baseline
+            val sessionBaseTimeNs = System.nanoTime()
+
             isRecording.set(true)
             isPaused.set(false)
             startTimeMs = System.currentTimeMillis()
             totalPausedDurationMs = 0L
-            totalBytesWritten = 0L
+            totalBytesWritten.set(0L)
 
-            vEncoder.start(engineScope)
+            vEncoder.start(engineScope, sessionBaseTimeNs)
             audioEncoder?.start(engineScope)
-            audioCaptureManager?.start(engineScope)
+            audioCaptureManager?.start(engineScope, sessionBaseTimeNs)
 
             startTelemetryTicker()
             Log.i(tag, "ScreenRecorderEngine started successfully")
@@ -266,7 +283,7 @@ class ScreenRecorderEngine(
             videoEncoder?.pause()
             audioCaptureManager?.pause()
             val duration = getRecordedDurationMs()
-            _state.value = RecorderState.Paused(duration, totalBytesWritten)
+            _state.value = RecorderState.Paused(duration, totalBytesWritten.get())
             Log.i(tag, "ScreenRecorderEngine paused at ${duration}ms")
         }
     }
@@ -294,7 +311,7 @@ class ScreenRecorderEngine(
         telemetryTickerJob?.cancel()
 
         val finalDurationMs = getRecordedDurationMs()
-        val finalBytes = totalBytesWritten
+        val finalBytes = totalBytesWritten.get()
 
         engineScope.launch(Dispatchers.IO) {
             try {
@@ -303,8 +320,13 @@ class ScreenRecorderEngine(
                 audioEncoder?.stop()
                 videoEncoder?.stop()
 
-                // Small delay to allow codec EOS flushing
-                delay(150)
+                // Wait for deterministic EOS signal flush from hardware encoders (up to 2000ms max)
+                withTimeoutOrNull(2000L) {
+                    val videoEos = async { videoEncoder?.awaitEos() }
+                    val audioEos = async { audioEncoder?.awaitEos() }
+                    videoEos.await()
+                    audioEos.await()
+                }
 
                 // 2. Release Virtual Display & unregister rotation listener
                 displayListener?.let {
@@ -408,6 +430,9 @@ class ScreenRecorderEngine(
             }
         }
 
+        pendingSamples.clear()
+        pendingBufferPool.clear()
+
         mediaStoreWriter?.cancel()
         _state.value = RecorderState.Idle
     }
@@ -455,11 +480,12 @@ class ScreenRecorderEngine(
                             set(sample.offset, sample.size, sample.presentationTimeUs, sample.flags)
                         }
                         muxer.writeSampleData(realTrack, byteBuf, info)
-                        totalBytesWritten += sample.size
+                        totalBytesWritten.addAndGet(sample.size.toLong())
                     } catch (e: Exception) {
                         Log.e(tag, "Error draining pending sample", e)
                     }
                 }
+                recyclePendingBuffer(sample.data)
             }
             pendingSamples.clear()
         }
@@ -468,13 +494,29 @@ class ScreenRecorderEngine(
     private fun writeSample(logicalTrack: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         if (!isRecording.get()) return
 
+        // Fast path: MediaMuxer is already active and tracks are configured.
+        // MediaMuxer.writeSampleData() is internally thread-safe across different tracks.
+        if (isMuxerStarted.get()) {
+            val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
+            if (realTrack >= 0) {
+                try {
+                    mediaMuxer?.writeSampleData(realTrack, buffer, bufferInfo)
+                    totalBytesWritten.addAndGet(bufferInfo.size.toLong())
+                } catch (e: Exception) {
+                    Log.e(tag, "Error writing sample data to track $realTrack", e)
+                }
+            }
+            return
+        }
+
+        // Slow path: Muxer not yet started, queue under lock
         muxerLock.withLock {
             if (isMuxerStarted.get()) {
                 val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
                 if (realTrack >= 0) {
                     try {
                         mediaMuxer?.writeSampleData(realTrack, buffer, bufferInfo)
-                        totalBytesWritten += bufferInfo.size
+                        totalBytesWritten.addAndGet(bufferInfo.size.toLong())
                     } catch (e: Exception) {
                         Log.e(tag, "Error writing sample data to track $realTrack", e)
                     }
@@ -482,7 +524,7 @@ class ScreenRecorderEngine(
             } else {
                 // Queue until muxer starts (max 100 frames)
                 if (pendingSamples.size < 100) {
-                    val bytes = ByteArray(bufferInfo.size)
+                    val bytes = getOrCreatePendingBuffer(bufferInfo.size)
                     val oldPos = buffer.position()
                     buffer.position(bufferInfo.offset)
                     buffer.get(bytes, 0, bufferInfo.size)
@@ -511,7 +553,7 @@ class ScreenRecorderEngine(
                     val duration = getRecordedDurationMs()
                     _state.value = RecorderState.Recording(
                         durationMs = duration,
-                        bytesWritten = totalBytesWritten,
+                        bytesWritten = totalBytesWritten.get(),
                         currentFps = currentFps,
                         gameAudioDb = gameAudioDb,
                         micAudioDb = micAudioDb,

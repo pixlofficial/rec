@@ -5,11 +5,13 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.util.Log
 import pixl.rec.core.model.RecordingConfig
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -33,6 +35,9 @@ class AudioEncoder(
     private var drainJob: Job? = null
     private val isRunning = AtomicBoolean(false)
     private var lastPtsUs = 0L
+
+    // Deterministic EOS await signal
+    private var eosDeferred = CompletableDeferred<Unit>()
 
     fun prepare() {
         val mime = MediaFormat.MIMETYPE_AUDIO_AAC
@@ -59,6 +64,7 @@ class AudioEncoder(
         codec.start()
         isRunning.set(true)
         lastPtsUs = 0L
+        eosDeferred = CompletableDeferred()
 
         drainJob = scope.launch(Dispatchers.IO) {
             drainOutputBuffers()
@@ -107,17 +113,41 @@ class AudioEncoder(
                     val inputIndex = codec.dequeueInputBuffer(10_000L)
                     if (inputIndex >= 0) {
                         codec.queueInputBuffer(inputIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    } else {
+                        if (!eosDeferred.isCompleted) {
+                            eosDeferred.complete(Unit)
+                        }
+                    }
+                } else {
+                    if (!eosDeferred.isCompleted) {
+                        eosDeferred.complete(Unit)
                     }
                 }
             } catch (e: Exception) {
                 Log.w(tag, "Failed to send audio EOS", e)
+                if (!eosDeferred.isCompleted) {
+                    eosDeferred.complete(Unit)
+                }
             }
         }
         drainJob?.cancel()
     }
 
+    /**
+     * Awaits completion of EOS output buffer processing.
+     */
+    suspend fun awaitEos(timeoutMs: Long = 2000L): Boolean {
+        return withTimeoutOrNull(timeoutMs) {
+            eosDeferred.await()
+            true
+        } ?: false
+    }
+
     fun release() {
         stop()
+        if (!eosDeferred.isCompleted) {
+            eosDeferred.complete(Unit)
+        }
         try {
             mediaCodec?.stop()
         } catch (e: Exception) {
@@ -173,6 +203,9 @@ class AudioEncoder(
 
                             if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                                 Log.i(tag, "Audio encoder reached EOS")
+                                if (!eosDeferred.isCompleted) {
+                                    eosDeferred.complete(Unit)
+                                }
                                 break
                             }
                         }
@@ -182,6 +215,9 @@ class AudioEncoder(
                 if (isRunning.get()) {
                     Log.e(tag, "Error in AudioEncoder drain loop", e)
                     listener.onAudioError(e)
+                }
+                if (!eosDeferred.isCompleted) {
+                    eosDeferred.complete(Unit)
                 }
                 break
             }

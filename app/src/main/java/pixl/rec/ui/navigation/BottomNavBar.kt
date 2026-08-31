@@ -120,7 +120,7 @@ class CrestedDockShape(
 fun BottomNavBar(
     currentTab: NavigationTab,
     onTabSelected: (NavigationTab) -> Unit,
-    recorderState: RecorderState,
+    isRecording: Boolean,
     onRecordAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -135,23 +135,28 @@ fun BottomNavBar(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.Transparent)
-            .windowInsetsPadding(bottomNavInsets)
     ) {
         // Chamfered Canopy Dock Container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(horizontalInsets)
+                .windowInsetsPadding(bottomNavInsets)
                 .clip(navShape)
-                .background(SurfaceElevated)
-                .border(width = 1.dp, color = BorderStark, shape = navShape)
+                .background(SurfaceElevated.copy(alpha = 0.95f))
+                .border(
+                    width = 1.dp,
+                    color = BorderStark,
+                    shape = navShape
+                )
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .windowInsetsPadding(horizontalInsets)
-                    .padding(top = 26.dp, bottom = 4.dp, start = 4.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround
+                    .height(60.dp)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Left Tabs: DASHBOARD & VAULT
                 NavTabItem(
@@ -168,8 +173,8 @@ fun BottomNavBar(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Center Spacer for floating Action Shutter
-                Spacer(modifier = Modifier.weight(1f))
+                // Shutter gap reservation under the canopy
+                Spacer(modifier = Modifier.weight(1.3f))
 
                 // Right Tabs: SETTINGS & MORE
                 NavTabItem(
@@ -190,11 +195,11 @@ fun BottomNavBar(
 
         // Shutter Button positioned crowned under the canopy
         FloatingRecordShutter(
-            recorderState = recorderState,
+            isRecording = isRecording,
             onRecordAction = onRecordAction,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-10).dp)
+                .offset(y = 19.dp)
         )
     }
 }
@@ -204,30 +209,33 @@ fun BottomNavBar(
  */
 @Composable
 fun FloatingRecordShutter(
-    recorderState: RecorderState,
+    isRecording: Boolean,
     onRecordAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRecording = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused
-
-    // Gentle, subtle breathing pulse for center shutter when live recording
-    val pulseTransition = rememberInfiniteTransition(label = "ShutterPulse")
-    val pulseScale by pulseTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "PulseScale"
-    )
+    // Gentle, subtle breathing pulse for center shutter when live recording (idle = static 1f)
+    val pulseScale = if (isRecording) {
+        val pulseTransition = rememberInfiniteTransition(label = "ShutterPulse")
+        val scale by pulseTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "PulseScale"
+        )
+        scale
+    } else {
+        1f
+    }
 
     Box(
         modifier = modifier
-            .size(100.dp)
+            .size(118.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 50.dp),
+                indication = ripple(bounded = false, radius = 59.dp),
                 onClick = onRecordAction
             ),
         contentAlignment = Alignment.Center
@@ -239,8 +247,8 @@ fun FloatingRecordShutter(
             contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
             tint = HyperCrimson,
             modifier = Modifier
-                .size(96.dp)
-                .scale(if (isRecording) pulseScale else 1f)
+                .size(114.dp)
+                .scale(pulseScale)
         )
     }
 }

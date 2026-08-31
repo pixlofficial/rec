@@ -43,6 +43,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Invisible Screen Capture Consent Trampoline Activity for Overlay -->
+        <activity
+            android:name=".ui.CapturePermissionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.REC.Transparent"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <!-- Zero-Copy MediaProjection & Audio Capture Foreground Service -->
         <service
             android:name=".service.RecordingService"

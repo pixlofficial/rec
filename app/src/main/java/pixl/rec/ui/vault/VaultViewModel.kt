@@ -15,10 +15,12 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.service.RecordingService
 import pixl.rec.ui.vault.model.RecordingItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -48,6 +50,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private var thumbnailJob: kotlinx.coroutines.Job? = null
+    private val thumbnailCache = android.util.LruCache<Long, android.graphics.Bitmap>(64)
+
     fun refreshRecordings() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -56,6 +61,39 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             }
             _recordings.value = items
             _isLoading.value = false
+
+            // Asynchronously decode thumbnails in the background without blocking cursor UI load
+            loadThumbnailsAsync(items)
+        }
+    }
+
+    private fun loadThumbnailsAsync(items: List<RecordingItem>) {
+        thumbnailJob?.cancel()
+        thumbnailJob = viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            for (item in items) {
+                if (!isActive) break
+                if (item.thumbnail == null) {
+                    val cached = thumbnailCache.get(item.id)
+                    val bitmap = cached ?: try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            context.contentResolver.loadThumbnail(item.uri, Size(320, 180), null)?.also {
+                                thumbnailCache.put(item.id, it)
+                            }
+                        } else {
+                            null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+
+                    if (bitmap != null) {
+                        _recordings.value = _recordings.value.map {
+                            if (it.id == item.id) it.copy(thumbnail = bitmap) else it
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -109,17 +147,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     val height = cursor.getInt(heightCol)
 
                     val uri = ContentUris.withAppendedId(collectionUri, id)
-
-                    // Load thumbnail if available
-                    val thumbnail = try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            context.contentResolver.loadThumbnail(uri, Size(320, 180), null)
-                        } else {
-                            null
-                        }
-                    } catch (e: Exception) {
-                        null
-                    }
+                    val cachedThumbnail = thumbnailCache.get(id)
 
                     result.add(
                         RecordingItem(
@@ -131,7 +159,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                             dateAddedSec = dateAdded,
                             width = width,
                             height = height,
-                            thumbnail = thumbnail
+                            thumbnail = cachedThumbnail
                         )
                     )
                 }

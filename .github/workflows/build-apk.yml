@@ -57,8 +57,8 @@ jobs:
           echo "Building Google Play App Bundle (AAB) for version: $VERSION"
           ./gradlew bundleRelease --no-daemon --stacktrace
           mkdir -p build-output
-          cp app/build/outputs/bundle/release/app-release.aab build-output/PixL-REC-v${VERSION}.aab
-          cp app/build/outputs/bundle/release/app-release.aab build-output/PixL-REC.aab
+          cp app/build/outputs/bundle/release/app-release.aab build-output/REC-v${VERSION}.aab
+          cp app/build/outputs/bundle/release/app-release.aab build-output/REC.aab
 
       - name: Build Standalone Debug & Release APKs
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'apk' || github.event.inputs.build_target == 'both' }}
@@ -69,12 +69,12 @@ jobs:
           mkdir -p build-output
           
           # Standalone Release APK
-          cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC-v${VERSION}.apk
-          cp app/build/outputs/apk/release/app-release.apk build-output/PixL-REC.apk
+          cp app/build/outputs/apk/release/REC-v${VERSION}.apk build-output/REC-v${VERSION}.apk || cp app/build/outputs/apk/release/app-release.apk build-output/REC-v${VERSION}.apk
+          cp build-output/REC-v${VERSION}.apk build-output/REC.apk
           
           # Standalone Debug APK
-          cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug-v${VERSION}.apk
-          cp app/build/outputs/apk/debug/app-debug.apk build-output/PixL-REC-debug.apk
+          cp app/build/outputs/apk/debug/REC-v${VERSION}-debug.apk build-output/REC-v${VERSION}-debug.apk || cp app/build/outputs/apk/debug/app-debug.apk build-output/REC-v${VERSION}-debug.apk
+          cp build-output/REC-v${VERSION}-debug.apk build-output/REC-debug.apk
 
       - name: Generate Checksums & Build Manifest
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' }}
@@ -87,7 +87,7 @@ jobs:
       - name: Upload Build Artifacts (AAB & APKs)
         uses: actions/upload-artifact@v4
         with:
-          name: PixL-REC-Binaries
+          name: REC-Binaries
           path: build-output/*
           retention-days: 30
 

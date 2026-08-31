@@ -71,10 +71,10 @@ class RecordingService : Service() {
                     intent.getParcelableExtra(EXTRA_RESULT_DATA)
                 }
                 val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getSerializableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
+                    intent.getParcelableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
                 } else {
                     @Suppress("DEPRECATION")
-                    intent.getSerializableExtra(EXTRA_CONFIG) as? RecordingConfig
+                    intent.getParcelableExtra(EXTRA_CONFIG) as? RecordingConfig
                 } ?: RecordingConfig()
 
                 if (resultCode != 0 && resultData != null) {

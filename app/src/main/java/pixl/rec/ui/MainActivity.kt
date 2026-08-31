@@ -69,9 +69,14 @@ class MainActivity : ComponentActivity() {
         if (config.alwaysOnFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
             FloatingOverlayService.start(this, config)
         }
-        // Proceed to audio/notification permissions regardless of overlay grant
-        checkAudioAndRecordPermissions()
+        // If recording flow triggered this, continue to audio permissions
+        if (isStartingRecordFlow) {
+            isStartingRecordFlow = false
+            checkAudioAndRecordPermissions()
+        }
     }
+
+    private var isStartingRecordFlow = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Transition from native 0ms splash window to app theme
@@ -95,10 +100,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // If always-on floating pill is enabled and permission is granted, ensure overlay is active
         val config = viewModel.uiState.value.config
-        if (config.alwaysOnFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
-            FloatingOverlayService.start(this, config)
+        if (config.alwaysOnFloatingPill) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+                FloatingOverlayService.start(this, config)
+            } else if (!hasPromptedOverlay) {
+                hasPromptedOverlay = true
+                requestOverlayPermission(forRecording = false)
+            }
+        } else {
+            FloatingOverlayService.stop(this)
         }
     }
 
@@ -123,16 +134,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkAndRequestPermissions() {
-        val config = viewModel.uiState.value.config
-
-        // 1. If Floating Pill enabled and permission not granted, prompt once then proceed
-        if (config.showFloatingPill && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this) && !hasPromptedOverlay) {
+    private fun requestOverlayPermission(forRecording: Boolean) {
+        isStartingRecordFlow = forRecording
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
             overlayPermissionLauncher.launch(intent)
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        val config = viewModel.uiState.value.config
+
+        // If Floating Pill enabled and permission not granted, prompt once then proceed
+        if (config.showFloatingPill && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this) && !hasPromptedOverlay) {
+            requestOverlayPermission(forRecording = true)
             return
         }
 

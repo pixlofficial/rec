@@ -172,7 +172,7 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(100.dp))
+        Spacer(modifier = Modifier.height(116.dp))
     }
 }
 
@@ -353,13 +353,25 @@ private fun ControlsSettingsSection(
 
     SectionCard(
         title = "OVERLAY & GESTURE CONTROLS",
-        titleTag = if (config.showFloatingPill) "PILL ON" else "CLEAN CANVAS"
+        titleTag = if (config.alwaysOnFloatingPill) "STANDBY ON" else if (config.showFloatingPill) "REC PILL ON" else "CLEAN CANVAS"
     ) {
-        // 1. Floating Pill Toggle
+        // 1. Standby Floating Pill Toggle
+        SettingsSwitch(
+            icon = if (config.alwaysOnFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            title = "Standby Floating Pill Overlay",
+            subtitle = if (config.alwaysOnFloatingPill) "Edge-docked bubble & radial HUD menu active on screen" else "Standby bubble disabled",
+            checked = config.alwaysOnFloatingPill,
+            enabled = !isRecordingActive,
+            onCheckedChange = { viewModel.toggleAlwaysOnFloatingPill(it) }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 2. Live Recording Floating Pill Toggle
         SettingsSwitch(
             icon = if (config.showFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            title = "Floating Game Pill Overlay",
-            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden (control via Shake/Notification)",
+            title = "Live Recording Pill Overlay",
+            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden during recording",
             checked = config.showFloatingPill,
             enabled = !isRecordingActive,
             onCheckedChange = { viewModel.toggleFloatingPill(it) }

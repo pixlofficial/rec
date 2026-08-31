@@ -35,11 +35,17 @@ class RecordingConfigTest {
 
     @Test
     fun testMacroblockAlignment() {
-        // Odd numbers should be rounded up to even numbers
+        // Non-multiples of 16 should be rounded up to the nearest 16-pixel boundary
         val unaligned = RecordingConfig(width = 1079, height = 2399)
         val aligned = unaligned.withMacroblockAlignment()
-        assertEquals(1080, aligned.width)
-        assertEquals(2400, aligned.height)
+        assertEquals(1088, aligned.width) // (1079 + 15) / 16 * 16 = 1088
+        assertEquals(2400, aligned.height) // (2399 + 15) / 16 * 16 = 2400
+
+        // Dimensions already aligned to 16 should remain unchanged
+        val exact = RecordingConfig(width = 1920, height = 1088)
+        val alignedExact = exact.withMacroblockAlignment()
+        assertEquals(1920, alignedExact.width)
+        assertEquals(1088, alignedExact.height)
     }
 
     @Test

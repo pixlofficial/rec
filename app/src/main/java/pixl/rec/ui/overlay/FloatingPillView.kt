@@ -82,10 +82,12 @@ import kotlinx.coroutines.isActive
 @Composable
 fun FloatingPillView(
     config: RecordingConfig = RecordingConfig(),
+    isDockedOnLeft: Boolean = true,
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit = {},
     onExpandChanged: (Boolean) -> Unit = {},
     onRecordClick: () -> Unit = {},
+    onReplayClick: () -> Unit = {},
     onScreenshotClick: () -> Unit = {},
     onVaultClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -101,6 +103,7 @@ fun FloatingPillView(
         var isRadialExpanded by remember { mutableStateOf(false) }
         FloatingRadialMenuView(
             isExpanded = isRadialExpanded,
+            isDockedOnLeft = isDockedOnLeft,
             onToggleExpand = { expanded ->
                 isRadialExpanded = expanded
                 onExpandChanged(expanded)
@@ -108,6 +111,7 @@ fun FloatingPillView(
             onDrag = onDrag,
             onDragEnd = onDragEnd,
             onRecordClick = onRecordClick,
+            onReplayClick = onReplayClick,
             onScreenshotClick = onScreenshotClick,
             onVaultClick = onVaultClick,
             onSettingsClick = onSettingsClick
@@ -149,7 +153,9 @@ fun FloatingPillView(
             } else if (stateDurationMs > 0L) {
                 localTimerMs = stateDurationMs
             }
-            delay(100)
+            // Align delay to next second boundary to reduce overlay window recomposition from 10Hz to 1Hz
+            val msUntilNextSecond = 1000L - (System.currentTimeMillis() % 1000L)
+            delay(msUntilNextSecond.coerceAtLeast(100L))
         }
     }
 

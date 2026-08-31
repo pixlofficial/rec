@@ -6,7 +6,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
-import kotlin.math.sqrt
 
 /**
  * High-reliability accelerometer shake detector with g-force magnitude filtering and debouncing.
@@ -22,11 +21,13 @@ class ShakeDetector(
 
     private var lastShakeTimestamp = 0L
     private val shakeThresholdGravity = 2.7f // ~2.7g acceleration threshold
+    private val shakeThresholdGravitySq = shakeThresholdGravity * shakeThresholdGravity
     private val shakeSlopTimeMs = 1000L // 1 second debounce between shakes
 
     fun start() {
         if (accelerometer != null) {
-            sensorManager?.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME)
+            // SENSOR_DELAY_NORMAL (~5Hz) eliminates 90% of sensor wakeups while reliably detecting human shake
+            sensorManager?.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
             Log.i(tag, "ShakeDetector registered")
         } else {
             Log.w(tag, "Accelerometer not available on this device")
@@ -49,14 +50,14 @@ class ShakeDetector(
         val gY = y / SensorManager.GRAVITY_EARTH
         val gZ = z / SensorManager.GRAVITY_EARTH
 
-        // Net g-force vector magnitude
-        val gForce = sqrt((gX * gX + gY * gY + gZ * gZ).toDouble()).toFloat()
+        // Net g-force vector magnitude squared (avoids sqrt per callback)
+        val gForceSq = gX * gX + gY * gY + gZ * gZ
 
-        if (gForce > shakeThresholdGravity) {
+        if (gForceSq > shakeThresholdGravitySq) {
             val now = System.currentTimeMillis()
             if (now - lastShakeTimestamp >= shakeSlopTimeMs) {
                 lastShakeTimestamp = now
-                Log.i(tag, "Shake detected (gForce=$gForce), triggering callback")
+                Log.i(tag, "Shake detected (gForceSq=$gForceSq), triggering callback")
                 onShakeListener()
             }
         }

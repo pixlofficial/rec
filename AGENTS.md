@@ -167,8 +167,7 @@ All AI agents must strictly follow this protocol whenever bumping the version or
    * Commit format: `chore(release): bump version to X.Y.Z`
    * Release Tag format: `vX.Y.Z` (e.g. `git tag v0.1.0`)
    * Pushing the tag (`git push origin vX.Y.Z`) triggers `.github/workflows/build-apk.yml`, automatically building:
-     * `PixL-REC-vX.Y.Z.aab` (Google Play App Bundle)
-     * `PixL-REC-vX.Y.Z.apk` (Universal standalone release APK)
+     * `REC-vX.Y.Z.aab` (Google Play App Bundle)
+     * `REC-vX.Y.Z.apk` (Universal standalone release APK)
      * `SHA256SUMS.txt` (Cryptographic verification checksums)
      * GitHub Release with auto-generated release notes.
-

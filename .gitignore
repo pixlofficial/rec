@@ -19,3 +19,4 @@ local.properties
 test_recordings/
 .agents/mcp_config.json
 PROJECT_BLUEPRINT.md
+/dev/

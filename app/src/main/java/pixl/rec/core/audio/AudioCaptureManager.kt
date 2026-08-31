@@ -18,6 +18,7 @@ import pixl.rec.core.model.RecordingConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -52,6 +53,10 @@ class AudioCaptureManager(
     private var totalPauseOffsetNs = 0L
     private var startTimestampNs = 0L
     private var lastEmittedPtsUs = 0L
+
+    // Throttled VU calculation state (10Hz UI matching)
+    private var lastDbCalcTimeNs = 0L
+    private val DB_CALC_INTERVAL_NS = 100_000_000L // 100ms
 
     private val sampleRate = config.audioSampleRate // 48000
     private val channelConfig = AudioFormat.CHANNEL_IN_STEREO
@@ -147,9 +152,9 @@ class AudioCaptureManager(
     }
 
     /**
-     * Starts audio recording and mixing loops.
+     * Starts audio recording and mixing loops with unified session base time.
      */
-    fun start(scope: CoroutineScope) {
+    fun start(scope: CoroutineScope, sessionBaseTimeNs: Long = System.nanoTime()) {
         if (!config.audioSource.hasAudio) {
             Log.i(tag, "Audio is muted in config, skipping capture start")
             return
@@ -169,9 +174,10 @@ class AudioCaptureManager(
 
         isRunning.set(true)
         isPaused.set(false)
-        startTimestampNs = System.nanoTime()
+        startTimestampNs = sessionBaseTimeNs
         lastEmittedPtsUs = 0L
         totalPauseOffsetNs = 0L
+        lastDbCalcTimeNs = 0L
 
         captureJob = scope.launch(Dispatchers.IO) {
             runCaptureLoop()
@@ -227,13 +233,11 @@ class AudioCaptureManager(
         Log.i(tag, "AudioCaptureManager released")
     }
 
-    private fun runCaptureLoop() {
+    private suspend fun runCaptureLoop() {
         val chunkSize = bufferSizeInBytes
         val gameBuffer = ByteArray(chunkSize)
         val micBuffer = ByteArray(chunkSize)
         val mixedBuffer = ByteArray(chunkSize)
-
-        var totalFramesEmitted = 0L
 
         while (isRunning.get()) {
             var gameBytesRead = 0
@@ -258,21 +262,25 @@ class AudioCaptureManager(
             }
 
             if (isPaused.get()) {
-                // Discard frames while paused
-                Thread.sleep(10)
+                // Non-blocking coroutine delay during pause
+                delay(10)
                 continue
             }
 
-            // If neither source provided data, back off slightly
+            // If neither source provided data, back off slightly with non-blocking delay
             if (gameBytesRead == 0 && micBytesRead == 0) {
-                Thread.sleep(10)
+                delay(10)
                 continue
             }
 
-            // Calculate live VU decibel levels
-            val gameDb = if (gameBytesRead > 0) PcmAudioMixer.calculateDbLevel(gameBuffer, gameBytesRead) else -60f
-            val micDb = if (micBytesRead > 0) PcmAudioMixer.calculateDbLevel(micBuffer, micBytesRead) else -60f
-            listener.onAudioLevels(gameDb, micDb)
+            // Throttled VU decibel level calculation (10Hz matching UI telemetry ticker)
+            val nowNs = System.nanoTime()
+            if (nowNs - lastDbCalcTimeNs >= DB_CALC_INTERVAL_NS) {
+                lastDbCalcTimeNs = nowNs
+                val gameDb = if (gameBytesRead > 0) PcmAudioMixer.calculateDbLevel(gameBuffer, gameBytesRead) else -60f
+                val micDb = if (micBytesRead > 0) PcmAudioMixer.calculateDbLevel(micBuffer, micBytesRead) else -60f
+                listener.onAudioLevels(gameDb, micDb)
+            }
 
             // Mix audio buffers
             val outputBytes: Int
@@ -298,13 +306,9 @@ class AudioCaptureManager(
             }
 
             if (outputBytes > 0) {
-                // Compute presentation timestamp strictly aligned with sample rate progression
-                // PTS (us) = (totalFrames * 1,000,000) / sampleRate
-                val framesInChunk = outputBytes / bytesPerSample
-                val ptsUs = (totalFramesEmitted * 1_000_000L) / sampleRate
-                totalFramesEmitted += framesInChunk
-
-                val adjustedPtsUs = ptsUs.coerceAtLeast(lastEmittedPtsUs)
+                // Compute presentation timestamp synchronized against the monotonic session baseline
+                val elapsedUs = ((nowNs - startTimestampNs - totalPauseOffsetNs) / 1000L).coerceAtLeast(0L)
+                val adjustedPtsUs = elapsedUs.coerceAtLeast(lastEmittedPtsUs)
                 lastEmittedPtsUs = adjustedPtsUs
 
                 listener.onPcmAudioData(mixedBuffer, outputBytes, adjustedPtsUs)

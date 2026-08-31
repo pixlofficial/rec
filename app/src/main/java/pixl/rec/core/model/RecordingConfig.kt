@@ -2,7 +2,8 @@ package pixl.rec.core.model
 
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
-import java.io.Serializable
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
 /**
  * Supported hardware video codec standard representations.
@@ -69,6 +70,7 @@ enum class RecordingOrientation(val displayName: String) {
 /**
  * Master configuration profile for zero-copy recording session.
  */
+@Parcelize
 data class RecordingConfig(
     val width: Int = 1080,
     val height: Int = 2400,
@@ -95,7 +97,7 @@ data class RecordingConfig(
     val shakeToStop: Boolean = true,
     val stopOnScreenOff: Boolean = true,
     val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN
-) : Serializable {
+) : Parcelable {
 
     val aspectRatio: Float
         get() = if (height != 0) width.toFloat() / height.toFloat() else 1.0f
@@ -110,11 +112,11 @@ data class RecordingConfig(
         get() = ((videoBitrate + if (audioSource.hasAudio) audioBitrate else 0) / 8.0 / (1024.0 * 1024.0)) * 60.0
 
     /**
-     * Returns a copy clamped and aligned to H.264/H.265 macroblock requirements (multiples of 16 or 2).
+     * Returns a copy clamped and aligned to H.264/H.265 16-pixel macroblock requirements.
      */
     fun withMacroblockAlignment(): RecordingConfig {
-        val alignedWidth = (width + 1) and 1.inv() // Even number
-        val alignedHeight = (height + 1) and 1.inv() // Even number
+        val alignedWidth = ((width + 15) / 16) * 16
+        val alignedHeight = ((height + 15) / 16) * 16
         return copy(width = alignedWidth, height = alignedHeight)
     }
 }
