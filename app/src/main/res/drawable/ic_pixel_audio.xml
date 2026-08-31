@@ -1,0 +1,54 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel Speaker / Audio Icon -->
+    <group
+        android:scaleX="1.2"
+        android:scaleY="1.2"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Speaker Body Base (Rows 4..6 - Cols 1, 2) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Speaker Cone Flare (Rows 2..8 - Cols 3, 4, 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,19.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,85.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Inner Sound Wave (Cols 7 - Rows 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Sound Wave (Cols 9 - Rows 3..7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,69.0 h 6.6 v 6.6 h -6.6 Z" />
+    </group>
+</vector>

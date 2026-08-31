@@ -105,5 +105,17 @@ fun MainScreen(
             },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        // Fullscreen In-App Video Player (covers the whole screen and hides bottom bar)
+        val activePlayerRecording by vaultViewModel.activePlayerRecording.collectAsState()
+        val context = androidx.compose.ui.platform.LocalContext.current
+        activePlayerRecording?.let { playingItem ->
+            pixl.rec.ui.vault.player.VaultVideoPlayer(
+                item = playingItem,
+                onClose = { vaultViewModel.closeInAppPlayer() },
+                onShare = { vaultViewModel.shareRecording(context, playingItem) },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }

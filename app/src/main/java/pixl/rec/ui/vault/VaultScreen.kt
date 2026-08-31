@@ -38,6 +38,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
+import androidx.compose.ui.res.painterResource
+import pixl.rec.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,6 +83,7 @@ fun VaultScreen(
     val context = LocalContext.current
     val recordings by vaultViewModel.recordings.collectAsState()
     val isLoading by vaultViewModel.isLoading.collectAsState()
+    val activePlayerRecording by vaultViewModel.activePlayerRecording.collectAsState()
 
     // Auto-refresh when Vault screen is entered
     LaunchedEffect(Unit) {
@@ -277,7 +280,7 @@ fun VaultScreen(
                 ) { item ->
                     RecordingCard(
                         item = item,
-                        onPlay = { vaultViewModel.playRecording(context, item) },
+                        onPlay = { vaultViewModel.openInAppPlayer(item) },
                         onShare = { vaultViewModel.shareRecording(context, item) },
                         onDelete = { vaultViewModel.deleteRecording(context, item) }
                     )
@@ -302,6 +305,8 @@ private fun RecordingCard(
             .fillMaxWidth()
             .background(SurfaceElevated, RoundedCornerShape(12.dp))
             .border(1.5.dp, BorderStark, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onPlay)
             .padding(12.dp)
     ) {
         Column {
@@ -316,8 +321,7 @@ private fun RecordingCard(
                         .size(width = 100.dp, height = 64.dp)
                         .background(SurfaceRaised, RoundedCornerShape(8.dp))
                         .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onPlay),
+                        .clip(RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (item.thumbnail != null) {
@@ -393,7 +397,7 @@ private fun RecordingCard(
                         .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Share,
+                        painter = painterResource(id = R.drawable.ic_pixel_share),
                         contentDescription = "Share",
                         tint = TextPrimary,
                         modifier = Modifier.size(16.dp)

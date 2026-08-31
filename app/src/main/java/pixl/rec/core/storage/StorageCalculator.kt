@@ -83,4 +83,16 @@ object StorageCalculator {
             String.format(Locale.US, "%02d:%02d", minutes, seconds)
         }
     }
+
+    /**
+     * Formats duration milliseconds into high-precision timecode "HH:MM:SS.X" (e.g., "00:00:04.2").
+     */
+    fun formatTimecode(durationMs: Long): String {
+        val hours = TimeUnit.MILLISECONDS.toHours(durationMs)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMs) % 60
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(durationMs) % 60
+        val tenths = (durationMs % 1000) / 100
+
+        return String.format(Locale.US, "%02d:%02d:%02d.%d", hours, minutes, seconds, tenths)
+    }
 }

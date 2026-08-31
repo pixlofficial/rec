@@ -44,11 +44,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pixl.rec.R
 import pixl.rec.core.model.AudioSource
-import pixl.rec.core.model.CaptureTarget
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingOrientation
@@ -357,7 +358,7 @@ private fun ControlsSettingsSection(
     ) {
         // 1. Standby Floating Pill Toggle
         SettingsSwitch(
-            icon = if (config.alwaysOnFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            iconRes = if (config.alwaysOnFloatingPill) R.drawable.ic_pixel_eye else R.drawable.ic_pixel_eye_off,
             title = "Standby Floating Pill Overlay",
             subtitle = if (config.alwaysOnFloatingPill) "Edge-docked bubble & radial HUD menu active on screen" else "Standby bubble disabled",
             checked = config.alwaysOnFloatingPill,
@@ -369,7 +370,7 @@ private fun ControlsSettingsSection(
 
         // 2. Live Recording Floating Pill Toggle
         SettingsSwitch(
-            icon = if (config.showFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            iconRes = if (config.showFloatingPill) R.drawable.ic_pixel_eye else R.drawable.ic_pixel_eye_off,
             title = "Live Recording Pill Overlay",
             subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden during recording",
             checked = config.showFloatingPill,
@@ -383,7 +384,7 @@ private fun ControlsSettingsSection(
         AnimatedVisibility(visible = config.showFloatingPill) {
             Column {
                 SettingsSwitch(
-                    icon = Icons.Default.Gesture,
+                    iconRes = R.drawable.ic_pixel_gesture,
                     title = "Auto-Hide Pill to Invisible",
                     subtitle = "Pill disappears completely after 2s; recall anytime with gesture",
                     checked = config.autoHidePill,
@@ -425,7 +426,7 @@ private fun ControlsSettingsSection(
 
         // 3. Shake to Stop Gesture
         SettingsSwitch(
-            icon = Icons.Default.Vibration,
+            iconRes = R.drawable.ic_pixel_vibrate,
             title = "Shake to Stop",
             subtitle = "Quick wrist flick stops and saves recording",
             checked = config.shakeToStop,
@@ -437,7 +438,7 @@ private fun ControlsSettingsSection(
 
         // 4. Stop on Screen Off
         SettingsSwitch(
-            icon = Icons.Default.PowerSettingsNew,
+            iconRes = R.drawable.ic_pixel_power,
             title = "Stop on Screen Off",
             subtitle = "Locks video cleanly when power button is pressed",
             checked = config.stopOnScreenOff,
@@ -573,7 +574,7 @@ private fun SettingsRow(
 
 @Composable
 private fun SettingsSwitch(
-    icon: ImageVector,
+    iconRes: Int,
     title: String,
     subtitle: String,
     checked: Boolean,
@@ -595,10 +596,10 @@ private fun SettingsSwitch(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(id = iconRes),
                 contentDescription = null,
                 tint = if (checked) BorderHighlight else TextSecondary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(26.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {

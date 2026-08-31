@@ -1,0 +1,64 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel CPU / Microchip / Hardware ASIC Icon -->
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Top Pins (Cols 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,28.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Bottom Pins (Cols 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,85.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Left Pins (Rows 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Right Pins (Rows 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Chip Outer Frame - Top Wall (Row 2 - Cols 2..7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Chip Outer Frame - Side Walls (Rows 3..6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,52.6 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Chip Outer Frame - Bottom Wall (Row 7 - Cols 2..7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Central Silicon Core (Rows 4, 5 - Cols 4, 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
+    </group>
+</vector>

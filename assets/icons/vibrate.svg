@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- PixL REC - White Pixel Vibration / Shake Icon -->
+  <g fill="#FFFFFF" transform="scale(1.25)" transform-origin="60 60">
+    <!-- Left Outer Vibration Wave (Col 0) -->
+    <rect x="19.8" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="19.8" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Left Inner Vibration Wave (Col 1) -->
+    <rect x="28.0" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Center Phone - Top Edge (Row 1 - Cols 3..6) -->
+    <rect x="44.4" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Center Phone - Side Edges & Top Speaker Notch (Rows 2..7) -->
+    <rect x="44.4" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="44.4" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="44.4" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="44.4" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="44.4" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="44.4" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Center Phone - Bottom Edge (Row 8 - Cols 3..6) -->
+    <rect x="44.4" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Right Inner Vibration Wave (Col 8) -->
+    <rect x="85.4" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Right Outer Vibration Wave (Col 9) -->
+    <rect x="93.6" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+  </g>
+</svg>

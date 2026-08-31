@@ -1,0 +1,52 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel Slashed Eye / Visibility Off Icon -->
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Diagonal Slash Top Tip (Row 1 - Col 1) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,28.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Top Eyelid Peak (Row 2 - Cols 4, 5) & Slash (Col 2) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,36.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Top Eyelid Slope (Row 3) & Slash (Col 3) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Eye Corners & Central Pupil & Slash (Row 4 - Slash Col 4) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Eye Corners & Central Pupil & Slash (Row 5 - Slash Col 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Bottom Eyelid Slope (Row 6) & Slash (Col 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Bottom Eyelid Base (Row 7 - Cols 4, 5) & Slash (Col 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Diagonal Slash Bottom Tip (Row 8 - Col 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,85.4 h 6.6 v 6.6 h -6.6 Z" />
+    </group>
+</vector>

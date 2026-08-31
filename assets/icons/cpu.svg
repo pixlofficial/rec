@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- PixL REC - White Pixel CPU / Microchip / Hardware ASIC Icon -->
+  <g fill="#FFFFFF">
+    <!-- Top Pins (Cols 3, 6) -->
+    <rect x="44.4" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="28.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Bottom Pins (Cols 3, 6) -->
+    <rect x="44.4" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="85.4" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Left Pins (Rows 3, 6) -->
+    <rect x="28.0" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Right Pins (Rows 3, 6) -->
+    <rect x="85.4" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Chip Outer Frame - Top Wall (Row 2 - Cols 2..7) -->
+    <rect x="36.2" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="44.4" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="36.2" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Chip Outer Frame - Side Walls (Rows 3..6) -->
+    <rect x="36.2" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="44.4" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="36.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="36.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+
+    <rect x="36.2" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="69.0" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Chip Outer Frame - Bottom Wall (Row 7 - Cols 2..7) -->
+    <rect x="36.2" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="44.4" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="77.2" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Central Silicon Core (Rows 4, 5 - Cols 4, 5) -->
+    <rect x="52.6" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+  </g>
+</svg>

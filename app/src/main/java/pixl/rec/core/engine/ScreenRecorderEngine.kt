@@ -210,17 +210,11 @@ class ScreenRecorderEngine(
             }
 
             // 4. Create VirtualDisplay piped directly to VideoEncoder Input Surface (Zero-Copy)
-            val (initialSourceWidth, initialSourceHeight) = if (isLandscape) {
-                portraitHeight to portraitWidth
-            } else {
-                portraitWidth to portraitHeight
-            }
-
             val surface = vEncoder.inputSurface ?: throw IllegalStateException("Encoder surface is null")
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "PixL-REC-Display",
-                initialSourceWidth,
-                initialSourceHeight,
+                activeConfig.width,
+                activeConfig.height,
                 activeConfig.dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface,
@@ -228,7 +222,7 @@ class ScreenRecorderEngine(
                 Handler(Looper.getMainLooper())
             )
 
-            // Register Real-Time Display Rotation Listener for Automatic Dynamic Adaptation
+            // Register Display Rotation Listener for rotation telemetry & logging
             val listener = object : DisplayManager.DisplayListener {
                 override fun onDisplayAdded(displayId: Int) = Unit
                 override fun onDisplayRemoved(displayId: Int) = Unit
@@ -238,14 +232,7 @@ class ScreenRecorderEngine(
                         val newRotation = activeDisplay.rotation
                         if (newRotation != lastRecordedRotation) {
                             lastRecordedRotation = newRotation
-                            val isLand = newRotation == android.view.Surface.ROTATION_90 || newRotation == android.view.Surface.ROTATION_270
-                            val (w, h) = if (isLand) {
-                                portraitHeight to portraitWidth
-                            } else {
-                                portraitWidth to portraitHeight
-                            }
-                            Log.i(tag, "Display rotation changed to $newRotation -> Resizing VirtualDisplay source to ${w}x${h} @ ${activeConfig.dpi} DPI (Canvas locked at ${activeConfig.width}x${activeConfig.height})")
-                            virtualDisplay?.resize(w, h, activeConfig.dpi)
+                            Log.i(tag, "Physical display rotation changed to $newRotation (Canvas locked at ${activeConfig.width}x${activeConfig.height})")
                         }
                     }
                 }

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- PixL REC - White Pixel Right Arrow Icon (Zero-Copy Pipeline) -->
+  <g fill="#FFFFFF">
+    <!-- Arrowhead Top Peak (Row 1) -->
+    <rect x="77.2" y="23.9" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 2) -->
+    <rect x="77.2" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="32.1" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 3) -->
+    <rect x="77.2" y="40.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="40.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="40.3" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 4) -->
+    <rect x="77.2" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="101.8" y="48.5" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Center Line / Shaft & Arrowhead Tip (Row 5) -->
+    <rect x="11.6" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="19.8" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="36.2" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="44.4" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="69.0" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="101.8" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="110.0" y="56.7" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 6) -->
+    <rect x="77.2" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="101.8" y="64.9" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 7) -->
+    <rect x="77.2" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="93.6" y="73.1" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Slope (Row 8) -->
+    <rect x="77.2" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="81.3" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Arrowhead Bottom Peak (Row 9) -->
+    <rect x="77.2" y="89.5" width="6.6" height="6.6" rx="1.0"/>
+  </g>
+</svg>

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
@@ -65,9 +66,9 @@ import pixl.rec.ui.theme.TextPrimary
  */
 class CrestedDockShape(
     private val cornerRadius: Dp = 16.dp,
-    private val crestHeight: Dp = 22.dp,
-    private val crestHalfWidth: Dp = 46.dp,
-    private val slopeWidth: Dp = 24.dp
+    private val crestHeight: Dp = 20.dp,
+    private val crestHalfWidth: Dp = 44.dp,
+    private val slopeWidth: Dp = 22.dp
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -138,7 +139,7 @@ fun BottomNavBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(76.dp)
+                .height(74.dp)
         ) {
             // Chamfered Canopy Dock Container
             Box(
@@ -155,7 +156,7 @@ fun BottomNavBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 24.dp, bottom = 6.dp, start = 6.dp, end = 6.dp),
+                        .padding(top = 25.dp, bottom = 4.dp, start = 6.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Left Tabs: DASHBOARD & VAULT
@@ -173,8 +174,8 @@ fun BottomNavBar(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Shutter gap reservation under the canopy for larger shutter
-                    Spacer(modifier = Modifier.weight(1.5f))
+                    // Shutter gap reservation under the canopy
+                    Spacer(modifier = Modifier.weight(1.3f))
 
                     // Right Tabs: SETTINGS & MORE
                     NavTabItem(
@@ -239,10 +240,10 @@ fun FloatingRecordShutter(
 
     Box(
         modifier = modifier
-            .size(108.dp)
+            .requiredSize(96.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 54.dp),
+                indication = ripple(bounded = false, radius = 36.dp),
                 onClick = onRecordAction
             ),
         contentAlignment = Alignment.Center
@@ -254,7 +255,7 @@ fun FloatingRecordShutter(
             contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
             tint = HyperCrimson,
             modifier = Modifier
-                .size(108.dp)
+                .requiredSize(96.dp)
                 .scale(pulseScale)
         )
     }

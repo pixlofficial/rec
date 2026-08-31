@@ -4,50 +4,26 @@
     android:viewportWidth="120"
     android:viewportHeight="120">
 
-    <!-- PixL REC - Pixel Matrix Close / Cancel Icon (Circular Ring with ✕ Cross) -->
-    <group>
-        <!-- Row 1 (Top rim: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,28.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,28.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,28.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,28.0 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 2 (Top shoulders: 2 squares) -->
+    <!-- PixL REC - White Pixel Close 'X' Icon -->
+    <group
+        android:scaleX="1.2"
+        android:scaleY="1.2"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Top-Left to Bottom-Right Diagonal -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 3 (Outer rim + Top Cross Arms: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 4 (Outer rim + Center Cross: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,52.6 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 5 (Outer rim + Center Cross: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 6 (Outer rim + Bottom Cross Arms: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
-
-        <!-- Row 7 (Bottom shoulders: 2 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
 
-        <!-- Row 8 (Bottom rim: 4 squares) -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,85.4 h 6.6 v 6.6 h -6.6 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <!-- Top-Right to Bottom-Left Diagonal -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,77.2 h 6.6 v 6.6 h -6.6 Z" />
     </group>
 </vector>

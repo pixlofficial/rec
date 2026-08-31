@@ -1,0 +1,55 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel Power / Screen Off Icon (Single-column Center Stem) -->
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Center Vertical Line (Single 1-column stem centered at x=56.7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,19.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 56.7,52.6 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Top Tips (Row 1 - Cols 2, 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,28.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Upper Diagonals (Row 2 - Cols 1, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,36.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Side Walls (Rows 3..6 - Cols 0, 9) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,44.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 19.8,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 93.6,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Lower Diagonals (Row 7 - Cols 1, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Bottom Arch (Row 8 - Cols 2, 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,85.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Outer Ring - Bottom Center Base (Row 8 - Cols 3..6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,85.4 h 6.6 v 6.6 h -6.6 Z" />
+    </group>
+</vector>

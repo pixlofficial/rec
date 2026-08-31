@@ -29,6 +29,8 @@ import pixl.rec.ui.CapturePermissionActivity
 import pixl.rec.ui.MainActivity
 import pixl.rec.ui.overlay.FloatingPillView
 import pixl.rec.ui.theme.RECTheme
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlin.math.roundToInt
 
 /**
@@ -174,10 +176,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         )
     }
 
+    private val serviceScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
+
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+
+        serviceScope.launch {
+            isTemporarilyHidden.collect { hidden ->
+                overlayView?.visibility = if (hidden) android.view.View.GONE else android.view.View.VISIBLE
+            }
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             stopSelf()
@@ -400,10 +410,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             }
             overlayView = null
         }
+        serviceScope.cancel()
     }
 
     companion object {
         const val EXTRA_CONFIG = "extra_config"
+
+        private val _isTemporarilyHidden = kotlinx.coroutines.flow.MutableStateFlow(false)
+        val isTemporarilyHidden: kotlinx.coroutines.flow.StateFlow<Boolean> = _isTemporarilyHidden
+
+        fun setTemporarilyHidden(hidden: Boolean) {
+            _isTemporarilyHidden.value = hidden
+        }
 
         fun start(context: Context, config: RecordingConfig = RecordingConfig()) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {

@@ -34,6 +34,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _activePlayerRecording = MutableStateFlow<RecordingItem?>(null)
+    val activePlayerRecording: StateFlow<RecordingItem?> = _activePlayerRecording.asStateFlow()
+
+    fun openInAppPlayer(item: RecordingItem) {
+        _activePlayerRecording.value = item
+    }
+
+    fun closeInAppPlayer() {
+        _activePlayerRecording.value = null
+    }
+
     init {
         refreshRecordings()
         observeRecordingFinished()

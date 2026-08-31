@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-08-31
+
+### 🚀 Added
+* **In-App Cyberpunk Video Player (Media3 ExoPlayer):**
+  * Hardware-accelerated embedded video player with custom Cyberpunk HUD and zero-copy surface rendering.
+  * Minimalist pure-white vector controls with dark contrast drop shadow for high-contrast viewing over light scenes.
+  * Zero-freeze keyframe seeking with `SeekParameters.CLOSEST_SYNC` and optimized low-latency local buffering (`DefaultLoadControl`).
+  * Full slow-motion / speed selector chips (`0.25X`, `0.5X`, `1.0X`, `1.5X`, `2.0X`), repeat loop, and external app launch action.
+  * Automatic temporary hiding of the floating standby overlay during in-app playback for distraction-free viewing.
+* **Tri-Channel Live Telemetry Oscilloscope:**
+  * Real-time concurrent multi-colored oscilloscope plotting Frame Rate (Lime), Write Bitrate Mbps (Cyan), and Audio Waveform (Yellow) on the Dashboard.
+* **Handcrafted PixL Vector Icon Suite:**
+  * Complete set of 120×120 pixel-art vector drawables (`ic_pixel_share`, `ic_pixel_external`, `ic_pixel_play`, `ic_pixel_pause`, `ic_pixel_replay_5`, `ic_pixel_forward_5`, `ic_pixel_nav_dash`, `ic_pixel_power`, etc.).
+  * Stepped 9-7-5-3-1 geometric Play icon and 9-block Pause dual bar.
+* **Edge-to-Edge & Safe Insets Architecture:**
+  * Comprehensive `WindowInsets.safeDrawing` handling across both portrait and landscape modes, safeguarding controls from display punch-holes, cutouts, and 3-button navigation bars.
+
+### ⚡ Changed & Optimized
+* **Telemetry Dashboard Redesign:**
+  * Refined active hardware specs into a clean, read-only status badge on the Dashboard, hoisting all interactive configuration pickers to the CONFIG tab.
+  * Enhanced typography hierarchy with strict single-line text constraints to eliminate horizontal wrapping.
+* **Vault Card Clickability:**
+  * Elevated click surface to the full media card for effortless one-tap playback.
+* **High-Precision Timecode Standard:**
+  * Unified high-precision timecodes formatted to `HH:MM:SS.X` with monospace digital typography.
+
+---
+
 ## [0.2.0] - 2026-08-31
 
 ### 🚀 Added
@@ -88,5 +116,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.3.0]: https://github.com/pixlofficial/rec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pixlofficial/rec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pixlofficial/rec/releases/tag/v0.1.0

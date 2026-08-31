@@ -1,7 +1,5 @@
 package pixl.rec.ui.dashboard
 
-import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,25 +28,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Gesture
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,10 +46,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -69,12 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import pixl.rec.R
-import pixl.rec.core.model.AudioSource
-import pixl.rec.core.model.CaptureTarget
-import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
-import pixl.rec.core.model.RecordingOrientation
-import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.ui.components.ActionButton
 import pixl.rec.ui.components.ActionButtonVariant
@@ -105,7 +96,7 @@ fun DashboardScreen(
     onNavigateToSettings: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isRecordingActive by viewModel.isRecordingActive.collectAsState()
+    val telemetry by viewModel.telemetry.collectAsState()
 
     val scrollState = rememberScrollState()
 
@@ -137,14 +128,14 @@ fun DashboardScreen(
         // 1. Top Bar Header
         HeaderBar(uiState = uiState)
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 2. Hardware Capabilities & SoC Status
-        HardwareSpecsCard(uiState = uiState)
+        HardwareSpecsCard(uiState = uiState, telemetry = telemetry)
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 3. Hero Recording / Live Telemetry Card (scopes 10Hz telemetry collection internally)
+        // 3. Hero Recording Card
         HeroRecordingCard(
             viewModel = viewModel,
             uiState = uiState,
@@ -154,33 +145,27 @@ fun DashboardScreen(
             onResumeClick = { viewModel.resumeRecording() }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 4. Overlay & Clean Canvas Controls
-        OverlayAndCleanCanvasSection(
+        // 4. Live Audio VU Visualizer (Game & Mic)
+        LiveAudioVuMeterCard(telemetry = telemetry)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 5. Hardware Telemetry Quad Deck (CPU, Thermals, Write Speed, Frame Rate)
+        TelemetryQuadDeck(telemetry = telemetry, uiState = uiState)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 6. Live Stream Health & FPS Oscilloscope Graph
+        StreamHealthGraphCard(telemetry = telemetry)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 7. Active Profile Chips (Quick summary with 1-tap jump to Config)
+        ActiveProfileChipsRow(
             uiState = uiState,
-            isRecordingActive = isRecordingActive,
-            onToggleAlwaysOnPill = { viewModel.toggleAlwaysOnFloatingPill(it) },
-            onToggleFloatingPill = { viewModel.toggleFloatingPill(it) },
-            onToggleAutoHide = { viewModel.toggleAutoHidePill(it) },
-            onSelectGesture = { viewModel.updatePillRecallGesture(it) },
-            onToggleShake = { viewModel.toggleShakeToStop(it) },
-            onToggleScreenOff = { viewModel.toggleStopOnScreenOff(it) },
-            onSelectTarget = { viewModel.updateCaptureTarget(it) }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 5. Codec, Resolution & Framerate Deck
-        ConfigSection(
-            uiState = uiState,
-            isRecordingActive = isRecordingActive,
-            onOrientationSelect = { viewModel.updateRecordingOrientation(it) },
-            onFramerateSelect = { viewModel.updateFramerate(it) },
-            onResolutionSelect = { w, h -> viewModel.updateResolution(w, h) },
-            onCodecSelect = { viewModel.updateVideoCodec(it) },
-            onAudioSourceSelect = { viewModel.updateAudioSource(it) },
-            onBitrateSelect = { viewModel.updateVideoBitrate(it) }
+            onNavigateToSettings = onNavigateToSettings
         )
 
         Spacer(modifier = Modifier.height(116.dp))
@@ -247,7 +232,7 @@ private fun HeaderBar(uiState: DashboardUiState) {
 }
 
 @Composable
-private fun HardwareSpecsCard(uiState: DashboardUiState) {
+private fun HardwareSpecsCard(uiState: DashboardUiState, telemetry: TelemetryData) {
     val display = uiState.capabilities?.display
     val width = display?.physicalWidth ?: 720
     val height = display?.physicalHeight ?: 1560
@@ -271,10 +256,10 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Memory,
-                    contentDescription = null,
+                    painter = painterResource(id = R.drawable.ic_pixel_chip),
+                    contentDescription = "Hardware Engine",
                     tint = ToxicLime,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
@@ -288,9 +273,11 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     Text(
                         text = "${width}x${height} • ${refreshRate}Hz AMOLED • ${if (hevcHw) "HEVC ASIC" else "AVC ASIC"}",
                         color = TextSecondary,
-                        fontSize = 12.sp,
+                        fontSize = 10.sp,
                         fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -302,7 +289,7 @@ private fun HardwareSpecsCard(uiState: DashboardUiState) {
                     .padding(horizontal = 7.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = "0% CPU",
+                    text = String.format(Locale.US, "%.1f%% CPU", telemetry.cpuUsagePercent),
                     color = ToxicLime,
                     fontSize = 11.sp,
                     fontFamily = BitcountPropSingle,
@@ -330,8 +317,6 @@ private fun HeroRecordingCard(
             val durationMs = if (state is RecorderState.Recording) state.durationMs else (state as RecorderState.Paused).durationMs
             val bytes = if (state is RecorderState.Recording) state.bytesWritten else (state as RecorderState.Paused).bytesWritten
             val currentFps = if (state is RecorderState.Recording) state.currentFps else 0f
-            val gameDb = if (state is RecorderState.Recording) state.gameAudioDb else -60f
-            val micDb = if (state is RecorderState.Recording) state.micAudioDb else -60f
 
             val pulseTransition = rememberInfiniteTransition(label = "Pulse")
             val pulseAlpha by pulseTransition.animateFloat(
@@ -351,26 +336,28 @@ private fun HeroRecordingCard(
                 tagTextColor = TextPrimary,
                 borderColor = if (isPaused) CyberYellow else HyperCrimson
             ) {
-                // Giant Digital Timer
+                // Giant Digital High-Precision Timecode (HH:MM:SS.X)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(14.dp)
                             .alpha(if (isPaused) 1f else pulseAlpha)
                             .background(if (isPaused) CyberYellow else HyperCrimson, CircleShape)
                             .border(2.dp, BorderHighlight, CircleShape)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = StorageCalculator.formatDuration(durationMs),
-                        fontSize = 42.sp,
+                        text = StorageCalculator.formatTimecode(durationMs),
+                        fontSize = 32.sp,
                         fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold,
-                        color = HyperCrimson,
-                        letterSpacing = 1.sp
+                        color = if (isPaused) CyberYellow else HyperCrimson,
+                        letterSpacing = 0.5.sp,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
@@ -401,14 +388,7 @@ private fun HeroRecordingCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Chunky Stepped LED VU Visualizers
-                SteppedVuMeter(label = "Internal Game Audio (48kHz)", dbLevel = gameDb)
-                Spacer(modifier = Modifier.height(10.dp))
-                SteppedVuMeter(label = "Microphone Audio (Stereo)", dbLevel = micDb)
-
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Tactile Action Buttons
                 Row(
@@ -507,8 +487,30 @@ private fun HeroRecordingCard(
                 tagColor = ToxicLime,
                 borderColor = BorderStark
             ) {
+                val inlineContent = mapOf(
+                    "arrow" to InlineTextContent(
+                        Placeholder(
+                            width = 16.sp,
+                            height = 12.sp,
+                            placeholderVerticalAlign = PlaceholderVerticalAlign.Center
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pixel_arrow_right),
+                            contentDescription = "to",
+                            tint = TextSecondary,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                )
+
                 Text(
-                    text = "Direct GPU ──► MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.",
+                    text = buildAnnotatedString {
+                        append("Direct GPU ")
+                        appendInlineContent("arrow", "──►")
+                        append(" MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.")
+                    },
+                    inlineContent = inlineContent,
                     color = TextSecondary,
                     fontFamily = BitcountPropSingle,
                     fontSize = 13.sp,
@@ -539,7 +541,7 @@ private fun HeroRecordingCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 ActionButton(
                     text = "START RECORDING",
@@ -559,457 +561,372 @@ private fun HeroRecordingCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OverlayAndCleanCanvasSection(
-    uiState: DashboardUiState,
-    isRecordingActive: Boolean,
-    onToggleAlwaysOnPill: (Boolean) -> Unit,
-    onToggleFloatingPill: (Boolean) -> Unit,
-    onToggleAutoHide: (Boolean) -> Unit,
-    onSelectGesture: (PillRecallGesture) -> Unit,
-    onToggleShake: (Boolean) -> Unit,
-    onToggleScreenOff: (Boolean) -> Unit,
-    onSelectTarget: (CaptureTarget) -> Unit
-) {
-    val config = uiState.config
-    val isAndroid14Plus = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-
+private fun LiveAudioVuMeterCard(telemetry: TelemetryData) {
     SectionCard(
-        title = "CLEAN CANVAS & OVERLAY CONTROLS",
-        titleTag = if (config.alwaysOnFloatingPill) "STANDBY ON" else if (!config.showFloatingPill) "CLEAN CANVAS" else if (config.autoHidePill) "INVISIBLE GHOST" else "PILL ACTIVE",
-        tagColor = if (config.alwaysOnFloatingPill) ToxicLime else if (!config.showFloatingPill) TextSecondary else if (config.autoHidePill) HyperCyan else Color.White,
+        title = "LIVE AUDIO VU MONITOR",
+        titleTag = "REAL-TIME",
+        tagColor = ToxicLime,
         borderColor = BorderStark
     ) {
-        // 1. Standby Floating Pill Toggle
-        SwitchRow(
-            icon = if (config.alwaysOnFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            title = "Standby Floating Pill Overlay",
-            subtitle = if (config.alwaysOnFloatingPill) "Edge-docked bubble & radial HUD menu active on screen" else "Standby bubble disabled",
-            checked = config.alwaysOnFloatingPill,
-            enabled = !isRecordingActive,
-            onCheckedChange = onToggleAlwaysOnPill
+        SteppedVuMeter(
+            label = "Internal Game Audio (48kHz)",
+            dbLevel = telemetry.gameAudioDb
         )
-
         Spacer(modifier = Modifier.height(10.dp))
-
-        // 2. Solution 1: Live Recording Floating Pill Toggle (Clean Canvas Mode)
-        SwitchRow(
-            icon = if (config.showFloatingPill) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            title = "Live Recording Pill Overlay",
-            subtitle = if (config.showFloatingPill) "On-screen pill enabled during recording" else "Clean Canvas: Pill hidden during recording",
-            checked = config.showFloatingPill,
-            enabled = !isRecordingActive,
-            onCheckedChange = onToggleFloatingPill
+        SteppedVuMeter(
+            label = "Microphone Audio (Stereo)",
+            dbLevel = telemetry.micAudioDb
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(10.dp))
+@Composable
+private fun TelemetryQuadDeck(telemetry: TelemetryData, uiState: DashboardUiState) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Row 1: CPU Overhead + Thermal State
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            TelemetryCard(
+                iconRes = R.drawable.ic_pixel_chip,
+                label = "CPU OVERHEAD",
+                value = String.format(Locale.US, "%.1f%%", telemetry.cpuUsagePercent),
+                subtext = "OPTIMAL • <3% TARGET",
+                accentColor = ToxicLime,
+                modifier = Modifier.weight(1f)
+            )
 
-        // 2. Solution 2: Auto-Hide Pill into Invisible Ghost with Gesture Recall
-        AnimatedVisibility(visible = config.showFloatingPill) {
-            Column {
-                SwitchRow(
-                    icon = Icons.Default.Gesture,
-                    title = "Auto-Hide Pill to Invisible",
-                    subtitle = "Pill disappears completely after 2s; recall anytime with gesture",
-                    checked = config.autoHidePill,
-                    enabled = !isRecordingActive,
-                    onCheckedChange = onToggleAutoHide
-                )
-
-                if (config.autoHidePill) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "RECALL GESTURE",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        PillRecallGesture.entries.forEach { gesture ->
-                            val isSelected = config.pillRecallGesture == gesture
-                            SelectableTag(
-                                text = gesture.displayName,
-                                isSelected = isSelected,
-                                enabled = !isRecordingActive,
-                                onClick = { onSelectGesture(gesture) }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
+            val thermalColor = when (telemetry.thermalStatus) {
+                "THROTTLING", "CRITICAL" -> HyperCrimson
+                "WARM" -> CyberYellow
+                else -> ToxicLime
             }
+
+            TelemetryCard(
+                iconRes = R.drawable.ic_pixel_thermal,
+                label = "THERMAL STATE",
+                value = telemetry.thermalStatus,
+                subtext = String.format(Locale.US, "%.1f°C BATTERY", telemetry.batteryTempCelsius),
+                accentColor = thermalColor,
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        // 3. Shake to Stop Gesture
-        SwitchRow(
-            icon = Icons.Default.Vibration,
-            title = "Shake to Stop",
-            subtitle = "Quick wrist flick stops and saves recording",
-            checked = config.shakeToStop,
-            enabled = !isRecordingActive,
-            onCheckedChange = onToggleShake
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 4. Screen Off to Stop
-        SwitchRow(
-            icon = Icons.Default.PowerSettingsNew,
-            title = "Screen Off to Stop",
-            subtitle = "Pressing power button cleanly finalizes recording",
-            checked = config.stopOnScreenOff,
-            enabled = !isRecordingActive,
-            onCheckedChange = onToggleScreenOff
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 5. Solution 3: Single App Capture (Android 14+)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(if (isAndroid14Plus) SurfaceElevated else ObsidianCanvas, RoundedCornerShape(8.dp))
-                .border(1.5.dp, if (isAndroid14Plus) BorderHighlight else BorderStark, RoundedCornerShape(8.dp))
-                .padding(12.dp)
+        // Row 2: Write Throughput + Frame Stability
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Layers,
-                            contentDescription = null,
-                            tint = if (isAndroid14Plus) ToxicLime else TextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SINGLE-APP ISOLATED CAPTURE",
-                            color = if (isAndroid14Plus) TextPrimary else TextMuted,
-                            fontSize = 14.sp,
-                            fontFamily = BitcountPropSingle,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+            TelemetryCard(
+                iconRes = R.drawable.ic_pixel_disk,
+                label = "WRITE SPEED",
+                value = String.format(Locale.US, "%.1f MB/s", telemetry.writeThroughputMbSec),
+                subtext = "DIRECT SCOPED STORAGE",
+                accentColor = HyperCyan,
+                modifier = Modifier.weight(1f)
+            )
 
-                    if (!isAndroid14Plus) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(Color(0xFF282834), RoundedCornerShape(4.dp))
-                                .border(1.dp, Color(0xFF404054), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "REQUIRES ANDROID 14+",
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                                fontFamily = BitcountPropSingle,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = if (isAndroid14Plus)
-                        "Hardware-isolates target game window without capturing overlays, notifications, or status bar."
-                    else
-                        "Android 14 (API 34+) feature that isolates target game window from overlays. On your Android 11 device, use Clean Canvas mode or Invisible Pill.",
-                    color = if (isAndroid14Plus) TextSecondary else TextMuted,
-                    fontSize = 12.sp,
-                    fontFamily = BitcountPropSingle,
-                    lineHeight = 16.sp
-                )
-
-                if (isAndroid14Plus) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CaptureTarget.entries.forEach { target ->
-                            val isSelected = config.captureTarget == target
-                            SelectableTag(
-                                text = target.displayName,
-                                isSelected = isSelected,
-                                enabled = !isRecordingActive,
-                                onClick = { onSelectTarget(target) }
-                            )
-                        }
-                    }
-                }
-            }
+            val fpsFormatted = String.format(Locale.US, "%.0f FPS", telemetry.currentFps)
+            TelemetryCard(
+                iconRes = R.drawable.ic_pixel_fps,
+                label = "FRAME STABILITY",
+                value = fpsFormatted,
+                subtext = if (telemetry.droppedFrames == 0) "0 DROPPED • VPU SYNC" else "${telemetry.droppedFrames} DROPS",
+                accentColor = CyberYellow,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
 @Composable
-private fun SwitchRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun TelemetryCard(
+    iconRes: Int,
+    label: String,
+    value: String,
+    subtext: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceElevated, RoundedCornerShape(8.dp))
-            .border(1.5.dp, if (checked) BorderHighlight else BorderStark, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    Box(
+        modifier = modifier
+            .background(SurfaceElevated, RoundedCornerShape(10.dp))
+            .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (checked) BorderHighlight else TextSecondary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = title,
-                    color = if (checked) TextPrimary else TextSecondary,
-                    fontSize = 14.sp,
+                    text = label,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
                     fontFamily = BitcountPropSingle,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    fontFamily = BitcountPropSingle,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 15.sp
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = TextInverse,
-                checkedTrackColor = TextPrimary,
-                uncheckedThumbColor = TextMuted,
-                uncheckedTrackColor = ObsidianCanvas
+            Text(
+                text = value,
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontFamily = BitcountPropSingle,
+                fontWeight = FontWeight.Bold
             )
-        )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = subtext,
+                color = accentColor,
+                fontSize = 10.sp,
+                fontFamily = BitcountPropSingle,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun StreamHealthGraphCard(telemetry: TelemetryData) {
+    SectionCard(
+        title = "TRI-CHANNEL OSCILLOSCOPE",
+        titleTag = "MULTI-SYNC",
+        tagColor = ToxicLime,
+        borderColor = BorderStark
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .background(ObsidianCanvas, RoundedCornerShape(8.dp))
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val fpsPoints = telemetry.fpsHistory
+                    val bitratePoints = telemetry.bitrateHistory
+                    val audioPoints = telemetry.audioHistory
+                    if (fpsPoints.isEmpty()) return@Canvas
+
+                    // 1. Draw Grid Lines (Top, Mid, Baseline)
+                    val gridColor = Color(0xFF1E1E28)
+                    drawLine(color = gridColor, start = Offset(0f, 0f), end = Offset(w, 0f), strokeWidth = 1f)
+                    drawLine(color = gridColor, start = Offset(0f, h / 2f), end = Offset(w, h / 2f), strokeWidth = 1f)
+                    drawLine(color = gridColor, start = Offset(0f, h), end = Offset(w, h), strokeWidth = 1f)
+
+                    val stepX = w / (fpsPoints.size - 1).coerceAtLeast(1)
+
+                    fun buildTracePath(points: List<Float>): Path {
+                        val p = Path()
+                        points.forEachIndexed { i, fraction ->
+                            val x = i * stepX
+                            val y = (h * (1.05f - (fraction * 0.85f))).coerceIn(4f, h - 4f)
+                            if (i == 0) p.moveTo(x, y) else p.lineTo(x, y)
+                        }
+                        return p
+                    }
+
+                    // 2. Trace 3: Audio Dynamics (Cyber Yellow)
+                    if (audioPoints.isNotEmpty()) {
+                        val audioPath = buildTracePath(audioPoints)
+                        val fillAudio = Path().apply {
+                            addPath(audioPath)
+                            lineTo(w, h)
+                            lineTo(0f, h)
+                            close()
+                        }
+                        drawPath(
+                            path = fillAudio,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(CyberYellow.copy(alpha = 0.08f), Color.Transparent),
+                                startY = 0f,
+                                endY = h
+                            )
+                        )
+                        drawPath(
+                            path = audioPath,
+                            color = CyberYellow.copy(alpha = 0.9f),
+                            style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                        )
+                    }
+
+                    // 3. Trace 2: Bitrate Throughput (Hyper Cyan)
+                    if (bitratePoints.isNotEmpty()) {
+                        val bitratePath = buildTracePath(bitratePoints)
+                        val fillBitrate = Path().apply {
+                            addPath(bitratePath)
+                            lineTo(w, h)
+                            lineTo(0f, h)
+                            close()
+                        }
+                        drawPath(
+                            path = fillBitrate,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(HyperCyan.copy(alpha = 0.12f), Color.Transparent),
+                                startY = 0f,
+                                endY = h
+                            )
+                        )
+                        drawPath(
+                            path = bitratePath,
+                            color = HyperCyan.copy(alpha = 0.95f),
+                            style = Stroke(width = 2.0.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                        )
+                    }
+
+                    // 4. Trace 1: FPS Stability (Toxic Lime)
+                    val fpsPath = buildTracePath(fpsPoints)
+                    val fillFps = Path().apply {
+                        addPath(fpsPath)
+                        lineTo(w, h)
+                        lineTo(0f, h)
+                        close()
+                    }
+                    drawPath(
+                        path = fillFps,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(ToxicLime.copy(alpha = 0.2f), Color.Transparent),
+                            startY = 0f,
+                            endY = h
+                        )
+                    )
+                    drawPath(
+                        path = fpsPath,
+                        color = ToxicLime,
+                        style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+
+                    // Draw Tracking Head Dot on FPS Trace
+                    val lastX = (fpsPoints.size - 1) * stepX
+                    val lastY = (h * (1.05f - (fpsPoints.last() * 0.85f))).coerceIn(4f, h - 4f)
+                    drawCircle(color = Color.White, radius = 4.dp.toPx(), center = Offset(lastX, lastY))
+                    drawCircle(color = ToxicLime, radius = 2.dp.toPx(), center = Offset(lastX, lastY))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Tri-Channel Legend Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // FPS (Toxic Lime)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(7.dp).background(ToxicLime, CircleShape))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = String.format(Locale.US, "%.0f FPS", telemetry.currentFps),
+                        color = ToxicLime,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Bitrate (Hyper Cyan)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(7.dp).background(HyperCyan, CircleShape))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = String.format(Locale.US, "%.1f MB/s", telemetry.writeThroughputMbSec),
+                        color = HyperCyan,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Audio (Cyber Yellow)
+                val peakDb = maxOf(telemetry.gameAudioDb, telemetry.micAudioDb)
+                val audioText = if (peakDb <= -55f) "SILENT" else String.format(Locale.US, "%.0f dB", peakDb)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(7.dp).background(CyberYellow, CircleShape))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "AUDIO $audioText",
+                        color = CyberYellow,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConfigSection(
+private fun ActiveProfileChipsRow(
     uiState: DashboardUiState,
-    isRecordingActive: Boolean,
-    onOrientationSelect: (RecordingOrientation) -> Unit,
-    onFramerateSelect: (Int) -> Unit,
-    onResolutionSelect: (Int, Int) -> Unit,
-    onCodecSelect: (VideoCodec) -> Unit,
-    onAudioSourceSelect: (AudioSource) -> Unit,
-    onBitrateSelect: (Int) -> Unit
+    onNavigateToSettings: (() -> Unit)?
 ) {
     val config = uiState.config
-    val capabilities = uiState.capabilities
 
-    // 1. Recording Orientation Deck
-    SectionCard(title = "RECORDING ORIENTATION", titleTag = config.recordingOrientation.displayName) {
+    SectionCard(
+        title = "ACTIVE PROFILE",
+        titleTag = "TAP TO EDIT",
+        tagColor = HyperCyan,
+        borderColor = BorderStark
+    ) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            RecordingOrientation.entries.forEach { orientation ->
-                val isSelected = config.recordingOrientation == orientation
-                SelectableTag(
-                    text = orientation.displayName,
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { onOrientationSelect(orientation) }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 2. Framerate Deck
-    SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(30, 60, 90, 120).forEach { fps ->
-                val isSelected = config.framerate == fps
-                val isSupported = (capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 } ?: true) || fps <= 60
-                SelectableTag(
-                    text = "$fps FPS",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isSupported,
-                    onClick = { onFramerateSelect(fps) }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 2. Hardware Video Codec Deck
-    SectionCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            VideoCodec.entries.forEach { codec ->
-                val isSelected = config.videoCodec == codec
-                val isHardware = capabilities?.codecs?.get(codec)?.isHardwareAccelerated == true
-                val isAvailable = when (codec) {
-                    VideoCodec.HEVC -> true
-                    VideoCodec.AVC -> true
-                    VideoCodec.AV1 -> capabilities?.isAv1HardwareSupported == true
-                }
-                SelectableTag(
-                    text = "${codec.displayName}${if (isHardware) " (HW)" else ""}",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isAvailable,
-                    onClick = { onCodecSelect(codec) }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 3. Audio Source Routing
-    SectionCard(title = "AUDIO ROUTING", titleTag = config.audioSource.name) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AudioSource.entries.forEach { source ->
-                val isSelected = config.audioSource == source
-                SelectableRow(
-                    text = source.displayName,
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { onAudioSourceSelect(source) }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 4. Target Video Bitrate
-    SectionCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(8, 16, 28, 50, 80).forEach { mbps ->
-                val isSelected = config.videoBitrate == mbps * 1_000_000
-                SelectableTag(
-                    text = "$mbps Mbps",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { onBitrateSelect(mbps) }
-                )
-            }
+            ProfileChip(text = "${config.width}x${config.height}", onClick = { onNavigateToSettings?.invoke() })
+            ProfileChip(text = "${config.framerate} FPS", onClick = { onNavigateToSettings?.invoke() })
+            ProfileChip(text = "${config.videoBitrate / 1_000_000} MBPS", onClick = { onNavigateToSettings?.invoke() })
+            ProfileChip(text = config.videoCodec.displayName, onClick = { onNavigateToSettings?.invoke() })
+            ProfileChip(text = config.audioSource.displayName, onClick = { onNavigateToSettings?.invoke() })
+            ProfileChip(text = config.recordingOrientation.displayName, onClick = { onNavigateToSettings?.invoke() })
         }
     }
 }
 
 @Composable
-private fun SelectableTag(
+private fun ProfileChip(
     text: String,
-    isSelected: Boolean,
-    enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (isSelected) TextPrimary else SurfaceElevated
-    val border = if (isSelected) HyperCrimson else BorderStark
-    val textColor = if (isSelected) TextInverse else if (enabled) TextPrimary else TextMuted
-
     Box(
         modifier = Modifier
-            .background(bg, RoundedCornerShape(8.dp))
-            .border(1.5.dp, border, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .background(ObsidianCanvas, RoundedCornerShape(6.dp))
+            .border(1.dp, BorderHighlight.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(
             text = text.uppercase(),
-            color = textColor,
-            fontSize = 13.sp,
+            color = TextPrimary,
+            fontSize = 11.sp,
             fontFamily = BitcountPropSingle,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )
-    }
-}
-
-@Composable
-private fun SelectableRow(
-    text: String,
-    isSelected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    val bg = if (isSelected) SurfaceElevated else ObsidianCanvas
-    val border = if (isSelected) BorderHighlight else BorderStark
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bg, RoundedCornerShape(8.dp))
-            .border(1.5.dp, border, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = text,
-            color = if (isSelected) TextPrimary else TextSecondary,
-            fontSize = 13.sp,
-            fontFamily = BitcountPropSingle,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = 0.5.sp
-        )
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(BorderHighlight, CircleShape)
-                    .border(1.dp, BorderStark, CircleShape)
-            )
-        }
     }
 }
