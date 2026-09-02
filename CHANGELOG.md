@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-09-02
+
+### 🚀 Added
+* **HUD Customization Studio (`HudStudioScreen`):**
+  * Interactive studio subsystem featuring live real-time HUD preview and granular aesthetic controls.
+  * Curated style presets: *Cyber Matrix, Bio Hazard, Neon Pulse, and Stealth Ops*.
+  * Dynamic HUD geometry shapes: *Classic Pill, Chamfered Hex Pod, Cyber Diamond, and Round Minimal* via `HudShapeHelper` and `IsometricHexPodShape`.
+  * Animated shaders: live organic breathing and pulsing neon borders via `HudAnimationHelper`.
+  * Staggered spring animations and dynamic hex node items in `FloatingRadialMenuView`.
+  * Configurable overlay drag physics and snapping modes (*Proximity Snap, Edge Dock, Free Float*).
+  * Dual-state styling: separate customized aesthetics for standby mode versus active recording.
+* **In-App Community & Support Hub:**
+  * Dedicated `SupportScreen` detailing PixL's independent studio mission with Ko-fi and GitHub Sponsors integration.
+  * Zero-permission, 100% offline commitment with zero trackers, zero cloud dependencies, and zero feature paywalls.
+* **Zero-Permission Hardware Diagnostics & Feedback Dispatch:**
+  * Dedicated `ReportBugScreen` and `RequestFeatureScreen` under the MORE hub.
+  * `TelemetryReportHelper`: automated device hardware diagnostics auto-probing (model, SoC, Android version/API, display refresh rate & resolution, ASIC encoder capabilities).
+  * Form validation with dynamic animated "light up" submit buttons.
+  * Multi-channel dispatch options: pre-filled GitHub Issue URL (`Intent.ACTION_VIEW`), native Email client (`Intent.ACTION_SENDTO`), and clipboard export.
+* **In-App Legal & Compliance Suite:**
+  * Dedicated offline `PrivacyScreen`, `TermsScreen`, and `LicensesScreen` with custom dot-matrix icons.
+* **Cyberpunk Dot-Matrix Pixel Iconography:**
+  * Added 19 bespoke dot-matrix pixel vector assets and SVGs (`audio_waves`, `bolt`, `bug`, `code`, `coffee`, `display`, `folder`, `gavel`, `github` 15×15 Invertocat badge, `heart`, `hud_node`, `info`, `lightbulb`, `lock`, `more`, `shield`, `speed`, `terms`, `video`, `wrench`).
+
+### ⚡ Changed & Optimized
+* **MediaCodec Hardware Surface Pipeline:**
+  * Configured encoder with real-time scheduler priority (`KEY_PRIORITY = 0`), explicit Studio BT.709 sRGB colorimetry, and full dynamic range video metadata.
+  * Implemented hardware surface input suspend (`PARAMETER_KEY_SUSPEND`) and immediate keyframe synchronization (`PARAMETER_KEY_REQUEST_SYNC_FRAME`) across pause/resume cycles to eliminate macroblock corruption.
+  * Dynamic encoder Profile and Level selection (AVC Level 5.1/5.2, HEVC Main Level 5.1) for high-bitrate 2K/4K recording.
+  * 16-pixel macroblock boundary alignment with automatic hardware register validation and proportional aspect ratio clamping in `CodecProbe`.
+* **More Screen Cleanliness:**
+  * Streamlined `SupportHeroCard` layout, removing misleading external link icons in favor of direct in-app sub-screen navigation.
+
+---
+
 ## [0.3.0] - 2026-08-31
 
 ### 🚀 Added
@@ -116,6 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.4.0]: https://github.com/pixlofficial/rec/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pixlofficial/rec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pixlofficial/rec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pixlofficial/rec/releases/tag/v0.1.0
