@@ -5,10 +5,15 @@ import android.content.SharedPreferences
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.BitrateMode
 import pixl.rec.core.model.CaptureTarget
+import pixl.rec.core.model.HudAnimation
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.model.HudShape
+import pixl.rec.core.model.StrokeStyle
+import pixl.rec.core.model.HudSnapBehavior
+import pixl.rec.core.model.HudStyleConfig
 
 /**
  * SharedPreferences persistence manager for user configuration profiles.
@@ -40,6 +45,34 @@ object ConfigPreferences {
     private const val KEY_STOP_ON_SCREEN_OFF = "stop_on_screen_off"
     private const val KEY_CAPTURE_TARGET = "capture_target"
 
+    // Standby HUD Keys
+    private const val KEY_STANDBY_ICON_SIZE_DP = "standby_hud_icon_size_dp"
+    private const val KEY_STANDBY_ICON_OPACITY = "standby_hud_icon_opacity"
+    private const val KEY_STANDBY_ANIMATION = "standby_hud_animation"
+    private const val KEY_STANDBY_HAS_BG = "standby_hud_has_bg"
+    private const val KEY_STANDBY_SHAPE = "standby_hud_shape"
+    private const val KEY_STANDBY_NODE_SIZE_DP = "standby_hud_node_size_dp"
+    private const val KEY_STANDBY_BG_OPACITY = "standby_hud_bg_opacity"
+    private const val KEY_STANDBY_HAS_STROKE = "standby_hud_has_stroke"
+    private const val KEY_STANDBY_STROKE_WIDTH = "standby_hud_stroke_width"
+    private const val KEY_STANDBY_STROKE_STYLE = "standby_hud_stroke_style"
+    private const val KEY_STANDBY_STROKE_OPACITY = "standby_hud_stroke_opacity"
+    private const val KEY_STANDBY_SNAP_BEHAVIOR = "standby_hud_snap"
+
+    // Recording HUD Keys
+    private const val KEY_REC_ICON_SIZE_DP = "rec_hud_icon_size_dp"
+    private const val KEY_REC_ICON_OPACITY = "rec_hud_icon_opacity"
+    private const val KEY_REC_ANIMATION = "rec_hud_animation"
+    private const val KEY_REC_HAS_BG = "rec_hud_has_bg"
+    private const val KEY_REC_SHAPE = "rec_hud_shape"
+    private const val KEY_REC_NODE_SIZE_DP = "rec_hud_node_size_dp"
+    private const val KEY_REC_BG_OPACITY = "rec_hud_bg_opacity"
+    private const val KEY_REC_HAS_STROKE = "rec_hud_has_stroke"
+    private const val KEY_REC_STROKE_WIDTH = "rec_hud_stroke_width"
+    private const val KEY_REC_STROKE_STYLE = "rec_hud_stroke_style"
+    private const val KEY_REC_STROKE_OPACITY = "rec_hud_stroke_opacity"
+    private const val KEY_REC_SNAP_BEHAVIOR = "rec_hud_snap"
+
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -47,9 +80,38 @@ object ConfigPreferences {
     fun loadConfig(context: Context, defaultConfig: RecordingConfig): RecordingConfig {
         val prefs = getPrefs(context)
         if (!prefs.contains(KEY_FRAMERATE)) {
-            // First time run, return hardware-probed defaults
             return defaultConfig
         }
+
+        val standbyHud = HudStyleConfig(
+            iconSizeDp = prefs.getInt(KEY_STANDBY_ICON_SIZE_DP, defaultConfig.standbyHudConfig.iconSizeDp),
+            iconOpacity = prefs.getFloat(KEY_STANDBY_ICON_OPACITY, defaultConfig.standbyHudConfig.iconOpacity),
+            animation = runCatching { HudAnimation.valueOf(prefs.getString(KEY_STANDBY_ANIMATION, defaultConfig.standbyHudConfig.animation.name) ?: defaultConfig.standbyHudConfig.animation.name) }.getOrDefault(defaultConfig.standbyHudConfig.animation),
+            hasBackground = prefs.getBoolean(KEY_STANDBY_HAS_BG, defaultConfig.standbyHudConfig.hasBackground),
+            shape = runCatching { HudShape.valueOf(prefs.getString(KEY_STANDBY_SHAPE, defaultConfig.standbyHudConfig.shape.name) ?: defaultConfig.standbyHudConfig.shape.name) }.getOrDefault(defaultConfig.standbyHudConfig.shape),
+            nodeSizeDp = prefs.getInt(KEY_STANDBY_NODE_SIZE_DP, defaultConfig.standbyHudConfig.nodeSizeDp),
+            backgroundOpacity = prefs.getFloat(KEY_STANDBY_BG_OPACITY, defaultConfig.standbyHudConfig.backgroundOpacity),
+            hasStroke = prefs.getBoolean(KEY_STANDBY_HAS_STROKE, defaultConfig.standbyHudConfig.hasStroke),
+            strokeWidthDp = prefs.getFloat(KEY_STANDBY_STROKE_WIDTH, defaultConfig.standbyHudConfig.strokeWidthDp),
+            strokeStyle = runCatching { StrokeStyle.valueOf(prefs.getString(KEY_STANDBY_STROKE_STYLE, defaultConfig.standbyHudConfig.strokeStyle.name) ?: defaultConfig.standbyHudConfig.strokeStyle.name) }.getOrDefault(defaultConfig.standbyHudConfig.strokeStyle),
+            strokeOpacity = prefs.getFloat(KEY_STANDBY_STROKE_OPACITY, defaultConfig.standbyHudConfig.strokeOpacity),
+            snapBehavior = runCatching { HudSnapBehavior.valueOf(prefs.getString(KEY_STANDBY_SNAP_BEHAVIOR, defaultConfig.standbyHudConfig.snapBehavior.name) ?: defaultConfig.standbyHudConfig.snapBehavior.name) }.getOrDefault(defaultConfig.standbyHudConfig.snapBehavior)
+        )
+
+        val recordingHud = HudStyleConfig(
+            iconSizeDp = prefs.getInt(KEY_REC_ICON_SIZE_DP, defaultConfig.recordingHudConfig.iconSizeDp),
+            iconOpacity = prefs.getFloat(KEY_REC_ICON_OPACITY, defaultConfig.recordingHudConfig.iconOpacity),
+            animation = runCatching { HudAnimation.valueOf(prefs.getString(KEY_REC_ANIMATION, defaultConfig.recordingHudConfig.animation.name) ?: defaultConfig.recordingHudConfig.animation.name) }.getOrDefault(defaultConfig.recordingHudConfig.animation),
+            hasBackground = prefs.getBoolean(KEY_REC_HAS_BG, defaultConfig.recordingHudConfig.hasBackground),
+            shape = runCatching { HudShape.valueOf(prefs.getString(KEY_REC_SHAPE, defaultConfig.recordingHudConfig.shape.name) ?: defaultConfig.recordingHudConfig.shape.name) }.getOrDefault(defaultConfig.recordingHudConfig.shape),
+            nodeSizeDp = prefs.getInt(KEY_REC_NODE_SIZE_DP, defaultConfig.recordingHudConfig.nodeSizeDp),
+            backgroundOpacity = prefs.getFloat(KEY_REC_BG_OPACITY, defaultConfig.recordingHudConfig.backgroundOpacity),
+            hasStroke = prefs.getBoolean(KEY_REC_HAS_STROKE, defaultConfig.recordingHudConfig.hasStroke),
+            strokeWidthDp = prefs.getFloat(KEY_REC_STROKE_WIDTH, defaultConfig.recordingHudConfig.strokeWidthDp),
+            strokeStyle = runCatching { StrokeStyle.valueOf(prefs.getString(KEY_REC_STROKE_STYLE, defaultConfig.recordingHudConfig.strokeStyle.name) ?: defaultConfig.recordingHudConfig.strokeStyle.name) }.getOrDefault(defaultConfig.recordingHudConfig.strokeStyle),
+            strokeOpacity = prefs.getFloat(KEY_REC_STROKE_OPACITY, defaultConfig.recordingHudConfig.strokeOpacity),
+            snapBehavior = runCatching { HudSnapBehavior.valueOf(prefs.getString(KEY_REC_SNAP_BEHAVIOR, defaultConfig.recordingHudConfig.snapBehavior.name) ?: defaultConfig.recordingHudConfig.snapBehavior.name) }.getOrDefault(defaultConfig.recordingHudConfig.snapBehavior)
+        )
 
         return RecordingConfig(
             width = prefs.getInt(KEY_WIDTH, defaultConfig.width),
@@ -74,7 +136,9 @@ object ConfigPreferences {
             pillRecallGesture = runCatching { PillRecallGesture.valueOf(prefs.getString(KEY_PILL_RECALL_GESTURE, defaultConfig.pillRecallGesture.name) ?: defaultConfig.pillRecallGesture.name) }.getOrDefault(defaultConfig.pillRecallGesture),
             shakeToStop = prefs.getBoolean(KEY_SHAKE_TO_STOP, defaultConfig.shakeToStop),
             stopOnScreenOff = prefs.getBoolean(KEY_STOP_ON_SCREEN_OFF, defaultConfig.stopOnScreenOff),
-            captureTarget = runCatching { CaptureTarget.valueOf(prefs.getString(KEY_CAPTURE_TARGET, defaultConfig.captureTarget.name) ?: defaultConfig.captureTarget.name) }.getOrDefault(defaultConfig.captureTarget)
+            captureTarget = runCatching { CaptureTarget.valueOf(prefs.getString(KEY_CAPTURE_TARGET, defaultConfig.captureTarget.name) ?: defaultConfig.captureTarget.name) }.getOrDefault(defaultConfig.captureTarget),
+            standbyHudConfig = standbyHud,
+            recordingHudConfig = recordingHud
         )
     }
 
@@ -103,6 +167,32 @@ object ConfigPreferences {
             .putBoolean(KEY_SHAKE_TO_STOP, config.shakeToStop)
             .putBoolean(KEY_STOP_ON_SCREEN_OFF, config.stopOnScreenOff)
             .putString(KEY_CAPTURE_TARGET, config.captureTarget.name)
+            // Standby HUD Customization
+            .putInt(KEY_STANDBY_ICON_SIZE_DP, config.standbyHudConfig.iconSizeDp)
+            .putFloat(KEY_STANDBY_ICON_OPACITY, config.standbyHudConfig.iconOpacity)
+            .putString(KEY_STANDBY_ANIMATION, config.standbyHudConfig.animation.name)
+            .putBoolean(KEY_STANDBY_HAS_BG, config.standbyHudConfig.hasBackground)
+            .putString(KEY_STANDBY_SHAPE, config.standbyHudConfig.shape.name)
+            .putInt(KEY_STANDBY_NODE_SIZE_DP, config.standbyHudConfig.nodeSizeDp)
+            .putFloat(KEY_STANDBY_BG_OPACITY, config.standbyHudConfig.backgroundOpacity)
+            .putBoolean(KEY_STANDBY_HAS_STROKE, config.standbyHudConfig.hasStroke)
+            .putFloat(KEY_STANDBY_STROKE_WIDTH, config.standbyHudConfig.strokeWidthDp)
+            .putString(KEY_STANDBY_STROKE_STYLE, config.standbyHudConfig.strokeStyle.name)
+            .putFloat(KEY_STANDBY_STROKE_OPACITY, config.standbyHudConfig.strokeOpacity)
+            .putString(KEY_STANDBY_SNAP_BEHAVIOR, config.standbyHudConfig.snapBehavior.name)
+            // Recording HUD Customization
+            .putInt(KEY_REC_ICON_SIZE_DP, config.recordingHudConfig.iconSizeDp)
+            .putFloat(KEY_REC_ICON_OPACITY, config.recordingHudConfig.iconOpacity)
+            .putString(KEY_REC_ANIMATION, config.recordingHudConfig.animation.name)
+            .putBoolean(KEY_REC_HAS_BG, config.recordingHudConfig.hasBackground)
+            .putString(KEY_REC_SHAPE, config.recordingHudConfig.shape.name)
+            .putInt(KEY_REC_NODE_SIZE_DP, config.recordingHudConfig.nodeSizeDp)
+            .putFloat(KEY_REC_BG_OPACITY, config.recordingHudConfig.backgroundOpacity)
+            .putBoolean(KEY_REC_HAS_STROKE, config.recordingHudConfig.hasStroke)
+            .putFloat(KEY_REC_STROKE_WIDTH, config.recordingHudConfig.strokeWidthDp)
+            .putString(KEY_REC_STROKE_STYLE, config.recordingHudConfig.strokeStyle.name)
+            .putFloat(KEY_REC_STROKE_OPACITY, config.recordingHudConfig.strokeOpacity)
+            .putString(KEY_REC_SNAP_BEHAVIOR, config.recordingHudConfig.snapBehavior.name)
             .apply()
     }
 }

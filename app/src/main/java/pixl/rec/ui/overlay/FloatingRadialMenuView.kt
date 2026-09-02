@@ -12,11 +12,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,31 +35,41 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pixl.rec.R
+import pixl.rec.core.model.HudStyleConfig
+import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.ui.components.HudNodeSurface
+import pixl.rec.ui.components.rememberHudIconAnimation
+import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
 import pixl.rec.ui.theme.CyberYellow
 import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.TextPrimary
+import pixl.rec.ui.theme.TextSecondary
 import pixl.rec.ui.theme.ToxicLime
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * 5-Faceted Cyberpunk Angular Polygon Canopy Shape.
- * Provides 5 distinct faceted chambers with sharp outer chamfers.
+ * 5-Faceted Cyberpunk Angular Polygon Canopy Shape for Edge Docking (180° Fan).
  */
 class FiveFacetPolygonCanopyShape(private val isDockedOnLeft: Boolean) : Shape {
     override fun createOutline(
@@ -70,39 +84,41 @@ class FiveFacetPolygonCanopyShape(private val isDockedOnLeft: Boolean) : Shape {
             val hubY = h / 2f
 
             val cornerAngles = if (isDockedOnLeft) {
-                listOf(-65f, -39f, -13f, 13f, 39f, 65f)
+                listOf(-80f, -52.5f, -17.5f, 17.5f, 52.5f, 80f)
             } else {
-                listOf(245f, 219f, 193f, 167f, 141f, 115f)
+                listOf(260f, 232.5f, 197.5f, 162.5f, 127.5f, 100f)
             }
 
             val cornerDistances = listOf(
-                with(density) { 108.dp.toPx() },
-                with(density) { 128.dp.toPx() },
-                with(density) { 136.dp.toPx() },
-                with(density) { 136.dp.toPx() },
-                with(density) { 128.dp.toPx() },
-                with(density) { 108.dp.toPx() }
+                with(density) { 82.dp.toPx() },
+                with(density) { 88.dp.toPx() },
+                with(density) { 92.dp.toPx() },
+                with(density) { 92.dp.toPx() },
+                with(density) { 88.dp.toPx() },
+                with(density) { 82.dp.toPx() }
             )
 
+            val wallY = with(density) { 81.dp.toPx() }
+
             if (isDockedOnLeft) {
-                moveTo(0f, hubY - with(density) { 102.dp.toPx() })
+                moveTo(0f, hubY - wallY)
                 cornerAngles.forEachIndexed { i, deg ->
                     val rad = Math.toRadians(deg.toDouble())
                     val x = (hubX + cos(rad) * cornerDistances[i]).toFloat().coerceIn(0f, w)
                     val y = (hubY + sin(rad) * cornerDistances[i]).toFloat().coerceIn(0f, h)
                     lineTo(x, y)
                 }
-                lineTo(0f, hubY + with(density) { 102.dp.toPx() })
+                lineTo(0f, hubY + wallY)
                 close()
             } else {
-                moveTo(w, hubY - with(density) { 102.dp.toPx() })
+                moveTo(w, hubY - wallY)
                 cornerAngles.forEachIndexed { i, deg ->
                     val rad = Math.toRadians(deg.toDouble())
                     val x = (hubX + cos(rad) * cornerDistances[i]).toFloat().coerceIn(0f, w)
                     val y = (hubY + sin(rad) * cornerDistances[i]).toFloat().coerceIn(0f, h)
                     lineTo(x, y)
                 }
-                lineTo(w, hubY + with(density) { 102.dp.toPx() })
+                lineTo(w, hubY + wallY)
                 close()
             }
         }
@@ -111,290 +127,562 @@ class FiveFacetPolygonCanopyShape(private val isDockedOnLeft: Boolean) : Shape {
 }
 
 /**
- * Cyberpunk 5-Chamber Faceted Polygon HUD Overlay Menu (Custom Pixel Icons, No Circular Containers).
- *
- * 5 Dedicated Action Chambers:
- * 1. 📸 Screenshot (CyberYellow) - Custom Pixel Camera Icon
- * 2. ⚡ Instant Replay (HyperCyan) - Custom Pixel Lightning Bolt Icon
- * 3. 🔴 Master Record (HyperCrimson) - Custom Pixel Record Shutter
- * 4. 🗃 Vault Gallery (ToxicLime) - Custom Pixel Folder Icon
- * 5. ⚙ Settings (TextPrimary) - Custom Pixel Gear Icon
+ * Adaptive Cyberpunk Floating Radial HUD Menu.
+ * - In Free Space: Expands into the 360° Isometric Hex-Pod with 6 radial chambers.
+ * - On Edge Docking: Expands into the 180° Edge-Fan Canopy opening inwards into the screen.
  */
 @Composable
 fun FloatingRadialMenuView(
     isExpanded: Boolean,
-    isDockedOnLeft: Boolean = true,
+    isDockedOnLeft: Boolean = false,
+    isDockedOnRight: Boolean = false,
+    isRecordingActive: Boolean = false,
+    isPaused: Boolean = false,
+    durationMs: Long = 0L,
+    hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
+    onCollapseComplete: () -> Unit = {},
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
     onRecordClick: () -> Unit,
     onReplayClick: () -> Unit = {},
+    onPauseClick: () -> Unit = {},
+    onResumeClick: () -> Unit = {},
+    onStopClick: () -> Unit = {},
+    onGhostClick: () -> Unit = {},
     onScreenshotClick: () -> Unit,
     onVaultClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
-    val density = LocalDensity.current
+    val isDockedOnEdge = isDockedOnLeft || isDockedOnRight
 
-    // Synchronized expansion progression: 0f (collapsed) to 1f (expanded)
     val expansionProgress by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
         animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-        label = "FanExpansion"
+        finishedListener = { progress ->
+            if (progress == 0f) {
+                onCollapseComplete()
+            }
+        },
+        label = "RadialMenuExpansion"
     )
 
-    // Subtle pulse animation for standby icon (active only when collapsed)
-    val pulseScale = if (!isExpanded) {
-        val pulseTransition = rememberInfiniteTransition(label = "StandbyPulse")
-        val scale by pulseTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1.06f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1400, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "PulseScale"
-        )
-        scale
+
+    val iconAnim = rememberHudIconAnimation(
+        animation = hudConfig.animation,
+        baseOpacity = hudConfig.iconOpacity
+    )
+
+    val strokeColor = Color(hudConfig.strokeColorHex)
+
+    val boxAlignment = if (!isDockedOnEdge) {
+        Alignment.Center
+    } else if (isDockedOnLeft) {
+        Alignment.CenterStart
     } else {
-        1f
+        Alignment.CenterEnd
     }
-
-    val canopyShape = remember(isDockedOnLeft) { FiveFacetPolygonCanopyShape(isDockedOnLeft) }
-
-    // Generous standby touch hit box: 68dp wide x 72dp high
-    val currentWidth = if (isExpanded || expansionProgress > 0.01f) 140.dp else 68.dp
-    val currentHeight = if (isExpanded || expansionProgress > 0.01f) 240.dp else 72.dp
 
     Box(
         modifier = modifier
-            .size(width = currentWidth, height = currentHeight)
-            .pointerInput(isExpanded) {
-                if (!isExpanded) {
-                    detectDragGestures(
-                        onDragEnd = onDragEnd,
-                        onDragCancel = onDragEnd,
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x, dragAmount.y)
+            .fillMaxSize()
+            .then(
+                if (isExpanded) {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures {
+                            onToggleExpand(false)
                         }
-                    )
-                }
-            }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    if (!isExpanded) {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleExpand(true)
                     }
+                } else {
+                    Modifier
                 }
             ),
-        contentAlignment = if (isDockedOnLeft) Alignment.CenterStart else Alignment.CenterEnd
+        contentAlignment = boxAlignment
     ) {
-        // 5-Faceted Angular Polygon Frosted Glass Canopy
+        // --- EXPANDED CANOPY OVERLAY ---
         if (expansionProgress > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .size(width = 140.dp, height = 240.dp)
-                    .scale(expansionProgress)
-                    .alpha(expansionProgress)
-                    .clip(canopyShape)
-                    .background(SurfaceElevated.copy(alpha = 0.92f))
-                    .border(width = 1.5.dp, color = BorderStark, shape = canopyShape)
-            )
-
-            // Subtle Dark Cyber Dotted Chamber Divider Lines (4 dividers separating 5 chambers)
-            Canvas(
-                modifier = Modifier
-                    .size(width = 140.dp, height = 240.dp)
-                    .alpha(expansionProgress)
-            ) {
-                val w = size.width
-                val h = size.height
-                val hubCenterX = if (isDockedOnLeft) 22.dp.toPx() else (w - 22.dp.toPx())
-                val hubCenterY = h / 2f
-
-                val dividerAngles = if (isDockedOnLeft) {
-                    listOf(-39f, -13f, 13f, 39f)
-                } else {
-                    listOf(219f, 193f, 167f, 141f)
-                }
-
-                val maxRayDistances = listOf(124.dp.toPx(), 132.dp.toPx(), 132.dp.toPx(), 124.dp.toPx())
-                val dotSpacing = 5.5.dp.toPx()
-                val dotRadius = 1.25.dp.toPx()
-                val dotColor = BorderStark.copy(alpha = 0.55f * expansionProgress)
-
-                dividerAngles.forEachIndexed { index, angleDeg ->
-                    val rad = Math.toRadians(angleDeg.toDouble())
-                    val cosA = cos(rad).toFloat()
-                    val sinA = sin(rad).toFloat()
-                    val maxDist = maxRayDistances[index] * expansionProgress
-                    var currentDist = 24.dp.toPx()
-
-                    while (currentDist <= maxDist) {
-                        val px = hubCenterX + cosA * currentDist
-                        val py = hubCenterY + sinA * currentDist
-                        drawCircle(
-                            color = dotColor,
-                            radius = dotRadius,
-                            center = Offset(px, py)
-                        )
-                        currentDist += dotSpacing
-                    }
-                }
+            if (isDockedOnEdge) {
+                EdgeFanCanopy(
+                    isDockedOnLeft = isDockedOnLeft,
+                    expansionProgress = expansionProgress,
+                    isRecordingActive = isRecordingActive,
+                    isPaused = isPaused,
+                    onToggleExpand = onToggleExpand,
+                    onRecordClick = onRecordClick,
+                    onReplayClick = onReplayClick,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onStopClick = onStopClick,
+                    onGhostClick = onGhostClick,
+                    onScreenshotClick = onScreenshotClick,
+                    onVaultClick = onVaultClick,
+                    onSettingsClick = onSettingsClick
+                )
+            } else {
+                FreeSpaceHexPodCanopy(
+                    expansionProgress = expansionProgress,
+                    isRecordingActive = isRecordingActive,
+                    isPaused = isPaused,
+                    durationMs = durationMs,
+                    onToggleExpand = onToggleExpand,
+                    onRecordClick = onRecordClick,
+                    onReplayClick = onReplayClick,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onGhostClick = onGhostClick,
+                    onScreenshotClick = onScreenshotClick,
+                    onSettingsClick = onSettingsClick
+                )
             }
-
-            // 5 Action Nodes (Containerless, Pure Custom Pixel Icons):
-            // Node 1: 📸 Screenshot (CyberYellow) - Custom Pixel Camera
-            FanNodeItem(
-                iconResId = R.drawable.ic_pixel_camera,
-                tint = CyberYellow,
-                angleDeg = if (isDockedOnLeft) -52f else 232f,
-                orbitRadius = with(density) { 78.dp.toPx() },
-                expansionProgress = expansionProgress,
-                isDockedOnLeft = isDockedOnLeft,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onScreenshotClick()
-                }
-            )
-
-            // Node 2: ⚡ Instant Replay (HyperCyan) - Custom Pixel Lightning Bolt
-            FanNodeItem(
-                iconResId = R.drawable.ic_pixel_lightning,
-                tint = HyperCyan,
-                angleDeg = if (isDockedOnLeft) -26f else 206f,
-                orbitRadius = with(density) { 82.dp.toPx() },
-                expansionProgress = expansionProgress,
-                isDockedOnLeft = isDockedOnLeft,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onReplayClick()
-                }
-            )
-
-            // Node 3: 🔴 Start Record (HyperCrimson) - Custom Pixel Record Shutter (Center Apex)
-            FanNodeItem(
-                iconResId = R.drawable.ic_pixel_record,
-                tint = HyperCrimson,
-                angleDeg = if (isDockedOnLeft) 0f else 180f,
-                orbitRadius = with(density) { 86.dp.toPx() },
-                expansionProgress = expansionProgress,
-                isDockedOnLeft = isDockedOnLeft,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onRecordClick()
-                }
-            )
-
-            // Node 4: 🗃 Vault Gallery (ToxicLime) - Custom Pixel Folder
-            FanNodeItem(
-                iconResId = R.drawable.ic_pixel_vault,
-                tint = ToxicLime,
-                angleDeg = if (isDockedOnLeft) 26f else 154f,
-                orbitRadius = with(density) { 82.dp.toPx() },
-                expansionProgress = expansionProgress,
-                isDockedOnLeft = isDockedOnLeft,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onVaultClick()
-                }
-            )
-
-            // Node 5: ⚙ Settings (TextPrimary) - Custom Pixel Gear
-            FanNodeItem(
-                iconResId = R.drawable.ic_pixel_settings,
-                tint = TextPrimary,
-                angleDeg = if (isDockedOnLeft) 52f else 128f,
-                orbitRadius = with(density) { 78.dp.toPx() },
-                expansionProgress = expansionProgress,
-                isDockedOnLeft = isDockedOnLeft,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onSettingsClick()
-                }
-            )
         }
 
-        // Center Action Hub Button / Standby Icon with smooth crossfade
+        // --- STABLE CENTER HUD NODE HUB ---
+        val density = LocalDensity.current
+        val hubSlidePx = if (isDockedOnEdge) {
+            with(density) {
+                val slideDist = 34.dp.toPx()
+                if (isDockedOnLeft) expansionProgress * slideDist else -expansionProgress * slideDist
+            }
+        } else {
+            0f
+        }
+
         Box(
             modifier = Modifier
+                .padding(
+                    start = if (isDockedOnLeft) 12.dp else 0.dp,
+                    end = if (isDockedOnRight) 12.dp else 0.dp
+                )
+                .graphicsLayer { translationX = hubSlidePx }
                 .size(44.dp)
-                .scale(if (!isExpanded) pulseScale else 1f)
+                .pointerInput(isExpanded) {
+                    if (!isExpanded) {
+                        detectDragGestures(
+                            onDragEnd = onDragEnd,
+                            onDragCancel = onDragEnd,
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.x, dragAmount.y)
+                            }
+                        )
+                    }
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleExpand(!isExpanded)
+                        if (isExpanded && isRecordingActive && !isDockedOnEdge) {
+                            onToggleExpand(false)
+                            onStopClick()
+                        } else {
+                            onToggleExpand(!isExpanded)
+                        }
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .scale(1.5f),
-                contentAlignment = Alignment.Center
-            ) {
-                // Standby Record Dot-Matrix Icon
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_pixel_record),
-                    contentDescription = "PixL Floating Menu",
-                    tint = HyperCrimson,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .alpha((1f - expansionProgress).coerceIn(0f, 1f))
-                )
-                // Expanded Hexagonal Close Icon
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_pixel_close),
-                    contentDescription = "Close Menu",
-                    tint = HyperCrimson,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .alpha(expansionProgress.coerceIn(0f, 1f))
-                )
+            HudNodeSurface(config = hudConfig) {
+                val iconBoxSize = hudConfig.iconSizeDp.dp
+                Box(
+                    modifier = Modifier.size(iconBoxSize),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val rawAlpha: Float = if (!isExpanded) iconAnim.alpha else ((1f - expansionProgress) * hudConfig.iconOpacity)
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_pixel_record),
+                        contentDescription = "PixL Floating Menu",
+                        tint = if (isPaused) CyberYellow else strokeColor,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .scale(if (!isExpanded) iconAnim.scale else 1.0f)
+                            .alpha(rawAlpha.coerceIn(0f, 1f))
+                    )
+                    Icon(
+                        painter = painterResource(id = if (isRecordingActive && !isDockedOnEdge) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_hud_node),
+                        contentDescription = if (isRecordingActive && !isDockedOnEdge) "Stop Recording" else "PixL HUD Node",
+                        tint = if (isRecordingActive && !isDockedOnEdge) HyperCrimson else strokeColor,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .scale(if (isRecordingActive && !isDockedOnEdge) 1.0f else 1.45f)
+                            .alpha(expansionProgress.coerceIn(0f, 1f))
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Containerless Pure Pixel Icon Action Node.
+ * 360° Isometric Hex-Pod Glass Canopy & Facets (Open Space).
  */
+@Composable
+private fun FreeSpaceHexPodCanopy(
+    expansionProgress: Float,
+    isRecordingActive: Boolean,
+    isPaused: Boolean,
+    durationMs: Long,
+    onToggleExpand: (Boolean) -> Unit,
+    onRecordClick: () -> Unit,
+    onReplayClick: () -> Unit = {},
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onGhostClick: () -> Unit,
+    onScreenshotClick: () -> Unit,
+    onSettingsClick: () -> Unit = {}
+) {
+    val haptics = LocalHapticFeedback.current
+    val hexPodShape = remember { IsometricHexPodShape() }
+
+    Box(
+        modifier = Modifier
+            .size(width = 156.dp, height = 176.dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+            .clip(hexPodShape)
+            .background(SurfaceElevated.copy(alpha = 0.94f))
+            .border(width = 1.5.dp, color = BorderStark, shape = hexPodShape)
+    )
+
+    // Dotted Cyber Spoke Dividers (5 Radial Dividers separating the chambers; NO line through top text)
+    Canvas(
+        modifier = Modifier
+            .size(width = 156.dp, height = 176.dp)
+            .alpha(expansionProgress)
+    ) {
+        val w = size.width
+        val h = size.height
+        val centerX = w / 2f
+        val centerY = h / 2f
+        val spokes = IsometricHexPodShape.getDividerSpokes(w, h)
+        val dashEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+
+        spokes.forEach { v ->
+            drawLine(
+                color = Color(0x33FFFFFF),
+                start = Offset(centerX, centerY),
+                end = v,
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = dashEffect
+            )
+        }
+    }
+
+    // --- 5 Radial Facets ---
+    // 1. TOP FACET: Live Digital Timer (REC) or STANDBY (Standby) - Centered in Top Chamber
+    Box(
+        modifier = Modifier
+            .offset(y = (-45).dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+    ) {
+        Text(
+            text = if (isRecordingActive) StorageCalculator.formatDuration(durationMs) else "STANDBY",
+            color = if (isRecordingActive) (if (isPaused) CyberYellow else HyperCrimson) else HyperCyan,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp
+        )
+    }
+
+    // 2. LEFT CHAMBER: Invisible Ghost Mode (slashed eye) - Centered in Left Chamber
+    Box(
+        modifier = Modifier
+            .offset(x = (-46).dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false, radius = 20.dp, color = HyperCyan),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleExpand(false)
+                    onGhostClick()
+                }
+            )
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_pixel_eye_off),
+            contentDescription = "Ghost Stealth Mode",
+            tint = HyperCyan,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+
+    // 3. RIGHT CHAMBER: Pause/Resume (REC) or Start Record (Standby) - Centered in Right Chamber
+    Box(
+        modifier = Modifier
+            .offset(x = 46.dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false, radius = 20.dp, color = if (isRecordingActive) CyberYellow else HyperCrimson),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleExpand(false)
+                    if (isRecordingActive) {
+                        if (isPaused) onResumeClick() else onPauseClick()
+                    } else {
+                        onRecordClick()
+                    }
+                }
+            )
+    ) {
+        Icon(
+            painter = painterResource(
+                id = if (isRecordingActive) {
+                    if (isPaused) R.drawable.ic_pixel_play else R.drawable.ic_pixel_pause
+                } else {
+                    R.drawable.ic_pixel_record
+                }
+            ),
+            contentDescription = if (isRecordingActive) "Pause/Resume" else "Start Record",
+            tint = if (isRecordingActive) (if (isPaused) ToxicLime else TextPrimary) else HyperCrimson,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+
+    // 4. BOTTOM-LEFT CHAMBER: Instant Replay (REC) or Config Settings (Standby)
+    Box(
+        modifier = Modifier
+            .offset(x = (-26).dp, y = 42.dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false, radius = 20.dp, color = if (isRecordingActive) HyperCyan else CyberYellow),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleExpand(false)
+                    if (isRecordingActive) onReplayClick() else onSettingsClick()
+                }
+            )
+    ) {
+        Icon(
+            painter = painterResource(id = if (isRecordingActive) R.drawable.ic_pixel_lightning else R.drawable.ic_pixel_settings),
+            contentDescription = if (isRecordingActive) "Instant Replay" else "Config Settings",
+            tint = if (isRecordingActive) HyperCyan else CyberYellow,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+
+    // 5. BOTTOM-RIGHT CHAMBER: Screenshot / Camera - Centered in Bottom-Right Chamber
+    Box(
+        modifier = Modifier
+            .offset(x = 26.dp, y = 42.dp)
+            .scale(expansionProgress)
+            .alpha(expansionProgress)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false, radius = 20.dp, color = CyberYellow),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleExpand(false)
+                    onScreenshotClick()
+                }
+            )
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_pixel_camera),
+            contentDescription = "Screenshot",
+            tint = CyberYellow,
+            modifier = Modifier.size(26.dp)
+        )
+    }
+}
+
+/**
+ * 180° Edge-Fan Canopy & Facets (Bezel Docked).
+ */
+@Composable
+private fun EdgeFanCanopy(
+    isDockedOnLeft: Boolean,
+    expansionProgress: Float,
+    isRecordingActive: Boolean,
+    isPaused: Boolean,
+    onToggleExpand: (Boolean) -> Unit,
+    onRecordClick: () -> Unit,
+    onReplayClick: () -> Unit = {},
+    onPauseClick: () -> Unit,
+    onResumeClick: () -> Unit,
+    onStopClick: () -> Unit,
+    onGhostClick: () -> Unit,
+    onScreenshotClick: () -> Unit,
+    onVaultClick: () -> Unit,
+    onSettingsClick: () -> Unit = {}
+) {
+    val haptics = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val canopyShape = remember(isDockedOnLeft) { FiveFacetPolygonCanopyShape(isDockedOnLeft) }
+    val canopyWidthPx = with(density) { 118.dp.toPx() }
+    val slideOffsetPx = if (isDockedOnLeft) {
+        -(1f - expansionProgress) * canopyWidthPx
+    } else {
+        (1f - expansionProgress) * canopyWidthPx
+    }
+
+    Box(
+        modifier = Modifier
+            .padding(
+                start = if (isDockedOnLeft) 46.dp else 0.dp,
+                end = if (!isDockedOnLeft) 46.dp else 0.dp
+            )
+            .size(width = 118.dp, height = 210.dp)
+            .graphicsLayer {
+                translationX = slideOffsetPx
+                alpha = expansionProgress.coerceIn(0f, 1f)
+            },
+        contentAlignment = if (isDockedOnLeft) Alignment.CenterStart else Alignment.CenterEnd
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(canopyShape)
+                .background(SurfaceElevated.copy(alpha = 0.92f))
+                .border(width = 1.5.dp, color = BorderStark, shape = canopyShape)
+        )
+
+        // Dotted cyber spoke dividers
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val w = size.width
+            val h = size.height
+            val hubCenterX = if (isDockedOnLeft) 22.dp.toPx() else (w - 22.dp.toPx())
+            val hubCenterY = h / 2f
+            val dividerAngles = if (isDockedOnLeft) listOf(-52.5f, -17.5f, 17.5f, 52.5f) else listOf(232.5f, 197.5f, 162.5f, 127.5f)
+            val dividerDistances = listOf(
+                88.dp.toPx(),
+                92.dp.toPx(),
+                92.dp.toPx(),
+                88.dp.toPx()
+            )
+
+            dividerAngles.forEachIndexed { i, deg ->
+                val rad = Math.toRadians(deg.toDouble())
+                val endX = (hubCenterX + cos(rad) * dividerDistances[i]).toFloat().coerceIn(0f, w)
+                val endY = (hubCenterY + sin(rad) * dividerDistances[i]).toFloat().coerceIn(0f, h)
+
+                drawLine(
+                    color = Color(0x33FFFFFF),
+                    start = Offset(hubCenterX, hubCenterY),
+                    end = Offset(endX, endY),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                )
+            }
+        }
+
+        val nodeOrbitRadius = with(density) { 58.dp.toPx() }
+
+        // Node 1: Config in Standby, Instant Replay in Active Recording (Top Chamber)
+        FanNodeItem(
+            iconResId = if (isRecordingActive) R.drawable.ic_pixel_lightning else R.drawable.ic_pixel_settings,
+            tint = if (isRecordingActive) HyperCyan else CyberYellow,
+            angleDeg = if (isDockedOnLeft) -70f else 250f,
+            orbitRadius = nodeOrbitRadius,
+            isDockedOnLeft = isDockedOnLeft,
+            iconSize = 25.dp,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggleExpand(false)
+                if (isRecordingActive) onReplayClick() else onSettingsClick()
+            }
+        )
+
+        // Node 2: Pause/Resume or Ghost (Upper-Right Chamber)
+        FanNodeItem(
+            iconResId = if (isRecordingActive) (if (isPaused) R.drawable.ic_pixel_play else R.drawable.ic_pixel_pause) else R.drawable.ic_pixel_eye_off,
+            tint = if (isRecordingActive) (if (isPaused) ToxicLime else HyperCyan) else HyperCyan,
+            angleDeg = if (isDockedOnLeft) -35f else 215f,
+            orbitRadius = nodeOrbitRadius,
+            isDockedOnLeft = isDockedOnLeft,
+            iconSize = 26.dp,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggleExpand(false)
+                if (isRecordingActive) {
+                    if (isPaused) onResumeClick() else onPauseClick()
+                } else {
+                    onGhostClick()
+                }
+            }
+        )
+
+        // Node 3: Start Record / Stop (Center Apex Chamber)
+        FanNodeItem(
+            iconResId = if (isRecordingActive) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_record,
+            tint = HyperCrimson,
+            angleDeg = if (isDockedOnLeft) 0f else 180f,
+            orbitRadius = nodeOrbitRadius,
+            isDockedOnLeft = isDockedOnLeft,
+            iconSize = if (isRecordingActive) 24.dp else 20.dp,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggleExpand(false)
+                if (isRecordingActive) onStopClick() else onRecordClick()
+            }
+        )
+
+        // Node 4: Vault Gallery (Lower-Right Chamber)
+        FanNodeItem(
+            iconResId = R.drawable.ic_pixel_vault,
+            tint = ToxicLime,
+            angleDeg = if (isDockedOnLeft) 35f else 145f,
+            orbitRadius = nodeOrbitRadius,
+            isDockedOnLeft = isDockedOnLeft,
+            iconSize = 25.dp,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggleExpand(false)
+                onVaultClick()
+            }
+        )
+
+        // Node 5: Screenshot (Bottom Chamber)
+        FanNodeItem(
+            iconResId = R.drawable.ic_pixel_camera,
+            tint = CyberYellow,
+            angleDeg = if (isDockedOnLeft) 70f else 110f,
+            orbitRadius = nodeOrbitRadius,
+            isDockedOnLeft = isDockedOnLeft,
+            iconSize = 26.dp,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggleExpand(false)
+                onScreenshotClick()
+            }
+        )
+    }
+}
+
 @Composable
 private fun FanNodeItem(
     iconResId: Int,
     tint: Color,
     angleDeg: Float,
     orbitRadius: Float,
-    expansionProgress: Float,
     isDockedOnLeft: Boolean,
+    iconSize: Dp = 26.dp,
     onClick: () -> Unit
 ) {
+    val density = LocalDensity.current
     val angleRad = Math.toRadians(angleDeg.toDouble())
-    val offsetX = (orbitRadius * cos(angleRad) * expansionProgress).roundToInt()
-    val offsetY = (orbitRadius * sin(angleRad) * expansionProgress).roundToInt()
+    val hubCorrectionX = with(density) { if (isDockedOnLeft) (22.dp - 20.dp).toPx() else -(22.dp - 20.dp).toPx() }
+    val offsetX = (hubCorrectionX + orbitRadius * cos(angleRad)).roundToInt()
+    val offsetY = (orbitRadius * sin(angleRad)).roundToInt()
 
     Box(
         modifier = Modifier
             .offset { IntOffset(offsetX, offsetY) }
             .size(40.dp)
-            .scale(expansionProgress)
-            .alpha(expansionProgress)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 22.dp, color = tint),
+                indication = ripple(bounded = false, radius = 20.dp, color = tint),
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -403,7 +691,7 @@ private fun FanNodeItem(
             painter = painterResource(id = iconResId),
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(30.dp)
+            modifier = Modifier.size(iconSize)
         )
     }
 }

@@ -46,6 +46,7 @@ fun MainScreen(
     onRequestRecordPermission: () -> Unit
 ) {
     var currentTab by rememberSaveable { mutableStateOf(initialTab) }
+    var isHudStudioOpen by rememberSaveable { mutableStateOf(false) }
     val isRecording by dashboardViewModel.isRecordingActive.collectAsState()
 
     LaunchedEffect(initialTab) {
@@ -82,7 +83,8 @@ fun MainScreen(
                         onRequestRecord = onRequestRecordPermission
                     )
                     NavigationTab.SETTINGS -> SettingsScreen(
-                        viewModel = dashboardViewModel
+                        viewModel = dashboardViewModel,
+                        onNavigateToHudStudio = { isHudStudioOpen = true }
                     )
                     NavigationTab.MORE -> MoreScreen(
                         viewModel = dashboardViewModel
@@ -91,20 +93,30 @@ fun MainScreen(
             }
         }
 
-        // Floating Bottom Navigation Bar overlay
-        BottomNavBar(
-            currentTab = currentTab,
-            onTabSelected = { currentTab = it },
-            isRecording = isRecording,
-            onRecordAction = {
-                if (isRecording) {
-                    dashboardViewModel.stopRecording()
-                } else {
-                    onRequestRecordPermission()
-                }
-            },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        // Floating Bottom Navigation Bar overlay (hidden if in Studio or Player)
+        if (!isHudStudioOpen) {
+            BottomNavBar(
+                currentTab = currentTab,
+                onTabSelected = { currentTab = it },
+                isRecording = isRecording,
+                onRecordAction = {
+                    if (isRecording) {
+                        dashboardViewModel.stopRecording()
+                    } else {
+                        onRequestRecordPermission()
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+
+        // Fullscreen HUD Theme Studio Overlay
+        if (isHudStudioOpen) {
+            pixl.rec.ui.studio.HudStudioScreen(
+                viewModel = dashboardViewModel,
+                onBackClick = { isHudStudioOpen = false }
+            )
+        }
 
         // Fullscreen In-App Video Player (covers the whole screen and hides bottom bar)
         val activePlayerRecording by vaultViewModel.activePlayerRecording.collectAsState()

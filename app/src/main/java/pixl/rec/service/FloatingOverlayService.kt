@@ -11,9 +11,12 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.Gravity
+import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -24,10 +27,12 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.ui.CapturePermissionActivity
 import pixl.rec.ui.MainActivity
 import pixl.rec.ui.overlay.FloatingPillView
+import pixl.rec.ui.overlay.FloatingRadialMenuView
 import pixl.rec.ui.theme.RECTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
@@ -51,8 +56,13 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     private var windowManager: WindowManager? = null
     private var overlayView: ComposeView? = null
     private lateinit var layoutParams: WindowManager.LayoutParams
-    private var config: RecordingConfig = RecordingConfig()
+    private val configState = mutableStateOf(RecordingConfig())
+    private val config: RecordingConfig
+        get() = configState.value
     private val isDockedOnLeftState = mutableStateOf(true)
+    private val isDockedOnRightState = mutableStateOf(false)
+    private var preExpandX: Int = 0
+    private var preExpandY: Int = 0
     private var standbyDockY: Int = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -66,7 +76,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                 intent.getParcelableExtra(EXTRA_CONFIG) as? RecordingConfig
             }
             if (passedConfig != null) {
-                config = passedConfig
+                configState.value = passedConfig
             }
         }
         return START_STICKY
@@ -152,18 +162,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val minY = topMargin
         val maxY = (dm.heightPixels - bottomNavMargin - viewHeight).coerceAtLeast(minY)
 
-        // Left edge: 68dp touch box starts at -31dp, leaving 37dp touch hit region on screen
+        // Left edge: 68dp touch box docks at -46dp, pushing the HUD node further into the bezel so only 3 sides (chevron) are visible
         val minX = if (navLeft > 0) {
             navLeft + dpToPx(8f)
         } else {
-            -dpToPx(31f)
+            -dpToPx(46f)
         }
 
-        // Right edge: 68dp touch box docks at screenWidth - 37dp, leaving 37dp touch hit region on screen
+        // Right edge: 68dp touch box docks at screenWidth - 22dp, pushing the HUD node further into the bezel so only 3 sides (chevron) are visible
         val maxX = if (navRight > 0) {
-            dm.widthPixels - navRight - dpToPx(37f) - dpToPx(8f)
+            dm.widthPixels - navRight - dpToPx(68f) - dpToPx(8f)
         } else {
-            dm.widthPixels - dpToPx(37f)
+            dm.widthPixels - dpToPx(22f)
         }
 
         return DockBounds(
@@ -204,10 +214,12 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         standbyDockY = dpToPx(300f)
 
-        // Using FLAG_LAYOUT_IN_SCREEN to map (x, y) directly to absolute screen pixels
+        isDockedOnLeftState.value = true
+        isDockedOnRightState.value = false
+
         layoutParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            dpToPx(68f),
+            dpToPx(72f),
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -215,24 +227,47 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = -dpToPx(31f)
+            x = -dpToPx(46f)
             y = standbyDockY
         }
+        createOverlayView()
+    }
+    private var dragAccumulatorX: Float = 0f
+    private var dragAccumulatorY: Float = 0f
+    private var isActivelyDragging: Boolean = false
 
+    private fun createOverlayView() {
         val composeView = ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@FloatingOverlayService)
             setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
+            setViewTreeLifecycleOwner(this@FloatingOverlayService)
+
             setContent {
                 RECTheme {
                     FloatingPillView(
                         config = config,
                         isDockedOnLeft = isDockedOnLeftState.value,
+                        isDockedOnRight = isDockedOnRightState.value,
                         onDrag = { dx, dy ->
+                            windowAnimator?.cancel()
                             val params = this@FloatingOverlayService.layoutParams
                             val bounds = getDockBoundsCached()
 
-                            params.x = (params.x + dx.toInt()).coerceIn(bounds.minX, bounds.maxX)
-                            params.y = (params.y + dy.toInt()).coerceIn(bounds.minY, bounds.maxY)
+                            if (!isActivelyDragging) {
+                                isActivelyDragging = true
+                                dragAccumulatorX = params.x.toFloat()
+                                dragAccumulatorY = params.y.toFloat()
+                            }
+
+                            dragAccumulatorX += dx
+                            dragAccumulatorY += dy
+
+                            val minDragX = bounds.minX
+                            val maxDragX = bounds.maxX
+                            val minDragY = bounds.minY
+                            val maxDragY = bounds.maxY
+
+                            params.x = dragAccumulatorX.roundToInt().coerceIn(minDragX, maxDragX)
+                            params.y = dragAccumulatorY.roundToInt().coerceIn(minDragY, maxDragY)
                             standbyDockY = params.y
                             try {
                                 windowManager?.updateViewLayout(overlayView, params)
@@ -241,11 +276,13 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                             }
                         },
                         onDragEnd = {
+                            isActivelyDragging = false
                             snapToNearestEdge()
                         },
                         onExpandChanged = { isExpanded ->
                             handleExpandChange(isExpanded)
                         },
+                        onCollapseComplete = {},
                         onRecordClick = {
                             startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
                         },
@@ -349,40 +386,225 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val bounds = getDockBoundsCached()
         val currentX = layoutParams.x
         val viewWidth = dpToPx(68f)
+        val isRec = RecordingService.serviceState.value is pixl.rec.core.model.RecorderState.Recording || RecordingService.serviceState.value is pixl.rec.core.model.RecorderState.Paused
+        val snapBehavior = if (isRec) config.recordingHudConfig.snapBehavior else config.standbyHudConfig.snapBehavior
 
-        val midX = bounds.screenWidth / 2
-        val targetX = if (currentX + viewWidth / 2 < midX) {
-            isDockedOnLeftState.value = true
-            bounds.minX
-        } else {
-            isDockedOnLeftState.value = false
-            bounds.maxX
+        when (snapBehavior) {
+            pixl.rec.core.model.HudSnapBehavior.ALWAYS_SNAP_EDGE -> {
+                val midX = bounds.screenWidth / 2
+                val isLeft = (currentX + viewWidth / 2 < midX)
+                val targetX = if (isLeft) bounds.minX else bounds.maxX
+                val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
+                animateWindowTo(targetX, targetY) {
+                    finishDocking(isLeft, bounds, targetY)
+                }
+            }
+            pixl.rec.core.model.HudSnapBehavior.PROXIMITY_SNAP -> {
+                val edgeThresholdPx = dpToPx(24f)
+                val isNearLeft = (currentX - bounds.minX) <= edgeThresholdPx
+                val isNearRight = (bounds.maxX - currentX) <= edgeThresholdPx
+
+                if (isNearLeft) {
+                    val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
+                    animateWindowTo(bounds.minX, targetY) {
+                        finishDocking(true, bounds, targetY)
+                    }
+                } else if (isNearRight) {
+                    val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
+                    animateWindowTo(bounds.maxX, targetY) {
+                        finishDocking(false, bounds, targetY)
+                    }
+                } else {
+                    finishFreeFloat(bounds)
+                }
+            }
+            pixl.rec.core.model.HudSnapBehavior.FREE_FLOAT -> {
+                finishFreeFloat(bounds)
+            }
         }
-        val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
-
-        animateWindowTo(targetX, targetY)
     }
 
-    private fun handleExpandChange(isExpanded: Boolean) {
-        val bounds = getDockBoundsCached()
-        if (isExpanded) {
-            val fanWidthPx = dpToPx(140f)
-
-            // When expanded, reveal the full 44dp hexagonal X hub flush against the glass edge
-            val targetX = if (isDockedOnLeftState.value) {
-                if (bounds.minX < 0) 0 else bounds.minX
-            } else {
-                (bounds.maxX + dpToPx(37f) - fanWidthPx).coerceAtLeast(0)
-            }
-
-            // Align vertical center around the standby hub
-            val minY = (bounds.minY - dpToPx(98f)).coerceAtLeast(0)
-            val targetY = (standbyDockY - dpToPx(98f)).coerceIn(minY, bounds.maxY)
-
-            animateWindowTo(targetX, targetY)
-        } else {
-            snapToNearestEdge()
+    private fun finishDocking(isLeft: Boolean, bounds: DockBounds, targetY: Int) {
+        isDockedOnLeftState.value = isLeft
+        isDockedOnRightState.value = !isLeft
+        layoutParams.x = if (isLeft) bounds.minX else bounds.maxX
+        layoutParams.y = targetY
+        standbyDockY = targetY
+        try {
+            windowManager?.updateViewLayout(overlayView, layoutParams)
+        } catch (e: Exception) {
+            // ignore
         }
+    }
+
+    private fun finishFreeFloat(bounds: DockBounds) {
+        isDockedOnLeftState.value = false
+        isDockedOnRightState.value = false
+        standbyDockY = layoutParams.y
+        try {
+            windowManager?.updateViewLayout(overlayView, layoutParams)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    private var menuOverlayView: View? = null
+
+    private fun handleExpandChange(isExpanded: Boolean) {
+        if (isExpanded) {
+            if (menuOverlayView != null) return
+            openRadialMenuOverlay()
+        } else {
+            removeMenuOverlay()
+        }
+    }
+
+    private fun openRadialMenuOverlay() {
+        val bounds = getDockBoundsCached()
+        val isLeft = isDockedOnLeftState.value
+        val isRight = isDockedOnRightState.value
+
+        val menuW: Int
+        val menuH: Int
+        val menuX: Int
+        val menuY: Int
+
+        if (isLeft) {
+            menuW = dpToPx(186f)
+            menuH = dpToPx(240f)
+            menuX = -dpToPx(46f)
+            menuY = (layoutParams.y - dpToPx(84f)).coerceIn(bounds.minY, bounds.maxY)
+        } else if (isRight) {
+            menuW = dpToPx(186f)
+            menuH = dpToPx(240f)
+            menuX = (bounds.screenWidth - dpToPx(140f)).coerceAtLeast(0)
+            menuY = (layoutParams.y - dpToPx(84f)).coerceIn(bounds.minY, bounds.maxY)
+        } else {
+            val pillCenterX = layoutParams.x + dpToPx(34f)
+            val pillCenterY = layoutParams.y + dpToPx(36f)
+            menuW = dpToPx(164f)
+            menuH = dpToPx(188f)
+            menuX = pillCenterX - dpToPx(82f)
+            menuY = pillCenterY - dpToPx(94f)
+        }
+
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val menuParams = WindowManager.LayoutParams(
+            menuW,
+            menuH,
+            overlayType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = menuX
+            y = menuY
+        }
+
+        val isMenuExpandedState = mutableStateOf(false)
+
+        val menuView = ComposeView(this).apply {
+            setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
+            setViewTreeLifecycleOwner(this@FloatingOverlayService)
+
+            setContent {
+                val serviceState by RecordingService.serviceState.collectAsState()
+                val isRecordingActive = serviceState is RecorderState.Recording || serviceState is RecorderState.Paused
+                val isPaused = serviceState is RecorderState.Paused
+                val currentDuration = when (val s = serviceState) {
+                    is RecorderState.Recording -> s.durationMs
+                    is RecorderState.Paused -> s.durationMs
+                    else -> 0L
+                }
+
+                RECTheme {
+                    FloatingRadialMenuView(
+                        isExpanded = isMenuExpandedState.value,
+                        isDockedOnLeft = isLeft,
+                        isDockedOnRight = isRight,
+                        isRecordingActive = isRecordingActive,
+                        isPaused = isPaused,
+                        durationMs = currentDuration,
+                        hudConfig = if (isRecordingActive) config.recordingHudConfig else config.standbyHudConfig,
+                        onToggleExpand = { expanded ->
+                            if (!expanded) {
+                                isMenuExpandedState.value = false
+                            }
+                        },
+                        onCollapseComplete = {
+                            removeMenuOverlay()
+                        },
+                        onDrag = { _, _ -> },
+                        onDragEnd = {},
+                        onRecordClick = {
+                            removeMenuOverlay()
+                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
+                        },
+                        onPauseClick = {
+                            RecordingService.pauseService(this@FloatingOverlayService)
+                        },
+                        onResumeClick = {
+                            RecordingService.resumeService(this@FloatingOverlayService)
+                        },
+                        onStopClick = {
+                            removeMenuOverlay()
+                            RecordingService.stopService(this@FloatingOverlayService)
+                        },
+                        onGhostClick = {
+                            removeMenuOverlay()
+                        },
+                        onReplayClick = {
+                            removeMenuOverlay()
+                            android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
+                            openMainActivity()
+                        },
+                        onScreenshotClick = {
+                            removeMenuOverlay()
+                            openMainActivity(startRecord = false)
+                        },
+                        onVaultClick = {
+                            removeMenuOverlay()
+                            openMainActivity(tab = "VAULT")
+                        },
+                        onSettingsClick = {
+                            removeMenuOverlay()
+                            openMainActivity(tab = "SETTINGS")
+                        }
+                    )
+                }
+            }
+        }
+
+        menuOverlayView = menuView
+        try {
+            windowManager?.addView(menuView, menuParams)
+            overlayView?.visibility = View.INVISIBLE
+            menuView.post {
+                isMenuExpandedState.value = true
+            }
+        } catch (e: Exception) {
+            menuOverlayView = null
+            overlayView?.visibility = View.VISIBLE
+        }
+    }
+
+    private fun removeMenuOverlay() {
+        val menuView = menuOverlayView ?: return
+        menuOverlayView = null
+        try {
+            windowManager?.removeView(menuView)
+        } catch (e: Exception) {
+            // ignore
+        }
+        overlayView?.visibility = View.VISIBLE
     }
 
     private fun openMainActivity(tab: String? = null, startRecord: Boolean = false) {
@@ -401,6 +623,15 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     override fun onDestroy() {
         super.onDestroy()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+
+        if (menuOverlayView != null) {
+            try {
+                windowManager?.removeView(menuOverlayView)
+            } catch (e: Exception) {
+                // ignore
+            }
+            menuOverlayView = null
+        }
 
         if (overlayView != null) {
             try {

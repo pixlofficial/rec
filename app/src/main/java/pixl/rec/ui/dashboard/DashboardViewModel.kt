@@ -22,6 +22,16 @@ import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
 import pixl.rec.service.RecordingService
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import pixl.rec.core.audio.PcmAudioMixer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,9 +83,27 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    private var standbyMicJob: Job? = null
+    private val _standbyMicDb = MutableStateFlow(-60f)
+    private var isStandbyMicRequested = false
+
     init {
         refreshHardwareCapabilities()
         startTelemetrySampler()
+
+        viewModelScope.launch {
+            isRecordingActive.collect { active ->
+                if (active) {
+                    // Recording started: pause/stop standby mic so ScreenRecorderEngine has exclusive mic access
+                    standbyMicJob?.cancel()
+                    standbyMicJob = null
+                    _standbyMicDb.value = -60f
+                } else if (isStandbyMicRequested) {
+                    // Recording stopped: resume standby mic monitor if dashboard is still open
+                    startStandbyMicMonitor()
+                }
+            }
+        }
     }
 
     private fun startTelemetrySampler() {
@@ -171,9 +199,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     if (bitrateQueue.size >= 30) bitrateQueue.removeFirst()
                     bitrateQueue.add(ambientBitrate)
 
-                    val ambientAudio = 0.22f + (kotlin.math.cos(nowMs / 250.0).toFloat() * 0.15f)
+                    val liveMicDb = _standbyMicDb.value
+                    val normAudio = if (liveMicDb > -58f) {
+                        ((liveMicDb + 60f) / 60f).coerceIn(0.05f, 0.95f)
+                    } else {
+                        0.22f + (kotlin.math.cos(nowMs / 250.0).toFloat() * 0.15f)
+                    }
                     if (audioQueue.size >= 30) audioQueue.removeFirst()
-                    audioQueue.add(ambientAudio)
+                    audioQueue.add(normAudio)
 
                     _telemetry.value = TelemetryData(
                         cpuUsagePercent = (0.5f + (Random.nextFloat() * 0.4f)),
@@ -184,7 +217,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         targetFps = targetFramerate,
                         droppedFrames = 0,
                         gameAudioDb = -60f,
-                        micAudioDb = -60f,
+                        micAudioDb = liveMicDb,
                         fpsHistory = fpsQueue.toList(),
                         bitrateHistory = bitrateQueue.toList(),
                         audioHistory = audioQueue.toList()
@@ -320,6 +353,37 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         updateConfigAndStorage(updated)
     }
 
+    fun updateStandbyHudConfig(hudConfig: pixl.rec.core.model.HudStyleConfig) {
+        val current = _uiState.value.config
+        val updated = current.copy(standbyHudConfig = hudConfig)
+        updateConfigAndStorage(updated)
+        if (updated.alwaysOnFloatingPill && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(getApplication()))) {
+            FloatingOverlayService.start(getApplication(), updated)
+        }
+    }
+
+    fun updateRecordingHudConfig(hudConfig: pixl.rec.core.model.HudStyleConfig) {
+        val current = _uiState.value.config
+        val updated = current.copy(recordingHudConfig = hudConfig)
+        updateConfigAndStorage(updated)
+        if (updated.alwaysOnFloatingPill && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(getApplication()))) {
+            FloatingOverlayService.start(getApplication(), updated)
+        }
+    }
+
+    fun updateHudSnapBehavior(snapBehavior: pixl.rec.core.model.HudSnapBehavior) {
+        val current = _uiState.value.config
+        val updated = current.copy(hudSnapBehavior = snapBehavior)
+        updateConfigAndStorage(updated)
+        if (updated.alwaysOnFloatingPill && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(getApplication()))) {
+            FloatingOverlayService.start(getApplication(), updated)
+        }
+    }
+
+    fun updateHudConfig(hudConfig: pixl.rec.core.model.HudStyleConfig) {
+        updateStandbyHudConfig(hudConfig)
+    }
+
     fun startRecording(resultCode: Int, resultData: Intent) {
         val currentConfig = _uiState.value.config
         RecordingService.startService(
@@ -357,5 +421,77 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             config = newConfig,
             remainingMinutes = remainingMin
         )
+    }
+
+    fun startStandbyMicMonitor() {
+        isStandbyMicRequested = true
+        if (isRecordingActive.value) return
+        if (standbyMicJob?.isActive == true) return
+
+        val hasPermission = ContextCompat.checkSelfPermission(
+            getApplication(),
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) return
+
+        standbyMicJob = viewModelScope.launch(Dispatchers.IO) {
+            val sampleRate = 48000
+            val channelConfig = AudioFormat.CHANNEL_IN_STEREO
+            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+            val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            val bufferSize = (minBufferSize * 2).coerceAtLeast(2048)
+
+            var audioRecord: AudioRecord? = null
+            try {
+                @SuppressLint("MissingPermission")
+                audioRecord = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    bufferSize
+                )
+
+                if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+                    audioRecord.release()
+                    return@launch
+                }
+
+                audioRecord.startRecording()
+                val pcmBuffer = ByteArray(bufferSize)
+
+                while (isActive && isStandbyMicRequested && !isRecordingActive.value) {
+                    val read = audioRecord.read(pcmBuffer, 0, pcmBuffer.size)
+                    if (read > 0) {
+                        val db = PcmAudioMixer.calculateDbLevel(pcmBuffer, read)
+                        _standbyMicDb.value = db
+                    }
+                    delay(50) // ~20Hz update rate
+                }
+            } catch (e: Exception) {
+                // Ignore transient audio initialization issues
+            } finally {
+                runCatching {
+                    if (audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        audioRecord.stop()
+                    }
+                    audioRecord?.release()
+                }
+                _standbyMicDb.value = -60f
+            }
+        }
+    }
+
+    fun stopStandbyMicMonitor() {
+        isStandbyMicRequested = false
+        standbyMicJob?.cancel()
+        standbyMicJob = null
+        _standbyMicDb.value = -60f
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopStandbyMicMonitor()
     }
 }

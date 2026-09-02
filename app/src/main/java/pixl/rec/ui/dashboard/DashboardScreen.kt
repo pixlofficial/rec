@@ -39,10 +39,14 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -97,6 +101,23 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val telemetry by viewModel.telemetry.collectAsState()
+    val isRecording by viewModel.isRecordingActive.collectAsState()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.startStandbyMicMonitor()
+                Lifecycle.Event.ON_PAUSE -> viewModel.stopStandbyMicMonitor()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.stopStandbyMicMonitor()
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -147,8 +168,8 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 4. Live Audio VU Visualizer (Game & Mic)
-        LiveAudioVuMeterCard(telemetry = telemetry)
+        // 4. Live Audio VU Visualizer (Internal & Mic)
+        LiveAudioVuMeterCard(telemetry = telemetry, isRecording = isRecording)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -400,12 +421,13 @@ private fun HeroRecordingCard(
                         onClick = if (isPaused) onResumeClick else onPauseClick,
                         variant = ActionButtonVariant.SURFACE,
                         modifier = Modifier.weight(1f),
+                        fontSize = 14.sp,
                         leadingIcon = {
                             Icon(
                                 imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                                 contentDescription = null,
                                 tint = TextPrimary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     )
@@ -413,13 +435,14 @@ private fun HeroRecordingCard(
                         text = "Stop",
                         onClick = onStopClick,
                         variant = ActionButtonVariant.DANGER,
-                        modifier = Modifier.weight(1.4f),
+                        modifier = Modifier.weight(1f),
+                        fontSize = 14.sp,
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Stop,
                                 contentDescription = null,
                                 tint = TextPrimary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     )
@@ -562,7 +585,10 @@ private fun HeroRecordingCard(
 }
 
 @Composable
-private fun LiveAudioVuMeterCard(telemetry: TelemetryData) {
+private fun LiveAudioVuMeterCard(
+    telemetry: TelemetryData,
+    isRecording: Boolean
+) {
     SectionCard(
         title = "LIVE AUDIO VU MONITOR",
         titleTag = "REAL-TIME",
@@ -570,8 +596,9 @@ private fun LiveAudioVuMeterCard(telemetry: TelemetryData) {
         borderColor = BorderStark
     ) {
         SteppedVuMeter(
-            label = "Internal Game Audio (48kHz)",
-            dbLevel = telemetry.gameAudioDb
+            label = "Internal Audio (48kHz)",
+            dbLevel = telemetry.gameAudioDb,
+            statusOverride = if (!isRecording) "STANDBY" else null
         )
         Spacer(modifier = Modifier.height(10.dp))
         SteppedVuMeter(
@@ -609,9 +636,9 @@ private fun TelemetryQuadDeck(telemetry: TelemetryData, uiState: DashboardUiStat
 
             TelemetryCard(
                 iconRes = R.drawable.ic_pixel_thermal,
-                label = "THERMAL STATE",
-                value = telemetry.thermalStatus,
-                subtext = String.format(Locale.US, "%.1f°C BATTERY", telemetry.batteryTempCelsius),
+                label = "TEMPERATURE",
+                value = String.format(Locale.US, "%.1f°C", telemetry.batteryTempCelsius),
+                subtext = "${telemetry.thermalStatus} • BATTERY",
                 accentColor = thermalColor,
                 modifier = Modifier.weight(1f)
             )
@@ -657,7 +684,7 @@ private fun TelemetryCard(
         modifier = modifier
             .background(SurfaceElevated, RoundedCornerShape(10.dp))
             .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp, vertical = 12.dp)
+            .padding(horizontal = 10.dp, vertical = 10.dp)
     ) {
         Column {
             Row(
@@ -671,24 +698,28 @@ private fun TelemetryCard(
                     fontSize = 11.sp,
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.5.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 Icon(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = value,
                 color = TextPrimary,
                 fontSize = 18.sp,
                 fontFamily = BitcountPropSingle,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -696,10 +727,13 @@ private fun TelemetryCard(
             Text(
                 text = subtext,
                 color = accentColor,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 fontFamily = BitcountPropSingle,
                 fontWeight = FontWeight.Normal,
-                lineHeight = 12.sp
+                lineHeight = 11.sp,
+                letterSpacing = (-0.2).sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

@@ -77,7 +77,8 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
-    viewModel: DashboardViewModel
+    viewModel: DashboardViewModel,
+    onNavigateToHudStudio: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val recorderState by viewModel.recorderState.collectAsState()
@@ -98,26 +99,26 @@ fun SettingsScreen(
         Text(
             text = "CONFIG // SETTINGS",
             color = TextPrimary,
-            fontSize = 24.sp,
+            fontSize = 18.sp,
             fontFamily = BitcountPropSingle,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
+            letterSpacing = 0.5.sp
         )
         Text(
-            text = "ZERO-COPY PIPELINE & HARDWARE DECK",
+            text = "HARDWARE ENCODER & ENGINE PROFILES",
             color = TextSecondary,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontFamily = BitcountPropSingle
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 2. Segmented Sub-Tab Switcher (VIDEO, AUDIO, CONTROLS, STORAGE)
+        // 2. Sub-Navigation Tabs
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SurfaceElevated, RoundedCornerShape(10.dp))
-                .border(1.5.dp, BorderStark, RoundedCornerShape(10.dp))
+                .background(SurfaceElevated, RoundedCornerShape(8.dp))
+                .border(1.5.dp, BorderStark, RoundedCornerShape(8.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -165,7 +166,8 @@ fun SettingsScreen(
             SettingsTab.CONTROLS -> ControlsSettingsSection(
                 uiState = uiState,
                 isRecordingActive = isRecordingActive,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onNavigateToHudStudio = onNavigateToHudStudio
             )
             SettingsTab.STORAGE -> StorageSettingsSection(
                 uiState = uiState,
@@ -259,8 +261,23 @@ private fun VideoSettingsSection(
 
     // 3. Resolution Selection
     val display = capabilities?.display
-    val nativeWidth = display?.physicalWidth ?: 720
-    val nativeHeight = display?.physicalHeight ?: 1560
+    val nativeWidth = display?.physicalWidth ?: 1080
+    val nativeHeight = display?.physicalHeight ?: 2400
+
+    val minDim = kotlin.math.min(nativeWidth, nativeHeight)
+    val maxDim = kotlin.math.max(nativeWidth, nativeHeight)
+
+    // Pre-align all presets to 16-pixel macroblock boundary so config matches exactly
+    val alignedNativeW = ((minDim + 15) / 16) * 16
+    val alignedNativeH = ((maxDim + 15) / 16) * 16
+
+    val fhdHeight = (((1080L * maxDim / minDim + 15) / 16) * 16).toInt()
+    val alignedFhdW = ((1080 + 15) / 16) * 16 // 1088
+
+    val hdHeight = (((720L * maxDim / minDim + 15) / 16) * 16).toInt()
+    val alignedHdW = ((720 + 15) / 16) * 16 // 720
+
+    val nativeLabel = if (minDim >= 1440) "NATIVE (2K)" else "NATIVE"
 
     SectionCard(title = "CAPTURE RESOLUTION", titleTag = "${config.width}x${config.height}") {
         FlowRow(
@@ -269,14 +286,14 @@ private fun VideoSettingsSection(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val resolutions = listOf(
-                "NATIVE" to (nativeWidth to nativeHeight),
-                "1080p FHD" to (1080 to 1920),
-                "720p HD" to (720 to 1280)
+                Triple(nativeLabel, "${minDim}p", alignedNativeW to alignedNativeH),
+                Triple("1080p FHD", "1080p", alignedFhdW to fhdHeight),
+                Triple("720p HD", "720p", alignedHdW to hdHeight)
             )
-            resolutions.forEach { (label, res) ->
+            resolutions.forEach { (label, displayTag, res) ->
                 val isSelected = config.width == res.first && config.height == res.second
                 SettingsTag(
-                    text = "$label (${res.first}p)",
+                    text = "$label ($displayTag)",
                     isSelected = isSelected,
                     enabled = !isRecordingActive,
                     onClick = { viewModel.updateResolution(res.first, res.second) }
@@ -337,7 +354,11 @@ private fun AudioSettingsSection(
 
     // 2. Real-time VU Levels
     SectionCard(title = "LIVE AUDIO VU VISUALIZER", titleTag = "48 KHZ STEREO") {
-        SteppedVuMeter(label = "Internal Game Audio Loopback", dbLevel = gameDb)
+        SteppedVuMeter(
+            label = "Internal Audio Loopback",
+            dbLevel = gameDb,
+            statusOverride = if (!isRecordingActive) "STANDBY" else null
+        )
         Spacer(modifier = Modifier.height(12.dp))
         SteppedVuMeter(label = "Microphone Audio (Stereo)", dbLevel = micDb)
     }
@@ -348,7 +369,8 @@ private fun AudioSettingsSection(
 private fun ControlsSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
     isRecordingActive: Boolean,
-    viewModel: DashboardViewModel
+    viewModel: DashboardViewModel,
+    onNavigateToHudStudio: () -> Unit = {}
 ) {
     val config = uiState.config
 
@@ -356,6 +378,77 @@ private fun ControlsSettingsSection(
         title = "OVERLAY & GESTURE CONTROLS",
         titleTag = if (config.alwaysOnFloatingPill) "STANDBY ON" else if (config.showFloatingPill) "REC PILL ON" else "CLEAN CANVAS"
     ) {
+        // 0. HUD Theme Studio Hero Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SurfaceElevated, RoundedCornerShape(10.dp))
+                .border(1.5.dp, BorderHighlight, RoundedCornerShape(10.dp))
+                .clickable { onNavigateToHudStudio() }
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(ObsidianCanvas, RoundedCornerShape(8.dp))
+                            .border(1.dp, HyperCrimson, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_logo_core),
+                            contentDescription = null,
+                            tint = HyperCrimson,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "HUD THEME STUDIO",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Shapes, Hex Glow, Icons & Snapping",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            fontFamily = BitcountPropSingle
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(HyperCrimson, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "OPEN LAB →",
+                        color = TextPrimary,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         // 1. Standby Floating Pill Toggle
         SettingsSwitch(
             iconRes = if (config.alwaysOnFloatingPill) R.drawable.ic_pixel_eye else R.drawable.ic_pixel_eye_off,

@@ -240,10 +240,10 @@ fun FloatingRecordShutter(
 
     Box(
         modifier = modifier
-            .requiredSize(96.dp)
+            .size(64.dp)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 36.dp),
+                indication = ripple(bounded = false, radius = 32.dp),
                 onClick = onRecordAction
             ),
         contentAlignment = Alignment.Center
@@ -255,7 +255,7 @@ fun FloatingRecordShutter(
             contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
             tint = HyperCrimson,
             modifier = Modifier
-                .requiredSize(96.dp)
+                .size(if (isRecording) 56.dp else 52.dp)
                 .scale(pulseScale)
         )
     }
