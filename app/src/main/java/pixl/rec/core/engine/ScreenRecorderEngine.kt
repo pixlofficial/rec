@@ -142,12 +142,7 @@ class ScreenRecorderEngine(
 
             Log.i(tag, "Configuring recording canvas: ${activeConfig.width}x${activeConfig.height} (Policy: ${config.recordingOrientation.displayName}, Device Landscape: $isLandscape)")
 
-            // 1. Initialize MediaStore Scoped Storage Writer with active canvas config
-            val writer = MediaStoreWriter(context, activeConfig)
-            mediaStoreWriter = writer
-            mediaMuxer = writer.open()
-
-            // 2. Initialize Video Encoder with active canvas configuration
+            // 1. Initialize Video Encoder with active canvas configuration
             val vEncoder = VideoEncoder(activeConfig, object : VideoEncoder.OutputListener {
                 override fun onVideoFormatChanged(format: MediaFormat) {
                     handleVideoFormat(format)
@@ -168,9 +163,19 @@ class ScreenRecorderEngine(
             vEncoder.prepare()
             videoEncoder = vEncoder
 
+            val finalConfig = activeConfig.copy(
+                width = vEncoder.configuredWidth,
+                height = vEncoder.configuredHeight
+            )
+
+            // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas
+            val writer = MediaStoreWriter(context, finalConfig)
+            mediaStoreWriter = writer
+            mediaMuxer = writer.open()
+
             // 3. Initialize Audio Pipeline if enabled
-            if (activeConfig.audioSource.hasAudio) {
-                val aEncoder = AudioEncoder(activeConfig, object : AudioEncoder.OutputListener {
+            if (finalConfig.audioSource.hasAudio) {
+                val aEncoder = AudioEncoder(finalConfig, object : AudioEncoder.OutputListener {
                     override fun onAudioFormatChanged(format: MediaFormat) {
                         handleAudioFormat(format)
                     }
@@ -188,7 +193,7 @@ class ScreenRecorderEngine(
 
                 val aCapture = AudioCaptureManager(
                     context = context,
-                    config = activeConfig,
+                    config = finalConfig,
                     mediaProjection = mediaProjection,
                     listener = object : AudioCaptureManager.AudioDataListener {
                         override fun onPcmAudioData(pcmBytes: ByteArray, length: Int, ptsUs: Long) {
@@ -213,9 +218,9 @@ class ScreenRecorderEngine(
             val surface = vEncoder.inputSurface ?: throw IllegalStateException("Encoder surface is null")
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "PixL-REC-Display",
-                activeConfig.width,
-                activeConfig.height,
-                activeConfig.dpi,
+                finalConfig.width,
+                finalConfig.height,
+                finalConfig.dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface,
                 null,

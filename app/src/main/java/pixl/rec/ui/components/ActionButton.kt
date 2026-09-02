@@ -56,6 +56,7 @@ fun ActionButton(
     shape: Shape = RoundedCornerShape(10.dp),
     shadowOffset: Dp = 4.dp,
     enabled: Boolean = true,
+    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -110,7 +111,7 @@ fun ActionButton(
             modifier = Modifier
                 .offset(x = currentOffset, y = currentOffset)
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(52.dp)
                 .background(actualBg, shape)
                 .border(2.dp, actualBorder, shape)
                 .clickable(
@@ -119,7 +120,7 @@ fun ActionButton(
                     enabled = enabled,
                     onClick = onClick
                 )
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 10.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(
@@ -128,15 +129,17 @@ fun ActionButton(
             ) {
                 if (leadingIcon != null) {
                     leadingIcon()
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                 }
                 Text(
                     text = text.uppercase(),
                     color = resolvedContent,
-                    fontSize = 17.sp,
+                    fontSize = fontSize,
                     fontFamily = pixl.rec.ui.theme.BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.5.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }

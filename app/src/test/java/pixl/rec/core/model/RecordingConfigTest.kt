@@ -62,4 +62,31 @@ class RecordingConfigTest {
         val mutedConfig = config.copy(audioSource = AudioSource.MUTE)
         assertEquals(50.0f, mutedConfig.totalBitrateMbps, 0.001f)
     }
+
+    @Test
+    fun test2KResolutionMacroblockAlignment() {
+        // Test standard 2K (1440x3120 and 1440x2560)
+        val config2K = RecordingConfig(width = 1440, height = 3120)
+        val aligned2K = config2K.withMacroblockAlignment()
+        assertEquals(1440, aligned2K.width) // 1440 is multiple of 16 (90 * 16)
+        assertEquals(3120, aligned2K.height) // 3120 is multiple of 16 (195 * 16)
+
+        val unaligned2K = RecordingConfig(width = 1440, height = 3088)
+        val alignedUnaligned2K = unaligned2K.withMacroblockAlignment()
+        assertEquals(1440, alignedUnaligned2K.width)
+        assertEquals(3088, alignedUnaligned2K.height) // 3088 is multiple of 16 (193 * 16)
+    }
+
+    @Test
+    fun testDynamicAspectRatioPresetCalculations() {
+        // Test 20:9 native 2K display (1440 x 3200)
+        val nativeWidth = 1440L
+        val nativeHeight = 3200L
+
+        val fhdHeight = (((1080L * nativeHeight / nativeWidth + 15) / 16) * 16).toInt()
+        val hdHeight = (((720L * nativeHeight / nativeWidth + 15) / 16) * 16).toInt()
+
+        assertEquals(2400, fhdHeight) // 1080 x 2400 (exact 20:9 ratio!)
+        assertEquals(1600, hdHeight)  // 720 x 1600 (exact 20:9 ratio!)
+    }
 }

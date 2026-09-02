@@ -38,7 +38,8 @@ fun SteppedVuMeter(
     label: String,
     dbLevel: Float, // -60f to 0f
     modifier: Modifier = Modifier,
-    segmentCount: Int = 18
+    segmentCount: Int = 18,
+    statusOverride: String? = null
 ) {
     val animatedDb by animateFloatAsState(
         targetValue = dbLevel.coerceIn(-60f, 0f),
@@ -66,9 +67,20 @@ fun SteppedVuMeter(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
+            val displayText = when {
+                statusOverride != null && dbLevel <= -59f -> statusOverride
+                dbLevel <= -59f -> "SILENT"
+                else -> String.format(Locale.US, "%.1f dB", dbLevel)
+            }
+            val displayColor = when {
+                statusOverride != null && dbLevel <= -59f -> TextMuted
+                dbLevel > -3f -> HyperCrimson
+                dbLevel > -12f -> CyberYellow
+                else -> ToxicLime
+            }
             Text(
-                text = if (dbLevel <= -59f) "SILENT" else String.format(Locale.US, "%.1f dB", dbLevel),
-                color = if (dbLevel > -3f) HyperCrimson else if (dbLevel > -12f) CyberYellow else ToxicLime,
+                text = displayText,
+                color = displayColor,
                 fontSize = 13.sp,
                 fontFamily = pixl.rec.ui.theme.BitcountPropSingle,
                 fontWeight = FontWeight.Bold

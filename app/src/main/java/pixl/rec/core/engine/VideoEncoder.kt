@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import pixl.rec.core.model.RecordingConfig
@@ -38,10 +39,17 @@ class VideoEncoder(
     private var mediaCodec: MediaCodec? = null
     var inputSurface: Surface? = null
         private set
+    var configuredWidth: Int = config.width
+        private set
+    var configuredHeight: Int = config.height
+        private set
+    var configuredCodecName: String = ""
+        private set
 
     private var drainJob: Job? = null
     private val isRunning = AtomicBoolean(false)
     private val isPaused = AtomicBoolean(false)
+    private val needKeyFrameOnResume = AtomicBoolean(false)
     private var pauseStartTimeNs: Long = 0L
     private var totalPauseOffsetNs: Long = 0L
     private var sessionBaseTimeNs: Long = 0L
@@ -58,48 +66,103 @@ class VideoEncoder(
 
     /**
      * Initializes and configures the hardware encoder with zero-copy surface input.
+     * Negotiates 2K/4K profiles (AVC Level 5.1/5.2, HEVC Main Level 5.1) with multi-stage resilient fallback.
      */
     fun prepare() {
-        val mime = config.videoCodec.mimeType
-        val hardwareCodecInfo = CodecProbe.findHardwareEncoder(mime)
+        val preferredMime = config.videoCodec.mimeType
+        val candidateMimes = listOf(
+            preferredMime,
+            if (preferredMime == MediaFormat.MIMETYPE_VIDEO_HEVC) MediaFormat.MIMETYPE_VIDEO_AVC else MediaFormat.MIMETYPE_VIDEO_HEVC
+        )
 
-        val codec = if (hardwareCodecInfo != null) {
-            try {
-                MediaCodec.createByCodecName(hardwareCodecInfo.name)
-            } catch (e: Exception) {
-                Log.w(tag, "Failed to create hardware codec by name ${hardwareCodecInfo.name}, falling back to type $mime", e)
-                MediaCodec.createEncoderByType(mime)
+        var lastException: Exception? = null
+
+        for (mime in candidateMimes) {
+            val hwCodecInfo = CodecProbe.findHardwareEncoder(mime)
+            val swCodecInfo = CodecProbe.findEncoder(mime)
+            val candidateCodecs = listOfNotNull(hwCodecInfo, swCodecInfo).distinctBy { it.name }
+
+            for (codecInfo in candidateCodecs) {
+                val (safeW, safeH) = CodecProbe.validateAndClampDimensions(
+                    codecInfo,
+                    mime,
+                    config.width,
+                    config.height
+                )
+
+                val profileLevel = CodecProbe.selectProfileAndLevel(codecInfo, mime, safeW, safeH, config.framerate)
+
+                // Attempt 1: Full configuration (with Profile/Level 5.1+, operating rate, colorimetry)
+                if (tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = true)) {
+                    configuredWidth = safeW
+                    configuredHeight = safeH
+                    configuredCodecName = codecInfo.name
+                    return
+                }
+
+                // Attempt 2: Relaxed configuration (without operating rate / strict colorimetry keys that some vendor drivers reject on 2K)
+                if (tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = false)) {
+                    configuredWidth = safeW
+                    configuredHeight = safeH
+                    configuredCodecName = codecInfo.name
+                    return
+                }
             }
-        } else {
-            MediaCodec.createEncoderByType(mime)
         }
 
-        val format = MediaFormat.createVideoFormat(mime, config.width, config.height).apply {
-            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            setInteger(MediaFormat.KEY_BIT_RATE, config.videoBitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, config.framerate)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
-            setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
+        throw lastException ?: IllegalStateException("Unable to configure video encoder for ${config.width}x${config.height} (${config.videoCodec.displayName})")
+    }
 
-            // Raise hardware encoder clock for high-framerate capture (120+ FPS)
-            setInteger(MediaFormat.KEY_OPERATING_RATE, config.framerate)
-            // Real-time priority for kernel scheduler
-            setInteger(MediaFormat.KEY_PRIORITY, 0)
+    private fun tryConfigureCodec(
+        codecInfo: MediaCodecInfo,
+        mime: String,
+        width: Int,
+        height: Int,
+        profileLevel: Pair<Int, Int>?,
+        includeOptionalKeys: Boolean
+    ): Boolean {
+        var codec: MediaCodec? = null
+        return try {
+            codec = MediaCodec.createByCodecName(codecInfo.name)
+            val format = MediaFormat.createVideoFormat(mime, width, height).apply {
+                setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+                setInteger(MediaFormat.KEY_BIT_RATE, config.videoBitrate)
+                setInteger(MediaFormat.KEY_FRAME_RATE, config.framerate)
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
+                setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
 
-            // Explicit Studio BT.709 sRGB Colorimetry & Full Dynamic Range Metadata
-            setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
-            setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_FULL)
-            setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
-        }
+                // Explicit Profile & Level for 2K / 4K / High Bitrate
+                if (profileLevel != null) {
+                    setInteger(MediaFormat.KEY_PROFILE, profileLevel.first)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        setInteger(MediaFormat.KEY_LEVEL, profileLevel.second)
+                    }
+                }
 
-        try {
+                if (includeOptionalKeys) {
+                    // Operating rate hint for high framerate
+                    setInteger(MediaFormat.KEY_OPERATING_RATE, config.framerate)
+                    // Real-time priority for kernel scheduler
+                    setInteger(MediaFormat.KEY_PRIORITY, 0)
+
+                    // Explicit Studio BT.709 sRGB Colorimetry & Full Dynamic Range Metadata
+                    setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+                    setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_FULL)
+                    setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
+                }
+            }
+
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             inputSurface = codec.createInputSurface()
             mediaCodec = codec
-            Log.i(tag, "VideoEncoder prepared: ${codec.name}, ${config.width}x${config.height} @ ${config.framerate}fps, ${config.videoBitrate / 1_000_000}Mbps")
+            Log.i(tag, "VideoEncoder prepared: ${codec.name} ($mime), ${width}x${height} @ ${config.framerate}fps, Profile: ${profileLevel?.first}, Level: ${profileLevel?.second}, optionalKeys: $includeOptionalKeys")
+            true
         } catch (e: Exception) {
-            codec.release()
-            throw e
+            Log.w(tag, "Failed to configure codec ${codecInfo.name} ($mime) for ${width}x${height} (optionalKeys=$includeOptionalKeys): ${e.message}")
+            try {
+                codec?.release()
+            } catch (_: Exception) {}
+            false
         }
     }
 
@@ -111,6 +174,7 @@ class VideoEncoder(
         codec.start()
         isRunning.set(true)
         isPaused.set(false)
+        needKeyFrameOnResume.set(false)
         sessionBaseTimeNs = baseTimeNs
         basePtsOffsetUs = -1L
         firstFramePtsUs = -1L
@@ -126,22 +190,40 @@ class VideoEncoder(
     }
 
     /**
-     * Pauses presentation timestamp progression.
+     * Pauses presentation timestamp progression and suspends surface encoding.
      */
     fun pause() {
         if (isPaused.compareAndSet(false, true)) {
             pauseStartTimeNs = System.nanoTime()
+            try {
+                val params = Bundle().apply {
+                    putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 1)
+                }
+                mediaCodec?.setParameters(params)
+            } catch (e: Exception) {
+                Log.w(tag, "Failed to suspend MediaCodec surface input", e)
+            }
             Log.i(tag, "VideoEncoder paused")
         }
     }
 
     /**
-     * Resumes presentation timestamp progression.
+     * Resumes presentation timestamp progression and requests an immediate sync keyframe.
      */
     fun resume() {
         if (isPaused.compareAndSet(true, false)) {
             val pausedDuration = System.nanoTime() - pauseStartTimeNs
             totalPauseOffsetNs += pausedDuration
+            needKeyFrameOnResume.set(true)
+            try {
+                val params = Bundle().apply {
+                    putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
+                    putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0)
+                }
+                mediaCodec?.setParameters(params)
+            } catch (e: Exception) {
+                Log.w(tag, "Failed to resume/request sync frame on MediaCodec surface input", e)
+            }
             Log.i(tag, "VideoEncoder resumed, total offset: ${totalPauseOffsetNs / 1_000_000}ms")
         }
     }
@@ -228,6 +310,17 @@ class VideoEncoder(
 
                                 if (bufferInfo.size > 0) {
                                     if (!isPaused.get()) {
+                                        val isKeyFrame = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
+                                        if (needKeyFrameOnResume.get()) {
+                                            if (!isKeyFrame) {
+                                                // Drop non-key frames until the requested sync keyframe arrives to prevent macroblock glitching
+                                                codec.releaseOutputBuffer(outputBufferIndex, false)
+                                                continue
+                                            }
+                                            needKeyFrameOnResume.set(false)
+                                            Log.i(tag, "Received clean keyframe following resume")
+                                        }
+
                                         // Calibrate video PTS relative to the unified session base time
                                         if (basePtsOffsetUs < 0) {
                                             val nowNs = System.nanoTime()

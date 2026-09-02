@@ -22,8 +22,8 @@ enum class VideoCodec(val mimeType: String, val displayName: String) {
  * Audio capture routing modes.
  */
 enum class AudioSource(val displayName: String) {
-    INTERNAL_AND_MIC("Game Audio + Microphone"),
-    INTERNAL_ONLY("Game Audio Only (Internal)"),
+    INTERNAL_AND_MIC("Internal Audio + Microphone"),
+    INTERNAL_ONLY("Internal Audio Only"),
     MIC_ONLY("Microphone Only"),
     MUTE("Muted (No Audio)");
 
@@ -96,8 +96,16 @@ data class RecordingConfig(
     val pillRecallGesture: PillRecallGesture = PillRecallGesture.EDGE_SWIPE,
     val shakeToStop: Boolean = true,
     val stopOnScreenOff: Boolean = true,
-    val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN
+    val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN,
+
+    // HUD Customization Configuration (Separate Standby & Recording Configs + Global Snap)
+    val standbyHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.NONE),
+    val recordingHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.BREATHE),
+    val hudSnapBehavior: HudSnapBehavior = HudSnapBehavior.PROXIMITY_SNAP
 ) : Parcelable {
+
+    val hudConfig: HudStyleConfig
+        get() = standbyHudConfig
 
     val aspectRatio: Float
         get() = if (height != 0) width.toFloat() / height.toFloat() else 1.0f

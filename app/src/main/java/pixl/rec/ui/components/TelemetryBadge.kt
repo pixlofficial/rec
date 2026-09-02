@@ -35,7 +35,7 @@ fun TelemetryBadge(
         modifier = modifier
             .background(if (isHighlighted) accentColor else SurfaceElevated, RoundedCornerShape(6.dp))
             .border(1.5.dp, if (isHighlighted) BorderHighlight else BorderStark, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -43,21 +43,23 @@ fun TelemetryBadge(
             Text(
                 text = label.uppercase(),
                 color = if (isHighlighted) TextInverse.copy(alpha = 0.75f) else pixl.rec.ui.theme.TextSecondary,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontFamily = BitcountPropSingle,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.5.sp,
-                maxLines = 1
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                softWrap = false
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = value.uppercase(),
                 color = if (isHighlighted) TextInverse else accentColor,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontFamily = BitcountPropSingle,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp,
-                maxLines = 1
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

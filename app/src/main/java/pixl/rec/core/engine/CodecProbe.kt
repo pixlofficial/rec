@@ -243,11 +243,91 @@ object CodecProbe {
     /**
      * Fallback lookup for any encoder supporting the mime type.
      */
-    private fun findEncoder(mimeType: String): MediaCodecInfo? {
+    fun findEncoder(mimeType: String): MediaCodecInfo? {
         val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
         return codecList.codecInfos.firstOrNull { info ->
             info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
         }
+    }
+
+    /**
+     * Selects optimal Profile and Level (e.g. AVC Level 5.1/5.2 or HEVC Main Level 5.1) for 2K/4K high-resolution encoding.
+     */
+    fun selectProfileAndLevel(codecInfo: MediaCodecInfo, mimeType: String, width: Int, height: Int, fps: Int): Pair<Int, Int>? {
+        val caps = try { codecInfo.getCapabilitiesForType(mimeType) } catch (e: Exception) { return null }
+        val profileLevels = caps.profileLevels ?: return null
+
+        return if (mimeType.equals(MediaFormat.MIMETYPE_VIDEO_AVC, ignoreCase = true)) {
+            // For AVC (H.264): Prioritize AVCProfileHigh with highest level (e.g. Level 5.1 / 5.2 for 2K/4K)
+            val highProfiles = profileLevels.filter {
+                it.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileHigh ||
+                it.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileMain ||
+                it.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline
+            }
+            val best = highProfiles.maxByOrNull { it.level } ?: profileLevels.maxByOrNull { it.level }
+            if (best != null) best.profile to best.level else null
+        } else if (mimeType.equals(MediaFormat.MIMETYPE_VIDEO_HEVC, ignoreCase = true)) {
+            // For HEVC (H.265): Prioritize HEVCProfileMain / Main10 with highest level
+            val mainProfiles = profileLevels.filter {
+                it.profile == MediaCodecInfo.CodecProfileLevel.HEVCProfileMain ||
+                it.profile == MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10
+            }
+            val best = mainProfiles.maxByOrNull { it.level } ?: profileLevels.maxByOrNull { it.level }
+            if (best != null) best.profile to best.level else null
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Verifies if dimensions are natively supported by the encoder's VPU registers.
+     * If dimensions exceed physical registers, scales down proportionally preserving exact aspect ratio.
+     */
+    fun validateAndClampDimensions(
+        codecInfo: MediaCodecInfo,
+        mimeType: String,
+        requestedWidth: Int,
+        requestedHeight: Int
+    ): Pair<Int, Int> {
+        val caps = try { codecInfo.getCapabilitiesForType(mimeType) } catch (e: Exception) { return requestedWidth to requestedHeight }
+        val videoCaps = caps.videoCapabilities ?: return requestedWidth to requestedHeight
+
+        // Check if exact requested dimensions are directly supported
+        if (videoCaps.isSizeSupported(requestedWidth, requestedHeight)) {
+            return requestedWidth to requestedHeight
+        }
+
+        val maxWidth = videoCaps.supportedWidths.upper
+        val maxHeight = videoCaps.supportedHeights.upper
+
+        var w = requestedWidth
+        var h = requestedHeight
+
+        // If width or height exceeds maximum hardware registers, scale down preserving aspect ratio
+        if (w > maxWidth || h > maxHeight) {
+            val widthScale = maxWidth.toFloat() / w.toFloat()
+            val heightScale = maxHeight.toFloat() / h.toFloat()
+            val scale = min(widthScale, heightScale)
+            w = (w * scale).toInt()
+            h = (h * scale).toInt()
+        }
+
+        // Ensure 16-pixel macroblock alignment
+        w = ((w + 15) / 16) * 16
+        h = ((h + 15) / 16) * 16
+
+        // Clamp to supported range
+        w = w.coerceIn(videoCaps.supportedWidths.lower, maxWidth)
+        h = h.coerceIn(videoCaps.supportedHeights.lower, maxHeight)
+
+        // Final verification
+        if (!videoCaps.isSizeSupported(w, h)) {
+            val safeW = min(w, 1088)
+            val safeH = ((safeW * (requestedHeight.toDouble() / requestedWidth.toDouble())).toInt() / 16) * 16
+            return safeW to safeH
+        }
+
+        return w to h
     }
 
     /**
@@ -262,9 +342,9 @@ object CodecProbe {
             selectedCodec = capabilities.recommendedCodec
         }
 
-        // Align dimensions to 2
-        val alignedWidth = (config.width + 1) and 1.inv()
-        val alignedHeight = (config.height + 1) and 1.inv()
+        // Align dimensions to 16-pixel macroblock boundary
+        val alignedWidth = ((config.width + 15) / 16) * 16
+        val alignedHeight = ((config.height + 15) / 16) * 16
 
         // Clamp framerate to hardware limits
         val maxFps = capabilities.maxHardwareFps
