@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel 6-Legged Bug / Issue Reporter Icon -->
+    <group
+        android:scaleX="1.15"
+        android:scaleY="1.15"
+        android:pivotX="60"
+        android:pivotY="60">
+        <!-- Antennae Tips (Row 1 - Cols 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,28.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,28.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Head (Row 2 - Cols 4, 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,36.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Front Legs - Outer Feet (Row 2 - Cols 1, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,36.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,36.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Upper Body Shoulders (Row 3 - Cols 3, 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,44.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Front Legs - Joints (Row 3 - Cols 2, 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,44.4 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Mid Body Upper (Row 4 - Cols 3, 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,52.6 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,52.6 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Mid Body Slit (Row 5 - Cols 3, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Middle Legs (Row 5 - Cols 1, 2 and Cols 7, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,60.8 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,60.8 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Lower Body (Row 6 - Cols 3, 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Rear Legs - Joints (Row 6 - Cols 2, 7) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 36.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,69.0 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Rear Legs - Outer Feet (Row 7 - Cols 1, 8) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 28.0,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 85.4,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Abdomen Base (Row 7 - Cols 3, 4, 5, 6) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 44.4,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,77.2 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,77.2 h 6.6 v 6.6 h -6.6 Z" />
+
+        <!-- Abdomen Rear Tip (Row 8 - Cols 4, 5) -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 52.6,85.4 h 6.6 v 6.6 h -6.6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 60.8,85.4 h 6.6 v 6.6 h -6.6 Z" />
+    </group>
+</vector>

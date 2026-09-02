@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- PixL REC - White Pixel 3-Dot More Icon (Dot-Matrix Grid) -->
+  <g fill="#FFFFFF" transform="scale(1.35)" transform-origin="60 60">
+    <!-- Dot 1 (Left - Cols 1 & 2, Rows 4 & 5) -->
+    <rect x="28.0" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="36.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="28.0" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="36.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Dot 2 (Center - Cols 4 & 5, Rows 4 & 5) -->
+    <rect x="52.6" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="52.6" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="60.8" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+
+    <!-- Dot 3 (Right - Cols 7 & 8, Rows 4 & 5) -->
+    <rect x="77.2" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="52.6" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="77.2" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+    <rect x="85.4" y="60.8" width="6.6" height="6.6" rx="1.0"/>
+  </g>
+</svg>

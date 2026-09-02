@@ -1,15 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-  <!-- PixL REC - White Pixel Layers Icon -->
+  <!-- PixL REC - White Pixel Shield / Privacy Policy Icon -->
   <g fill="#FFFFFF">
     <rect x="56.9" y="11.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="41.9" y="19.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="19.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="56.9" y="19.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="64.4" y="19.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="71.9" y="19.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="26.9" y="26.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="34.4" y="26.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="26.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="26.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="56.9" y="26.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="64.4" y="26.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="26.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="79.4" y="26.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="86.9" y="26.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="26.9" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="34.4" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="34.4" width="6.2" height="6.2" rx="1.0"/>
@@ -17,6 +24,7 @@
     <rect x="64.4" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="79.4" y="34.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="86.9" y="34.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="26.9" y="41.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="34.4" y="41.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="41.9" width="6.2" height="6.2" rx="1.0"/>
@@ -35,6 +43,7 @@
     <rect x="71.9" y="49.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="79.4" y="49.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="86.9" y="49.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="26.9" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="34.4" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="56.9" width="6.2" height="6.2" rx="1.0"/>
@@ -42,26 +51,35 @@
     <rect x="64.4" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="79.4" y="56.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="86.9" y="56.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="26.9" y="64.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="34.4" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="56.9" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="64.4" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="64.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="79.4" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="86.9" y="64.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="26.9" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="34.4" y="71.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="41.9" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="56.9" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="64.4" y="71.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="71.9" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="79.4" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="86.9" y="71.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="34.4" y="79.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="79.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="49.4" y="79.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="56.9" y="79.4" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="64.4" y="79.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="79.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="79.4" y="79.4" width="6.2" height="6.2" rx="1.0"/>
     <rect x="41.9" y="86.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="86.9" width="6.2" height="6.2" rx="1.0"/>
+    <rect x="56.9" y="86.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="64.4" y="86.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="71.9" y="86.9" width="6.2" height="6.2" rx="1.0"/>
     <rect x="49.4" y="94.4" width="6.2" height="6.2" rx="1.0"/>

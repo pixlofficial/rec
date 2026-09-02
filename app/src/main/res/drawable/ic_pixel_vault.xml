@@ -5,7 +5,11 @@
     android:viewportHeight="120">
 
     <!-- PixL REC - White Pixel Vault / Folder Icon (Balanced Visual Scale) -->
-    <group>
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="60"
+        android:pivotY="60">
         <!-- Tab on Right (Row 1 - 4 squares: Cols 6, 7, 8, 9) -->
         <path android:fillColor="#FFFFFFFF" android:pathData="M 69.0,28.0 h 6.6 v 6.6 h -6.6 Z" />
         <path android:fillColor="#FFFFFFFF" android:pathData="M 77.2,28.0 h 6.6 v 6.6 h -6.6 Z" />

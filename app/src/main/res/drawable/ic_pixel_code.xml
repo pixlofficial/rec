@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel Code Brackets Icon (9-Dot Diagonal Chevrons) -->
+    <!-- Left Bracket < (9 Dots) -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 39.0,28.2 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 31.8,35.4 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 24.6,42.6 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 17.4,49.8 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 10.2,57.0 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 17.4,64.2 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 24.6,71.4 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 31.8,78.6 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 39.0,85.8 h 6.0 v 6.0 h -6.0 Z" />
+
+    <!-- Right Bracket > (9 Dots) -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 75.0,28.2 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 82.2,35.4 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 89.4,42.6 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 96.6,49.8 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 103.8,57.0 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 96.6,64.2 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 89.4,71.4 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 82.2,78.6 h 6.0 v 6.0 h -6.0 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 75.0,85.8 h 6.0 v 6.0 h -6.0 Z" />
+</vector>

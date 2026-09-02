@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#FFFF2A4D"
+        android:pathData="
+        M 44.4,28.0 h 6.6 v 6.6 h -6.6 z
+        M 52.6,28.0 h 6.6 v 6.6 h -6.6 z
+        M 60.8,28.0 h 6.6 v 6.6 h -6.6 z
+        M 69.0,28.0 h 6.6 v 6.6 h -6.6 z
+        M 36.2,36.2 h 6.6 v 6.6 h -6.6 z
+        M 77.2,36.2 h 6.6 v 6.6 h -6.6 z
+        M 28.0,44.4 h 6.6 v 6.6 h -6.6 z
+        M 44.4,44.4 h 6.6 v 6.6 h -6.6 z
+        M 69.0,44.4 h 6.6 v 6.6 h -6.6 z
+        M 85.4,44.4 h 6.6 v 6.6 h -6.6 z
+        M 28.0,52.6 h 6.6 v 6.6 h -6.6 z
+        M 52.6,52.6 h 6.6 v 6.6 h -6.6 z
+        M 60.8,52.6 h 6.6 v 6.6 h -6.6 z
+        M 85.4,52.6 h 6.6 v 6.6 h -6.6 z
+        M 28.0,60.8 h 6.6 v 6.6 h -6.6 z
+        M 52.6,60.8 h 6.6 v 6.6 h -6.6 z
+        M 60.8,60.8 h 6.6 v 6.6 h -6.6 z
+        M 85.4,60.8 h 6.6 v 6.6 h -6.6 z
+        M 28.0,69.0 h 6.6 v 6.6 h -6.6 z
+        M 44.4,69.0 h 6.6 v 6.6 h -6.6 z
+        M 69.0,69.0 h 6.6 v 6.6 h -6.6 z
+        M 85.4,69.0 h 6.6 v 6.6 h -6.6 z
+        M 36.2,77.2 h 6.6 v 6.6 h -6.6 z
+        M 77.2,77.2 h 6.6 v 6.6 h -6.6 z
+        M 44.4,85.4 h 6.6 v 6.6 h -6.6 z
+        M 52.6,85.4 h 6.6 v 6.6 h -6.6 z
+        M 60.8,85.4 h 6.6 v 6.6 h -6.6 z
+        M 69.0,85.4 h 6.6 v 6.6 h -6.6 z" />
+</vector>

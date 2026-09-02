@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- PixL REC - White Pixel Code Brackets Icon (9-Dot Diagonal Chevrons) -->
+  <g fill="#FFFFFF">
+    <!-- Left Bracket < (9 Dots) -->
+    <rect x="39.0" y="28.2" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="31.8" y="35.4" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="24.6" y="42.6" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="17.4" y="49.8" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="10.2" y="57.0" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="17.4" y="64.2" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="24.6" y="71.4" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="31.8" y="78.6" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="39.0" y="85.8" width="6.0" height="6.0" rx="1.5"/>
+
+    <!-- Right Bracket > (9 Dots) -->
+    <rect x="75.0" y="28.2" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="82.2" y="35.4" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="89.4" y="42.6" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="96.6" y="49.8" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="103.8" y="57.0" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="96.6" y="64.2" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="89.4" y="71.4" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="82.2" y="78.6" width="6.0" height="6.0" rx="1.5"/>
+    <rect x="75.0" y="85.8" width="6.0" height="6.0" rx="1.5"/>
+  </g>
+</svg>
