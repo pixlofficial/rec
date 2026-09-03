@@ -49,6 +49,7 @@ class RecordingService : Service() {
     private var shakeDetector: ShakeDetector? = null
 
     private var screenOffReceiver: BroadcastReceiver? = null
+    private var recordingConfig: RecordingConfig = RecordingConfig()
 
     private val binder = LocalBinder()
 
@@ -99,6 +100,7 @@ class RecordingService : Service() {
     }
 
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
+        recordingConfig = config
         // 1. Enter foreground immediately with required Android 14/15/16 FGS types
         val initialNotification = buildNotification("Initializing recording...", isPaused = false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -191,12 +193,12 @@ class RecordingService : Service() {
                         )
                     }
                     is RecorderState.Finished -> {
-                        FloatingOverlayService.stop(this@RecordingService)
+                        handleOverlayOnRecordingFinished()
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
                     is RecorderState.Error -> {
-                        FloatingOverlayService.stop(this@RecordingService)
+                        handleOverlayOnRecordingFinished()
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
@@ -221,8 +223,16 @@ class RecordingService : Service() {
             screenOffReceiver = null
         }
 
-        FloatingOverlayService.stop(this)
+        handleOverlayOnRecordingFinished()
         engine?.stop()
+    }
+
+    private fun handleOverlayOnRecordingFinished() {
+        if (!recordingConfig.alwaysOnFloatingPill) {
+            FloatingOverlayService.stop(this)
+        } else {
+            FloatingOverlayService.start(this, recordingConfig)
+        }
     }
 
     private fun updateNotification(timerText: String, isPaused: Boolean) {
@@ -278,7 +288,7 @@ class RecordingService : Service() {
             screenOffReceiver = null
         }
 
-        FloatingOverlayService.stop(this)
+        handleOverlayOnRecordingFinished()
 
         engine?.release()
         engine = null

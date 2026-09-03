@@ -103,14 +103,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         val config = viewModel.uiState.value.config
-        if (config.alwaysOnFloatingPill) {
+        val isRecording = viewModel.isRecordingActive.value
+        if (config.alwaysOnFloatingPill || (config.showFloatingPill && isRecording)) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
                 FloatingOverlayService.start(this, config)
             } else if (!hasPromptedOverlay) {
                 hasPromptedOverlay = true
                 requestOverlayPermission(forRecording = false)
             }
-        } else {
+        } else if (!isRecording) {
             FloatingOverlayService.stop(this)
         }
     }

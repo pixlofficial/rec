@@ -79,6 +79,13 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                 configState.value = passedConfig
             }
         }
+        _isTemporarilyHidden.value = false
+        removeMenuOverlay()
+        if (overlayView == null) {
+            createOverlayView()
+        } else {
+            overlayView?.visibility = View.VISIBLE
+        }
         return START_STICKY
     }
 
@@ -162,18 +169,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val minY = topMargin
         val maxY = (dm.heightPixels - bottomNavMargin - viewHeight).coerceAtLeast(minY)
 
-        // Left edge: 68dp touch box docks at -46dp, pushing the HUD node further into the bezel so only 3 sides (chevron) are visible
+        // Left edge: 116dp window docks at -46dp, providing an expansive 70dp on-screen touch hitbox
         val minX = if (navLeft > 0) {
             navLeft + dpToPx(8f)
         } else {
-            -dpToPx(46f)
+            -dpToPx(PILL_BEZEL_OFFSET_DP)
         }
 
-        // Right edge: 68dp touch box docks at screenWidth - 22dp, pushing the HUD node further into the bezel so only 3 sides (chevron) are visible
+        // Right edge: 116dp window docks at screenWidth - 70dp, providing an expansive 70dp on-screen touch hitbox
         val maxX = if (navRight > 0) {
-            dm.widthPixels - navRight - dpToPx(68f) - dpToPx(8f)
+            dm.widthPixels - navRight - dpToPx(PILL_WIDTH_DP) - dpToPx(8f)
         } else {
-            dm.widthPixels - dpToPx(22f)
+            dm.widthPixels - dpToPx(PILL_ONSCREEN_TOUCH_DP)
         }
 
         return DockBounds(
@@ -218,8 +225,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         isDockedOnRightState.value = false
 
         layoutParams = WindowManager.LayoutParams(
-            dpToPx(68f),
-            dpToPx(72f),
+            dpToPx(PILL_WIDTH_DP),
+            dpToPx(PILL_HEIGHT_DP),
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -227,7 +234,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = -dpToPx(46f)
+            x = -dpToPx(PILL_BEZEL_OFFSET_DP)
             y = standbyDockY
         }
         createOverlayView()
@@ -242,9 +249,10 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             setViewTreeLifecycleOwner(this@FloatingOverlayService)
 
             setContent {
+                val currentConfig = configState.value
                 RECTheme {
                     FloatingPillView(
-                        config = config,
+                        config = currentConfig,
                         isDockedOnLeft = isDockedOnLeftState.value,
                         isDockedOnRight = isDockedOnRightState.value,
                         onDrag = { dx, dy ->
@@ -385,7 +393,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     private fun snapToNearestEdge() {
         val bounds = getDockBoundsCached()
         val currentX = layoutParams.x
-        val viewWidth = dpToPx(68f)
+        val viewWidth = dpToPx(PILL_WIDTH_DP)
         val isRec = RecordingService.serviceState.value is pixl.rec.core.model.RecorderState.Recording || RecordingService.serviceState.value is pixl.rec.core.model.RecorderState.Paused
         val snapBehavior = if (isRec) config.recordingHudConfig.snapBehavior else config.standbyHudConfig.snapBehavior
 
@@ -480,8 +488,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             menuX = (bounds.screenWidth - dpToPx(140f)).coerceAtLeast(0)
             menuY = (layoutParams.y - dpToPx(84f)).coerceIn(bounds.minY, bounds.maxY)
         } else {
-            val pillCenterX = layoutParams.x + dpToPx(34f)
-            val pillCenterY = layoutParams.y + dpToPx(36f)
+            val pillCenterX = layoutParams.x + dpToPx(PILL_WIDTH_DP / 2f)
+            val pillCenterY = layoutParams.y + dpToPx(PILL_HEIGHT_DP / 2f)
             menuW = dpToPx(164f)
             menuH = dpToPx(188f)
             menuX = pillCenterX - dpToPx(82f)
@@ -525,6 +533,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                     else -> 0L
                 }
 
+                val currentConfig = configState.value
                 RECTheme {
                     FloatingRadialMenuView(
                         isExpanded = isMenuExpandedState.value,
@@ -533,7 +542,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                         isRecordingActive = isRecordingActive,
                         isPaused = isPaused,
                         durationMs = currentDuration,
-                        hudConfig = if (isRecordingActive) config.recordingHudConfig else config.standbyHudConfig,
+                        hudConfig = if (isRecordingActive) currentConfig.recordingHudConfig else currentConfig.standbyHudConfig,
                         onToggleExpand = { expanded ->
                             if (!expanded) {
                                 isMenuExpandedState.value = false
@@ -623,16 +632,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     override fun onDestroy() {
         super.onDestroy()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-
-        if (menuOverlayView != null) {
-            try {
-                windowManager?.removeView(menuOverlayView)
-            } catch (e: Exception) {
-                // ignore
-            }
-            menuOverlayView = null
-        }
-
+        removeMenuOverlay()
         if (overlayView != null) {
             try {
                 windowManager?.removeView(overlayView)
@@ -647,6 +647,11 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     companion object {
         const val EXTRA_CONFIG = "extra_config"
 
+        const val PILL_WIDTH_DP = 116f
+        const val PILL_HEIGHT_DP = 88f
+        const val PILL_BEZEL_OFFSET_DP = 46f
+        const val PILL_ONSCREEN_TOUCH_DP = 70f
+
         private val _isTemporarilyHidden = kotlinx.coroutines.flow.MutableStateFlow(false)
         val isTemporarilyHidden: kotlinx.coroutines.flow.StateFlow<Boolean> = _isTemporarilyHidden
 
@@ -656,6 +661,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         fun start(context: Context, config: RecordingConfig = RecordingConfig()) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
+                _isTemporarilyHidden.value = false
                 val intent = Intent(context, FloatingOverlayService::class.java).apply {
                     putExtra(EXTRA_CONFIG, config)
                 }

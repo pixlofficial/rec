@@ -197,6 +197,28 @@ fun FloatingRadialMenuView(
                     }
                 } else {
                     Modifier
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragEnd = onDragEnd,
+                                onDragCancel = onDragEnd,
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount.x, dragAmount.y)
+                                }
+                            )
+                        }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (isRecordingActive && !isDockedOnEdge) {
+                                    onStopClick()
+                                } else {
+                                    onToggleExpand(true)
+                                }
+                            }
+                        )
                 }
             ),
         contentAlignment = boxAlignment
@@ -249,37 +271,33 @@ fun FloatingRadialMenuView(
             0f
         }
 
+        val nodeVisualSize = hudConfig.sizeDp.dp
+
         Box(
             modifier = Modifier
                 .padding(
-                    start = if (isDockedOnLeft) 12.dp else 0.dp,
-                    end = if (isDockedOnRight) 12.dp else 0.dp
+                    start = if (isDockedOnLeft) 24.dp else 0.dp,
+                    end = if (isDockedOnRight) 24.dp else 0.dp
                 )
                 .graphicsLayer { translationX = hubSlidePx }
-                .size(44.dp)
-                .pointerInput(isExpanded) {
-                    if (!isExpanded) {
-                        detectDragGestures(
-                            onDragEnd = onDragEnd,
-                            onDragCancel = onDragEnd,
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDrag(dragAmount.x, dragAmount.y)
+                .size(nodeVisualSize)
+                .then(
+                    if (isExpanded) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (isRecordingActive && !isDockedOnEdge) {
+                                    onToggleExpand(false)
+                                    onStopClick()
+                                } else {
+                                    onToggleExpand(false)
+                                }
                             }
                         )
-                    }
-                }
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isExpanded && isRecordingActive && !isDockedOnEdge) {
-                            onToggleExpand(false)
-                            onStopClick()
-                        } else {
-                            onToggleExpand(!isExpanded)
-                        }
+                    } else {
+                        Modifier
                     }
                 ),
             contentAlignment = Alignment.Center
