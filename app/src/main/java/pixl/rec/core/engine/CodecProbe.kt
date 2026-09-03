@@ -39,10 +39,15 @@ object CodecProbe {
             codecMap[codec] = capability
         }
 
-        // Determine maximum hardware-supported framerate across hardware encoders for this display
+        // Determine maximum hardware-supported framerate across hardware encoders
         val maxHardwareFps = codecMap.values
             .filter { it.isHardwareAccelerated }
-            .flatMap { it.supportedFramerates }
+            .mapNotNull {
+                val codecInfo = findHardwareEncoder(it.codec.mimeType)
+                try {
+                    codecInfo?.getCapabilitiesForType(it.codec.mimeType)?.videoCapabilities?.supportedFrameRates?.upper?.toInt()
+                } catch (_: Exception) { null }
+            }
             .maxOrNull() ?: 60
 
         // Select recommended codec (prefer HEVC hardware, fallback to AVC)
@@ -52,9 +57,15 @@ object CodecProbe {
             else -> VideoCodec.AVC
         }
 
-        // Match recommended framerate to active display refresh rate, capped strictly at hardware encoder limit
+        // Match recommended framerate to active display refresh rate, capped strictly at hardware encoder limit for native display
         val displayRefresh = displayProfile.currentRefreshRate.roundToInt()
-        val recommendedFramerate = min(displayRefresh, maxHardwareFps).coerceAtLeast(30)
+        val nativeSupportedFps = getSupportedFrameratesFor(
+            codec = recommendedCodec,
+            width = displayProfile.physicalWidth,
+            height = displayProfile.physicalHeight,
+            maxDisplayHz = displayProfile.supportedRefreshRates.maxOrNull() ?: displayProfile.currentRefreshRate
+        )
+        val recommendedFramerate = nativeSupportedFps.filter { it <= displayRefresh }.maxOrNull() ?: 30
 
         return DeviceCapabilities(
             display = displayProfile,
@@ -172,12 +183,14 @@ object CodecProbe {
 
             val testW = min(targetWidth, maxWidth).coerceAtLeast(16)
             val testH = min(targetHeight, maxHeight).coerceAtLeast(16)
+            val minDim = min(testW, testH)
+            val maxDim = max(testW, testH)
 
             val supportedFps = mutableListOf<Int>()
             for (fps in STANDARD_FPS_TIERS) {
-                val isFpsSupported = try {
-                    videoCaps?.areSizeAndRateSupported(testW, testH, fps.toDouble()) == true
-                } catch (e: Exception) {
+                val isFpsSupported = if (videoCaps != null) {
+                    isFpsSupportedDirect(videoCaps, testW, testH, minDim, maxDim, fps)
+                } else {
                     fps <= 60
                 }
                 if (isFpsSupported) {
@@ -212,6 +225,175 @@ object CodecProbe {
                 supportedFramerates = listOf(30, 60),
                 isSupported = true
             )
+        }
+    }
+
+    /**
+     * Cache for dynamic resolution/codec/framerate queries: (codec, alignedW, alignedH) -> supportedFpsList
+     */
+    private val framerateQueryCache = mutableMapOf<Triple<VideoCodec, Int, Int>, List<Int>>()
+
+    /**
+     * Probes all supported framerate tiers for a specific codec at the given dimensions.
+     * Evaluates against hardware encoder capabilities, respecting orientation swapping and display Hz.
+     */
+    fun getSupportedFrameratesFor(
+        codec: VideoCodec,
+        width: Int,
+        height: Int,
+        maxDisplayHz: Float = 120f
+    ): List<Int> {
+        val alignedW = ((width + 15) / 16) * 16
+        val alignedH = ((height + 15) / 16) * 16
+        val cacheKey = Triple(codec, alignedW, alignedH)
+
+        val cached = framerateQueryCache[cacheKey]
+        val supportedTiers = if (cached != null) {
+            cached
+        } else {
+            val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType)
+            val vCaps = try {
+                codecInfo?.getCapabilitiesForType(codec.mimeType)?.videoCapabilities
+            } catch (_: Exception) {
+                null
+            }
+
+            if (vCaps == null) {
+                listOf(30)
+            } else {
+                val minDim = min(alignedW, alignedH)
+                val maxDim = max(alignedW, alignedH)
+
+                val result = mutableListOf<Int>()
+                for (fps in STANDARD_FPS_TIERS) {
+                    val supported = isFpsSupportedDirect(vCaps, alignedW, alignedH, minDim, maxDim, fps)
+                    if (supported) {
+                        result.add(fps)
+                    }
+                }
+                if (!result.contains(30)) {
+                    result.add(0, 30)
+                }
+                result.sort()
+                framerateQueryCache[cacheKey] = result
+                result
+            }
+        }
+
+        // Filter against display refresh rate ceiling (with 1 FPS tolerance for 59.94 / 119.8 Hz displays)
+        return if (maxDisplayHz > 0) {
+            supportedTiers.filter { fps -> fps == 30 || (fps - 1f) <= maxDisplayHz }
+        } else {
+            supportedTiers
+        }
+    }
+
+    /**
+     * Checks if a specific framerate is supported by VideoCapabilities, testing both orientations.
+     */
+    private fun isFpsSupportedDirect(
+        vCaps: MediaCodecInfo.VideoCapabilities,
+        w: Int,
+        h: Int,
+        minDim: Int,
+        maxDim: Int,
+        fps: Int
+    ): Boolean {
+        // Test 1: Direct native query
+        val directMatch = try {
+            vCaps.areSizeAndRateSupported(w, h, fps.toDouble())
+        } catch (_: Exception) {
+            false
+        }
+        if (directMatch) return true
+
+        // Test 2: Inverted orientation (portrait <-> landscape swap)
+        val swappedMatch = try {
+            vCaps.areSizeAndRateSupported(h, w, fps.toDouble())
+        } catch (_: Exception) {
+            false
+        }
+        if (swappedMatch) return true
+
+        // Test 3: Standard landscape bounds (maxDim x minDim)
+        val landscapeMatch = try {
+            vCaps.areSizeAndRateSupported(maxDim, minDim, fps.toDouble())
+        } catch (_: Exception) {
+            false
+        }
+        if (landscapeMatch) return true
+
+        // Test 4: Query supported frame rate range for dimensions
+        val maxFromRange = try {
+            val r1 = runCatching { vCaps.getSupportedFrameRatesFor(w, h).upper.toDouble() }.getOrNull()
+            val r2 = runCatching { vCaps.getSupportedFrameRatesFor(h, w).upper.toDouble() }.getOrNull()
+            val r3 = runCatching { vCaps.getSupportedFrameRatesFor(maxDim, minDim).upper.toDouble() }.getOrNull()
+            listOfNotNull(r1, r2, r3).maxOrNull() ?: 0.0
+        } catch (_: Exception) {
+            0.0
+        }
+
+        return maxFromRange >= (fps - 0.5)
+    }
+
+    /**
+     * Returns the maximum hardware framerate achievable at the given dimensions for the codec.
+     */
+    fun getMaxFramerateFor(codec: VideoCodec, width: Int, height: Int): Int {
+        val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return 30
+        return try {
+            val vCaps = codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities ?: return 30
+            val alignedW = ((width + 15) / 16) * 16
+            val alignedH = ((height + 15) / 16) * 16
+            val minDim = min(alignedW, alignedH)
+            val maxDim = max(alignedW, alignedH)
+
+            val r1 = runCatching { vCaps.getSupportedFrameRatesFor(alignedW, alignedH).upper.toInt() }.getOrNull()
+            val r2 = runCatching { vCaps.getSupportedFrameRatesFor(alignedH, alignedW).upper.toInt() }.getOrNull()
+            val r3 = runCatching { vCaps.getSupportedFrameRatesFor(maxDim, minDim).upper.toInt() }.getOrNull()
+            val rate = listOfNotNull(r1, r2, r3).maxOrNull()
+
+            if (rate != null && rate > 0) {
+                rate
+            } else {
+                listOf(144, 120, 90, 60, 30).firstOrNull { fps ->
+                    isFpsSupportedDirect(vCaps, alignedW, alignedH, minDim, maxDim, fps)
+                } ?: 30
+            }
+        } catch (_: Exception) {
+            30
+        }
+    }
+
+    /**
+     * Checks whether the specified dimensions are within the codec's supported size envelope.
+     */
+    fun isSizeSupportedFor(codec: VideoCodec, width: Int, height: Int): Boolean {
+        val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return false
+        return try {
+            val vCaps = codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities ?: return false
+            val alignedW = ((width + 15) / 16) * 16
+            val alignedH = ((height + 15) / 16) * 16
+            val minDim = min(alignedW, alignedH)
+            val maxDim = max(alignedW, alignedH)
+
+            vCaps.isSizeSupported(alignedW, alignedH) ||
+            vCaps.isSizeSupported(alignedH, alignedW) ||
+            vCaps.isSizeSupported(maxDim, minDim)
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    /**
+     * Returns the maximum supported bitrate in bits per second for the specified codec.
+     */
+    fun getMaxBitrateFor(codec: VideoCodec): Int {
+        val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return 50_000_000
+        return try {
+            codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities?.bitrateRange?.upper ?: 50_000_000
+        } catch (_: Exception) {
+            50_000_000
         }
     }
 

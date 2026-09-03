@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -152,7 +153,12 @@ class VideoEncoder(
             val caps = try { codecInfo.getCapabilitiesForType(mime) } catch (_: Exception) { null }
             val vCaps = caps?.videoCapabilities
             val maxSupportedFps = try {
-                vCaps?.getSupportedFrameRatesFor(width, height)?.upper?.toInt() ?: config.framerate
+                val r1 = runCatching { vCaps?.getSupportedFrameRatesFor(width, height)?.upper?.toInt() }.getOrNull()
+                val r2 = runCatching { vCaps?.getSupportedFrameRatesFor(height, width)?.upper?.toInt() }.getOrNull()
+                val minDim = min(width, height)
+                val maxDim = max(width, height)
+                val r3 = runCatching { vCaps?.getSupportedFrameRatesFor(maxDim, minDim)?.upper?.toInt() }.getOrNull()
+                listOfNotNull(r1, r2, r3).maxOrNull() ?: config.framerate
             } catch (_: Exception) {
                 config.framerate
             }

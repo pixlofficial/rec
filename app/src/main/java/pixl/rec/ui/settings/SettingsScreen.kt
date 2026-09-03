@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pixl.rec.R
+import pixl.rec.core.engine.CodecProbe
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
@@ -214,7 +215,18 @@ private fun VideoSettingsSection(
 
     // 2. Framerate Selection
     val context = LocalContext.current
-    val maxHardwareFps = capabilities?.maxHardwareFps ?: 60
+    val maxDisplayHz = capabilities?.display?.supportedRefreshRates?.maxOrNull()
+        ?: capabilities?.display?.currentRefreshRate ?: 120f
+
+    val supportedFpsList: List<Int> = remember(config.videoCodec, config.width, config.height, maxDisplayHz) {
+        CodecProbe.getSupportedFrameratesFor(
+            codec = config.videoCodec,
+            width = config.width,
+            height = config.height,
+            maxDisplayHz = maxDisplayHz
+        )
+    }
+
     SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -223,10 +235,9 @@ private fun VideoSettingsSection(
         ) {
             listOf(30, 60, 90, 120).forEach { fps ->
                 val isSelected = config.framerate == fps
-                val displaySupports = capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 } ?: true
-                val encoderSupports = capabilities?.codecs?.get(config.videoCodec)?.supportedFramerates?.contains(fps)
-                    ?: (fps <= maxHardwareFps)
-                val isSupported = (displaySupports && encoderSupports) || fps == 30
+                val displaySupports = capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 }
+                    ?: ((capabilities?.display?.currentRefreshRate ?: 60f) >= fps - 1)
+                val isSupported = supportedFpsList.contains(fps) || fps == 30
 
                 SettingsTag(
                     text = "$fps FPS",
@@ -235,11 +246,12 @@ private fun VideoSettingsSection(
                     onClick = { viewModel.updateFramerate(fps) },
                     onDisabledClick = {
                         val reason = if (!displaySupports) {
-                            "Display max: ${capabilities?.display?.currentRefreshRate?.toInt() ?: 60}Hz"
+                            "Display panel max refresh rate: ${maxDisplayHz.toInt()}Hz"
                         } else {
-                            "Hardware encoder limit: $maxHardwareFps FPS"
+                            val maxCodecRate = CodecProbe.getMaxFramerateFor(config.videoCodec, config.width, config.height)
+                            "${config.videoCodec.displayName} ASIC limit at ${config.width}x${config.height}: ${maxCodecRate} FPS. Switch to a lower resolution for higher FPS."
                         }
-                        Toast.makeText(context, "Hardware Limit: $reason", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
                     }
                 )
             }
@@ -308,11 +320,19 @@ private fun VideoSettingsSection(
             )
             resolutions.forEach { (label, displayTag, res) ->
                 val isSelected = config.width == res.first && config.height == res.second
+                val isSupported = CodecProbe.isSizeSupportedFor(config.videoCodec, res.first, res.second)
                 SettingsTag(
                     text = "$label ($displayTag)",
                     isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { viewModel.updateResolution(res.first, res.second) }
+                    enabled = !isRecordingActive && isSupported,
+                    onClick = { viewModel.updateResolution(res.first, res.second) },
+                    onDisabledClick = {
+                        Toast.makeText(
+                            context,
+                            "${config.videoCodec.displayName} cannot encode ${res.first}x${res.second}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 )
             }
         }
@@ -321,6 +341,7 @@ private fun VideoSettingsSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 4. Bitrate Deck
+    val maxCodecBitrate = CodecProbe.getMaxBitrateFor(config.videoCodec)
     SectionCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -329,11 +350,19 @@ private fun VideoSettingsSection(
         ) {
             listOf(8, 16, 28, 50, 80).forEach { mbps ->
                 val isSelected = config.videoBitrate == mbps * 1_000_000
+                val isBitrateSupported = (mbps * 1_000_000L) <= maxCodecBitrate
                 SettingsTag(
                     text = "$mbps Mbps",
                     isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { viewModel.updateVideoBitrate(mbps) }
+                    enabled = !isRecordingActive && isBitrateSupported,
+                    onClick = { viewModel.updateVideoBitrate(mbps) },
+                    onDisabledClick = {
+                        Toast.makeText(
+                            context,
+                            "${config.videoCodec.displayName} hardware limit: ${maxCodecBitrate / 1_000_000} Mbps",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 )
             }
         }

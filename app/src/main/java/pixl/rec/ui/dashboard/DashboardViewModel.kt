@@ -251,18 +251,36 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 captureTarget = CaptureTarget.ENTIRE_SCREEN
             ).withMacroblockAlignment()
 
-            // Restore user persisted preferences over defaults
+            // Restore user persisted preferences over defaults with hardware capability validation
             val savedConfig = ConfigPreferences.loadConfig(getApplication(), defaultHwConfig)
+            val maxDisplayHz = probedCapabilities.display.supportedRefreshRates.maxOrNull()
+                ?: probedCapabilities.display.currentRefreshRate
+            val supportedFps = CodecProbe.getSupportedFrameratesFor(
+                codec = savedConfig.videoCodec,
+                width = savedConfig.width,
+                height = savedConfig.height,
+                maxDisplayHz = maxDisplayHz
+            )
+            val validatedFps = if (supportedFps.contains(savedConfig.framerate)) {
+                savedConfig.framerate
+            } else {
+                supportedFps.filter { it <= savedConfig.framerate }.maxOrNull() ?: 30
+            }
+            val maxBitrate = CodecProbe.getMaxBitrateFor(savedConfig.videoCodec)
+            val validatedConfig = savedConfig.copy(
+                framerate = validatedFps,
+                videoBitrate = kotlin.math.min(savedConfig.videoBitrate, maxBitrate)
+            )
 
             val remainingMin = StorageCalculator.estimateRemainingMinutes(
                 availableBytes = availableBytes,
-                videoBitrateBps = savedConfig.videoBitrate,
-                audioBitrateBps = savedConfig.audioBitrate
+                videoBitrateBps = validatedConfig.videoBitrate,
+                audioBitrateBps = validatedConfig.audioBitrate
             )
 
             _uiState.value = DashboardUiState(
                 capabilities = probedCapabilities,
-                config = savedConfig,
+                config = validatedConfig,
                 availableStorageBytes = availableBytes,
                 remainingMinutes = remainingMin,
                 isStorageLow = StorageCalculator.isStorageLow(availableBytes)
@@ -278,19 +296,86 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateResolution(width: Int, height: Int) {
         val current = _uiState.value.config
-        val updated = current.copy(width = width, height = height).withMacroblockAlignment()
+        val aligned = current.copy(width = width, height = height).withMacroblockAlignment()
+
+        val maxDisplayHz = _uiState.value.capabilities?.display?.supportedRefreshRates?.maxOrNull()
+            ?: _uiState.value.capabilities?.display?.currentRefreshRate ?: 120f
+
+        val supportedFps = CodecProbe.getSupportedFrameratesFor(
+            codec = aligned.videoCodec,
+            width = aligned.width,
+            height = aligned.height,
+            maxDisplayHz = maxDisplayHz
+        )
+
+        val clampedFps = if (supportedFps.contains(aligned.framerate)) {
+            aligned.framerate
+        } else {
+            supportedFps.filter { it <= aligned.framerate }.maxOrNull() ?: 30
+        }
+
+        val updated = aligned.copy(framerate = clampedFps)
         updateConfigAndStorage(updated)
     }
 
     fun updateRecordingOrientation(orientation: RecordingOrientation) {
         val current = _uiState.value.config
-        val updated = current.copy(recordingOrientation = orientation)
+        val minDim = kotlin.math.min(current.width, current.height)
+        val maxDim = kotlin.math.max(current.width, current.height)
+        val (newW, newH) = when (orientation) {
+            RecordingOrientation.LANDSCAPE -> maxDim to minDim
+            RecordingOrientation.PORTRAIT -> minDim to maxDim
+            RecordingOrientation.AUTO -> current.width to current.height
+        }
+        val aligned = current.copy(
+            width = newW,
+            height = newH,
+            recordingOrientation = orientation
+        ).withMacroblockAlignment()
+
+        val maxDisplayHz = _uiState.value.capabilities?.display?.supportedRefreshRates?.maxOrNull()
+            ?: _uiState.value.capabilities?.display?.currentRefreshRate ?: 120f
+        val supportedFps = CodecProbe.getSupportedFrameratesFor(
+            codec = aligned.videoCodec,
+            width = aligned.width,
+            height = aligned.height,
+            maxDisplayHz = maxDisplayHz
+        )
+        val clampedFps = if (supportedFps.contains(aligned.framerate)) {
+            aligned.framerate
+        } else {
+            supportedFps.filter { it <= aligned.framerate }.maxOrNull() ?: 30
+        }
+        val updated = aligned.copy(framerate = clampedFps)
         updateConfigAndStorage(updated)
     }
 
     fun updateVideoCodec(codec: VideoCodec) {
         val current = _uiState.value.config
-        val updated = current.copy(videoCodec = codec)
+        val maxDisplayHz = _uiState.value.capabilities?.display?.supportedRefreshRates?.maxOrNull()
+            ?: _uiState.value.capabilities?.display?.currentRefreshRate ?: 120f
+
+        val supportedFps = CodecProbe.getSupportedFrameratesFor(
+            codec = codec,
+            width = current.width,
+            height = current.height,
+            maxDisplayHz = maxDisplayHz
+        )
+
+        val clampedFps = if (supportedFps.contains(current.framerate)) {
+            current.framerate
+        } else {
+            supportedFps.filter { it <= current.framerate }.maxOrNull() ?: 30
+        }
+
+        val maxBitrate = CodecProbe.getMaxBitrateFor(codec)
+        val clampedBitrate = kotlin.math.min(current.videoBitrate, maxBitrate)
+
+        val updated = current.copy(
+            videoCodec = codec,
+            framerate = clampedFps,
+            videoBitrate = clampedBitrate
+        )
         updateConfigAndStorage(updated)
     }
 
@@ -302,7 +387,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateVideoBitrate(bitrateMbps: Int) {
         val current = _uiState.value.config
-        val updated = current.copy(videoBitrate = bitrateMbps * 1_000_000)
+        val maxCodecBitrate = CodecProbe.getMaxBitrateFor(current.videoCodec)
+        val targetBps = bitrateMbps * 1_000_000
+        val clampedBps = kotlin.math.min(targetBps, maxCodecBitrate)
+        val updated = current.copy(videoBitrate = clampedBps)
         updateConfigAndStorage(updated)
     }
 
