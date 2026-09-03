@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.1] - 2026-09-03
+
+### 🐛 Fixed
+* **Android 14+ (API 34–36) MediaProjection Startup Crash:**
+  * Fixed asynchronous race condition in `ScreenRecorderEngine` where `VirtualDisplay` was instantiated prior to starting `VideoEncoder`, causing immediate session termination on modern Android versions.
+* **MediaCodec Framerate Clamping & Profile Safety:**
+  * Guarded requested framerates against `videoCaps.getSupportedFrameRatesFor()`, automatically clamping unsupported rates to encoder limits with dynamic fallback tiers.
+  * Enforced SDR 8-bit `HEVCProfileMain` in `CodecProbe` to prevent profile rejection on devices without HDR10/Dolby Vision hardware support.
+  * Removed conflicting real-time surface `KEY_OPERATING_RATE` hints.
+* **Dynamic Hardware Capability Detection in Settings:**
+  * Greys out capture framerates (90/120 FPS) not supported by the display panel or hardware ASIC encoder.
+  * Added informative toast diagnostics explaining specific hardware limits upon tapping disabled framerate tags.
+* **Standby Floating Pill Lifecycle Restoration:**
+  * Fixed `RecordingService` unconditionally destroying `FloatingOverlayService` when stopping a recording session; standby pill is now cleanly preserved and restored if `alwaysOnFloatingPill` is enabled.
+  * Reset ghost mode state (`isInvisibleGhost = false`) on session finish so standby bubbles never leak invisibility after recording ends.
+  * Ensured `FloatingOverlayService.onStartCommand()` restores view visibility, clears temporary hidden flags, and removes lingering radial menus.
+  * Guarded `MainActivity.onResume()` so foreground activity resumption never kills the overlay service during an active recording.
+* **Floating Pill Touch Hitbox Expansion:**
+  * Expanded collapsed pill window to 116dp × 88dp with a 70dp on-screen hit area (over 3x larger touch target) while preserving the clean 22dp visible bezel tip.
+  * Attached gesture detection and click listeners to the root window container for effortless tap and drag initiation.
+  * Expanded invisible ghost mode touch target to fill the full window for reliable gesture recall.
+* **HUD Studio Background Silhouette Size Clamp:**
+  * Removed hardcoded `44.dp` container clamp in `FloatingRadialMenuView`, allowing custom shape silhouettes (up to 56 DP) to expand dynamically on screen.
+* **Bottom Nav Bar & Overlay Stop Button Visual Sizing:**
+  * Normalized `ic_pixel_stop` vector viewport from 120dp to 64dp with centered 1.25x scaling, expanding visual stop footprint from 26.6 DP to 52.06 DP to perfectly match the idle record circle.
+
+---
+
 ## [0.4.0] - 2026-09-02
 
 ### 🚀 Added
@@ -151,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.4.1]: https://github.com/pixlofficial/rec/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/pixlofficial/rec/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pixlofficial/rec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pixlofficial/rec/compare/v0.1.0...v0.2.0
