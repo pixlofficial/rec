@@ -165,7 +165,8 @@ class ScreenRecorderEngine(
 
             val finalConfig = activeConfig.copy(
                 width = vEncoder.configuredWidth,
-                height = vEncoder.configuredHeight
+                height = vEncoder.configuredHeight,
+                framerate = vEncoder.configuredFramerate
             )
 
             // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas
@@ -214,7 +215,22 @@ class ScreenRecorderEngine(
                 audioCaptureManager = aCapture
             }
 
-            // 4. Create VirtualDisplay piped directly to VideoEncoder Input Surface (Zero-Copy)
+            // 4. Start all pipelines with unified monotonic session baseline
+            // MediaCodec MUST be in Executing state and draining buffers before VirtualDisplay is attached,
+            // otherwise high refresh rates (60-120fps) will immediately overflow the input BufferQueue on Android 14+.
+            val sessionBaseTimeNs = System.nanoTime()
+
+            isRecording.set(true)
+            isPaused.set(false)
+            startTimeMs = System.currentTimeMillis()
+            totalPausedDurationMs = 0L
+            totalBytesWritten.set(0L)
+
+            vEncoder.start(engineScope, sessionBaseTimeNs)
+            audioEncoder?.start(engineScope)
+            audioCaptureManager?.start(engineScope, sessionBaseTimeNs)
+
+            // 5. Create VirtualDisplay piped directly to the actively running VideoEncoder Input Surface (Zero-Copy)
             val surface = vEncoder.inputSurface ?: throw IllegalStateException("Encoder surface is null")
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "PixL-REC-Display",
@@ -244,19 +260,6 @@ class ScreenRecorderEngine(
             }
             displayListener = listener
             displayManager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
-
-            // 5. Start all pipelines with unified monotonic session baseline
-            val sessionBaseTimeNs = System.nanoTime()
-
-            isRecording.set(true)
-            isPaused.set(false)
-            startTimeMs = System.currentTimeMillis()
-            totalPausedDurationMs = 0L
-            totalBytesWritten.set(0L)
-
-            vEncoder.start(engineScope, sessionBaseTimeNs)
-            audioEncoder?.start(engineScope)
-            audioCaptureManager?.start(engineScope, sessionBaseTimeNs)
 
             startTelemetryTicker()
             Log.i(tag, "ScreenRecorderEngine started successfully")

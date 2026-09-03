@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.min
 
 /**
  * Zero-copy hardware video encoder.
@@ -43,6 +44,8 @@ class VideoEncoder(
         private set
     var configuredHeight: Int = config.height
         private set
+    var configuredFramerate: Int = config.framerate
+        private set
     var configuredCodecName: String = ""
         private set
 
@@ -66,7 +69,10 @@ class VideoEncoder(
 
     /**
      * Initializes and configures the hardware encoder with zero-copy surface input.
-     * Negotiates 2K/4K profiles (AVC Level 5.1/5.2, HEVC Main Level 5.1) with multi-stage resilient fallback.
+     * Uses multi-tier fallback:
+     *   Attempt 1: Optimal Profile/Level & BT.709 studio colorimetry metadata
+     *   Attempt 2: Relaxed Profile/Level without optional colorimetry keys
+     *   Attempt 3: Driver native auto-selection without explicit Profile/Level
      */
     fun prepare() {
         val preferredMime = config.videoCodec.mimeType
@@ -92,26 +98,45 @@ class VideoEncoder(
 
                 val profileLevel = CodecProbe.selectProfileAndLevel(codecInfo, mime, safeW, safeH, config.framerate)
 
-                // Attempt 1: Full configuration (with Profile/Level 5.1+, operating rate, colorimetry)
-                if (tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = true)) {
+                // Attempt 1: Full configuration (with Profile/Level and BT.709 colorimetry)
+                val (success1, fps1, exc1) = tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = true)
+                if (success1) {
                     configuredWidth = safeW
                     configuredHeight = safeH
+                    configuredFramerate = fps1
                     configuredCodecName = codecInfo.name
                     return
                 }
+                if (exc1 != null) lastException = exc1
 
-                // Attempt 2: Relaxed configuration (without operating rate / strict colorimetry keys that some vendor drivers reject on 2K)
-                if (tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = false)) {
+                // Attempt 2: Relaxed configuration (with Profile/Level, without extra colorimetry keys)
+                val (success2, fps2, exc2) = tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel, includeOptionalKeys = false)
+                if (success2) {
                     configuredWidth = safeW
                     configuredHeight = safeH
+                    configuredFramerate = fps2
                     configuredCodecName = codecInfo.name
                     return
                 }
+                if (exc2 != null) lastException = exc2
+
+                // Attempt 3: Driver native auto Profile/Level selection
+                val (success3, fps3, exc3) = tryConfigureCodec(codecInfo, mime, safeW, safeH, profileLevel = null, includeOptionalKeys = false)
+                if (success3) {
+                    configuredWidth = safeW
+                    configuredHeight = safeH
+                    configuredFramerate = fps3
+                    configuredCodecName = codecInfo.name
+                    return
+                }
+                if (exc3 != null) lastException = exc3
             }
         }
 
         throw lastException ?: IllegalStateException("Unable to configure video encoder for ${config.width}x${config.height} (${config.videoCodec.displayName})")
     }
+
+    private data class ConfigResult(val success: Boolean, val effectiveFps: Int, val exception: Exception?)
 
     private fun tryConfigureCodec(
         codecInfo: MediaCodecInfo,
@@ -120,18 +145,34 @@ class VideoEncoder(
         height: Int,
         profileLevel: Pair<Int, Int>?,
         includeOptionalKeys: Boolean
-    ): Boolean {
+    ): ConfigResult {
         var codec: MediaCodec? = null
         return try {
+            // Validate and clamp framerate against encoder capabilities for the specified canvas dimensions
+            val caps = try { codecInfo.getCapabilitiesForType(mime) } catch (_: Exception) { null }
+            val vCaps = caps?.videoCapabilities
+            val maxSupportedFps = try {
+                vCaps?.getSupportedFrameRatesFor(width, height)?.upper?.toInt() ?: config.framerate
+            } catch (_: Exception) {
+                config.framerate
+            }
+            val effectiveFps = min(config.framerate, maxSupportedFps).coerceAtLeast(30)
+            if (effectiveFps < config.framerate) {
+                Log.w(tag, "Encoder ${codecInfo.name} caps framerate for ${width}x${height} from ${config.framerate} to $effectiveFps fps")
+            }
+
             codec = MediaCodec.createByCodecName(codecInfo.name)
             val format = MediaFormat.createVideoFormat(mime, width, height).apply {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
                 setInteger(MediaFormat.KEY_BIT_RATE, config.videoBitrate)
-                setInteger(MediaFormat.KEY_FRAME_RATE, config.framerate)
+                setInteger(MediaFormat.KEY_FRAME_RATE, effectiveFps)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
                 setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
 
-                // Explicit Profile & Level for 2K / 4K / High Bitrate
+                // Real-time scheduling priority for Android kernel scheduler
+                setInteger(MediaFormat.KEY_PRIORITY, 0)
+
+                // Explicit Profile & Level (if available and not falling back to auto)
                 if (profileLevel != null) {
                     setInteger(MediaFormat.KEY_PROFILE, profileLevel.first)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -140,11 +181,6 @@ class VideoEncoder(
                 }
 
                 if (includeOptionalKeys) {
-                    // Operating rate hint for high framerate
-                    setInteger(MediaFormat.KEY_OPERATING_RATE, config.framerate)
-                    // Real-time priority for kernel scheduler
-                    setInteger(MediaFormat.KEY_PRIORITY, 0)
-
                     // Explicit Studio BT.709 sRGB Colorimetry & Full Dynamic Range Metadata
                     setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
                     setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_FULL)
@@ -155,14 +191,14 @@ class VideoEncoder(
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             inputSurface = codec.createInputSurface()
             mediaCodec = codec
-            Log.i(tag, "VideoEncoder prepared: ${codec.name} ($mime), ${width}x${height} @ ${config.framerate}fps, Profile: ${profileLevel?.first}, Level: ${profileLevel?.second}, optionalKeys: $includeOptionalKeys")
-            true
+            Log.i(tag, "VideoEncoder prepared: ${codec.name} ($mime), ${width}x${height} @ ${effectiveFps}fps (requested ${config.framerate}fps), Profile: ${profileLevel?.first}, Level: ${profileLevel?.second}, optionalKeys: $includeOptionalKeys")
+            ConfigResult(success = true, effectiveFps = effectiveFps, exception = null)
         } catch (e: Exception) {
-            Log.w(tag, "Failed to configure codec ${codecInfo.name} ($mime) for ${width}x${height} (optionalKeys=$includeOptionalKeys): ${e.message}")
+            Log.w(tag, "Failed to configure codec ${codecInfo.name} ($mime) for ${width}x${height} (profile=${profileLevel?.first}, optionalKeys=$includeOptionalKeys): ${e.message}")
             try {
                 codec?.release()
             } catch (_: Exception) {}
-            false
+            ConfigResult(success = false, effectiveFps = config.framerate, exception = e)
         }
     }
 

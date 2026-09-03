@@ -1,6 +1,8 @@
 package pixl.rec.ui.settings
 
 import android.os.Build
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -211,6 +213,8 @@ private fun VideoSettingsSection(
     Spacer(modifier = Modifier.height(14.dp))
 
     // 2. Framerate Selection
+    val context = LocalContext.current
+    val maxHardwareFps = capabilities?.maxHardwareFps ?: 60
     SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -219,12 +223,24 @@ private fun VideoSettingsSection(
         ) {
             listOf(30, 60, 90, 120).forEach { fps ->
                 val isSelected = config.framerate == fps
-                val isSupported = (capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 } ?: true) || fps <= 60
+                val displaySupports = capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 } ?: true
+                val encoderSupports = capabilities?.codecs?.get(config.videoCodec)?.supportedFramerates?.contains(fps)
+                    ?: (fps <= maxHardwareFps)
+                val isSupported = (displaySupports && encoderSupports) || fps == 30
+
                 SettingsTag(
                     text = "$fps FPS",
                     isSelected = isSelected,
                     enabled = !isRecordingActive && isSupported,
-                    onClick = { viewModel.updateFramerate(fps) }
+                    onClick = { viewModel.updateFramerate(fps) },
+                    onDisabledClick = {
+                        val reason = if (!displaySupports) {
+                            "Display max: ${capabilities?.display?.currentRefreshRate?.toInt() ?: 60}Hz"
+                        } else {
+                            "Hardware encoder limit: $maxHardwareFps FPS"
+                        }
+                        Toast.makeText(context, "Hardware Limit: $reason", Toast.LENGTH_SHORT).show()
+                    }
                 )
             }
         }
@@ -602,17 +618,20 @@ private fun SettingsTag(
     text: String,
     isSelected: Boolean,
     enabled: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDisabledClick: (() -> Unit)? = null
 ) {
     val bg = if (isSelected) TextPrimary else SurfaceElevated
-    val border = if (isSelected) HyperCrimson else BorderStark
-    val textColor = if (isSelected) TextInverse else if (enabled) TextPrimary else TextMuted
+    val border = if (isSelected) HyperCrimson else if (enabled) BorderStark else BorderStark.copy(alpha = 0.4f)
+    val textColor = if (isSelected) TextInverse else if (enabled) TextPrimary else TextMuted.copy(alpha = 0.5f)
 
     Box(
         modifier = Modifier
             .background(bg, RoundedCornerShape(8.dp))
             .border(1.5.dp, border, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable {
+                if (enabled) onClick() else onDisabledClick?.invoke()
+            }
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
