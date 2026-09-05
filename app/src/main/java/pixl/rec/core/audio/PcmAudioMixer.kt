@@ -102,10 +102,11 @@ object PcmAudioMixer {
     }
 
     /**
-     * Computes RMS audio level in decibels (-60 dB to 0 dB) from 16-bit PCM bytes.
+     * Computes RMS audio level in decibels (-60 dB to 0 dB) from 16-bit PCM bytes,
+     * scaled by an optional gain factor (e.g., mic gain boost or game volume reduction).
      */
-    fun calculateDbLevel(pcmBytes: ByteArray, length: Int): Float {
-        if (length <= 0) return MIN_DB
+    fun calculateDbLevel(pcmBytes: ByteArray, length: Int, gain: Float = 1.0f): Float {
+        if (length <= 0 || gain <= 0.001f) return MIN_DB
 
         val sampleCount = length / 2
         var sumSquares = 0.0
@@ -113,7 +114,7 @@ object PcmAudioMixer {
         for (i in 0 until sampleCount) {
             val low = pcmBytes[i * 2].toInt() and 0xFF
             val high = pcmBytes[i * 2 + 1].toInt()
-            val sample = ((high shl 8) or low).toDouble()
+            val sample = ((high shl 8) or low).toDouble() * gain.toDouble()
             sumSquares += sample * sample
         }
 

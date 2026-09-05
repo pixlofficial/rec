@@ -42,6 +42,14 @@ enum class BitrateMode(val androidMode: Int, val displayName: String) {
 }
 
 /**
+ * Color dynamic range quantization.
+ */
+enum class ColorRange(val androidRange: Int, val displayName: String) {
+    FULL(MediaFormat.COLOR_RANGE_FULL, "Full (0–255)"),
+    LIMITED(MediaFormat.COLOR_RANGE_LIMITED, "Limited (16–235)");
+}
+
+/**
  * Gestures used to recall the floating pill when invisible/auto-hidden during recording.
  */
 enum class PillRecallGesture(val displayName: String, val description: String) {
@@ -68,6 +76,17 @@ enum class RecordingOrientation(val displayName: String) {
 }
 
 /**
+ * Universal quick configuration presets.
+ */
+enum class QuickPreset(val displayName: String, val description: String) {
+    BEST_QUALITY("Best Quality", "Full native display clarity"),
+    GAMING("Gaming (60 FPS)", "High motion stability for games"),
+    MAX_FPS("Max FPS", "Highest framerate supported"),
+    SMALL_SIZE("Small Size", "Lightweight file for fast sharing"),
+    CUSTOM("Custom", "Custom user-configured profile");
+}
+
+/**
  * Master configuration profile for zero-copy recording session.
  */
 @Parcelize
@@ -79,7 +98,7 @@ data class RecordingConfig(
     val videoBitrate: Int = 16_000_000, // 16 Mbps standard balanced default
     val videoCodec: VideoCodec = VideoCodec.HEVC,
     val bitrateMode: BitrateMode = BitrateMode.VBR,
-    val iFrameIntervalSeconds: Int = 1,
+    val iFrameIntervalSeconds: Float = 1.0f,
     val audioSource: AudioSource = AudioSource.INTERNAL_AND_MIC,
     val audioBitrate: Int = 256_000, // 256 kbps AAC
     val audioSampleRate: Int = 48_000, // 48 kHz standard studio rate
@@ -87,6 +106,12 @@ data class RecordingConfig(
     val micGain: Float = 1.0f,
     val internalAudioGain: Float = 1.0f,
     val recordingOrientation: RecordingOrientation = RecordingOrientation.AUTO,
+    val activePreset: QuickPreset = QuickPreset.BEST_QUALITY,
+
+    // Advanced Studio & Silicon Controls
+    val allowExperimentalFps: Boolean = false,
+    val colorRange: ColorRange = ColorRange.FULL,
+    val enableIntraRefresh: Boolean = false,
 
     // Overlay & Clean Canvas Controls
     val showFloatingPill: Boolean = true,
@@ -97,6 +122,7 @@ data class RecordingConfig(
     val shakeToStop: Boolean = true,
     val stopOnScreenOff: Boolean = true,
     val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN,
+    val countdownSeconds: Int = 3,
 
     // HUD Customization Configuration (Separate Standby & Recording Configs + Global Snap)
     val standbyHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.NONE),

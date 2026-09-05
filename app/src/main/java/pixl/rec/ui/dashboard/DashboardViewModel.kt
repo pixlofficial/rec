@@ -10,10 +10,14 @@ import android.os.PowerManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import pixl.rec.core.engine.CodecProbe
+import pixl.rec.core.engine.ResolutionCalculator
 import pixl.rec.core.model.AudioSource
+import pixl.rec.core.model.BitrateMode
 import pixl.rec.core.model.CaptureTarget
+import pixl.rec.core.model.ColorRange
 import pixl.rec.core.model.DeviceCapabilities
 import pixl.rec.core.model.PillRecallGesture
+import pixl.rec.core.model.QuickPreset
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
@@ -288,15 +292,109 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun updateFramerate(fps: Int) {
+    fun applyQuickPreset(preset: QuickPreset) {
         val current = _uiState.value.config
-        val updated = current.copy(framerate = fps)
+        val display = _uiState.value.capabilities?.display
+        val physW = display?.physicalWidth ?: 1080
+        val physH = display?.physicalHeight ?: 2400
+        val maxDisplayHz = display?.supportedRefreshRates?.maxOrNull()
+            ?: display?.currentRefreshRate ?: 120f
+
+        val updated: RecordingConfig = when (preset) {
+            QuickPreset.BEST_QUALITY -> {
+                val isLandscape = current.width > current.height
+                val presets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape)
+                val nativeTier = presets.first()
+                val suppFps = CodecProbe.getSupportedFrameratesFor(
+                    codec = current.videoCodec,
+                    width = nativeTier.width,
+                    height = nativeTier.height,
+                    maxDisplayHz = maxDisplayHz
+                )
+                val bestFps = suppFps.maxOrNull() ?: 30
+                val maxBitrate = CodecProbe.getMaxBitrateFor(current.videoCodec)
+                val targetBitrate = kotlin.math.min(28_000_000, maxBitrate)
+                current.copy(
+                    width = nativeTier.width,
+                    height = nativeTier.height,
+                    framerate = bestFps,
+                    videoBitrate = targetBitrate,
+                    activePreset = QuickPreset.BEST_QUALITY
+                )
+            }
+            QuickPreset.GAMING -> {
+                val presets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape = true)
+                val tier60 = presets.firstOrNull { tier ->
+                    val suppFps = CodecProbe.getSupportedFrameratesFor(
+                        codec = current.videoCodec,
+                        width = tier.width,
+                        height = tier.height,
+                        maxDisplayHz = maxDisplayHz
+                    )
+                    suppFps.contains(60)
+                } ?: presets.last()
+
+                val maxBitrate = CodecProbe.getMaxBitrateFor(current.videoCodec)
+                val targetBitrate = kotlin.math.min(16_000_000, maxBitrate)
+                current.copy(
+                    width = tier60.width,
+                    height = tier60.height,
+                    framerate = 60,
+                    videoBitrate = targetBitrate,
+                    recordingOrientation = RecordingOrientation.LANDSCAPE,
+                    activePreset = QuickPreset.GAMING
+                )
+            }
+            QuickPreset.MAX_FPS -> {
+                val isLandscape = current.width > current.height
+                val presets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape)
+                val perfTier = presets.last()
+                val suppFps = CodecProbe.getSupportedFrameratesFor(
+                    codec = current.videoCodec,
+                    width = perfTier.width,
+                    height = perfTier.height,
+                    maxDisplayHz = maxDisplayHz
+                )
+                val maxFps = suppFps.maxOrNull() ?: 60
+                val maxBitrate = CodecProbe.getMaxBitrateFor(current.videoCodec)
+                val targetBitrate = kotlin.math.min(16_000_000, maxBitrate)
+                current.copy(
+                    width = perfTier.width,
+                    height = perfTier.height,
+                    framerate = maxFps,
+                    videoBitrate = targetBitrate,
+                    activePreset = QuickPreset.MAX_FPS
+                )
+            }
+            QuickPreset.SMALL_SIZE -> {
+                val isLandscape = current.width > current.height
+                val presets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape)
+                val perfTier = presets.last()
+                current.copy(
+                    width = perfTier.width,
+                    height = perfTier.height,
+                    framerate = 30,
+                    videoBitrate = 8_000_000,
+                    activePreset = QuickPreset.SMALL_SIZE
+                )
+            }
+            QuickPreset.CUSTOM -> {
+                current.copy(activePreset = QuickPreset.CUSTOM)
+            }
+        }.withMacroblockAlignment()
+
         updateConfigAndStorage(updated)
     }
 
-    fun updateResolution(width: Int, height: Int) {
+    fun flipResolutionDimensions() {
         val current = _uiState.value.config
-        val aligned = current.copy(width = width, height = height).withMacroblockAlignment()
+        val flipped = ResolutionCalculator.flipDimensions(current.width, current.height)
+        val aligned = current.copy(
+            width = flipped.first,
+            height = flipped.second,
+            recordingOrientation = if (flipped.first > flipped.second) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT,
+            activePreset = QuickPreset.CUSTOM
+        ).withMacroblockAlignment()
 
         val maxDisplayHz = _uiState.value.capabilities?.display?.supportedRefreshRates?.maxOrNull()
             ?: _uiState.value.capabilities?.display?.currentRefreshRate ?: 120f
@@ -308,7 +406,100 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             maxDisplayHz = maxDisplayHz
         )
 
-        val clampedFps = if (supportedFps.contains(aligned.framerate)) {
+        val clampedFps = if (aligned.allowExperimentalFps || supportedFps.contains(aligned.framerate)) {
+            aligned.framerate
+        } else {
+            supportedFps.filter { it <= aligned.framerate }.maxOrNull() ?: 30
+        }
+
+        val updated = aligned.copy(framerate = clampedFps)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateFramerate(fps: Int) {
+        val current = _uiState.value.config
+        val updated = current.copy(framerate = fps, activePreset = QuickPreset.CUSTOM)
+        updateConfigAndStorage(updated)
+    }
+
+    /**
+     * Intent-first framerate selection ("Reverse Selection").
+     * If the target framerate is not supported at current resolution and overclock mode is OFF,
+     * it automatically adapts the canvas to the optimal resolution tier that guarantees zero-drop recording.
+     */
+    fun requestFramerate(fps: Int): String? {
+        val current = _uiState.value.config
+        val display = _uiState.value.capabilities?.display
+        val physW = display?.physicalWidth ?: 1080
+        val physH = display?.physicalHeight ?: 2400
+        val maxDisplayHz = display?.supportedRefreshRates?.maxOrNull()
+            ?: display?.currentRefreshRate ?: 120f
+
+        // 1. If Overclock mode is enabled, force FPS directly at current resolution
+        if (current.allowExperimentalFps) {
+            updateConfigAndStorage(current.copy(framerate = fps, activePreset = QuickPreset.CUSTOM))
+            return null
+        }
+
+        // 2. If already supported at current resolution, apply directly
+        val supportedAtCurrent = CodecProbe.getSupportedFrameratesFor(
+            codec = current.videoCodec,
+            width = current.width,
+            height = current.height,
+            maxDisplayHz = maxDisplayHz
+        )
+        if (supportedAtCurrent.contains(fps)) {
+            updateConfigAndStorage(current.copy(framerate = fps, activePreset = QuickPreset.CUSTOM))
+            return null
+        }
+
+        // 3. Reverse Selection: Find the optimal resolution tier that unlocks target FPS
+        val isLandscape = current.width > current.height
+        val optimalTier = CodecProbe.findOptimalResolutionForFps(
+            targetFps = fps,
+            codec = current.videoCodec,
+            physicalWidth = physW,
+            physicalHeight = physH,
+            isLandscape = isLandscape,
+            maxDisplayHz = maxDisplayHz
+        )
+
+        return if (optimalTier != null) {
+            val updated = current.copy(
+                width = optimalTier.width,
+                height = optimalTier.height,
+                framerate = fps,
+                recordingOrientation = if (optimalTier.width > optimalTier.height) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT,
+                activePreset = QuickPreset.CUSTOM
+            ).withMacroblockAlignment()
+            updateConfigAndStorage(updated)
+            "⚡ Adapted canvas to ${optimalTier.label} (${optimalTier.tag}) for rock-solid $fps FPS"
+        } else {
+            updateConfigAndStorage(current.copy(framerate = fps, activePreset = QuickPreset.CUSTOM))
+            null
+        }
+    }
+
+    fun updateResolution(width: Int, height: Int) {
+        val current = _uiState.value.config
+        val aligned = current.copy(
+            width = width,
+            height = height,
+            recordingOrientation = if (width > height) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT,
+            activePreset = QuickPreset.CUSTOM
+        ).withMacroblockAlignment()
+
+        val maxDisplayHz = _uiState.value.capabilities?.display?.supportedRefreshRates?.maxOrNull()
+            ?: _uiState.value.capabilities?.display?.currentRefreshRate ?: 120f
+
+        val supportedFps = CodecProbe.getSupportedFrameratesFor(
+            codec = aligned.videoCodec,
+            width = aligned.width,
+            height = aligned.height,
+            maxDisplayHz = maxDisplayHz
+        )
+
+        val clampedFps = if (aligned.allowExperimentalFps || supportedFps.contains(aligned.framerate)) {
             aligned.framerate
         } else {
             supportedFps.filter { it <= aligned.framerate }.maxOrNull() ?: 30
@@ -341,7 +532,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             height = aligned.height,
             maxDisplayHz = maxDisplayHz
         )
-        val clampedFps = if (supportedFps.contains(aligned.framerate)) {
+        val clampedFps = if (aligned.allowExperimentalFps || supportedFps.contains(aligned.framerate)) {
             aligned.framerate
         } else {
             supportedFps.filter { it <= aligned.framerate }.maxOrNull() ?: 30
@@ -362,7 +553,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             maxDisplayHz = maxDisplayHz
         )
 
-        val clampedFps = if (supportedFps.contains(current.framerate)) {
+        val clampedFps = if (current.allowExperimentalFps || supportedFps.contains(current.framerate)) {
             current.framerate
         } else {
             supportedFps.filter { it <= current.framerate }.maxOrNull() ?: 30
@@ -374,8 +565,47 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val updated = current.copy(
             videoCodec = codec,
             framerate = clampedFps,
-            videoBitrate = clampedBitrate
+            videoBitrate = clampedBitrate,
+            activePreset = QuickPreset.CUSTOM
         )
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleExperimentalFps(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(allowExperimentalFps = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateBitrateMode(mode: BitrateMode) {
+        val current = _uiState.value.config
+        val updated = current.copy(bitrateMode = mode, activePreset = QuickPreset.CUSTOM)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateKeyframeInterval(seconds: Float) {
+        val current = _uiState.value.config
+        val updated = current.copy(iFrameIntervalSeconds = seconds, activePreset = QuickPreset.CUSTOM)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateColorRange(range: ColorRange) {
+        val current = _uiState.value.config
+        val updated = current.copy(colorRange = range, activePreset = QuickPreset.CUSTOM)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleIntraRefresh(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(enableIntraRefresh = enabled, activePreset = QuickPreset.CUSTOM)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateCustomBitrate(bps: Int) {
+        val current = _uiState.value.config
+        val maxCodecBitrate = if (current.allowExperimentalFps) 120_000_000 else CodecProbe.getMaxBitrateFor(current.videoCodec)
+        val clampedBps = kotlin.math.min(bps.coerceAtLeast(1_000_000), maxCodecBitrate)
+        val updated = current.copy(videoBitrate = clampedBps, activePreset = QuickPreset.CUSTOM)
         updateConfigAndStorage(updated)
     }
 
@@ -385,12 +615,30 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         updateConfigAndStorage(updated)
     }
 
+    fun updateCountdownSeconds(seconds: Int) {
+        val current = _uiState.value.config
+        val updated = current.copy(countdownSeconds = seconds)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateInternalAudioGain(gain: Float) {
+        val current = _uiState.value.config
+        val updated = current.copy(internalAudioGain = gain.coerceIn(0f, 1f))
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateMicGain(gain: Float) {
+        val current = _uiState.value.config
+        val updated = current.copy(micGain = gain.coerceIn(0f, 2f))
+        updateConfigAndStorage(updated)
+    }
+
     fun updateVideoBitrate(bitrateMbps: Int) {
         val current = _uiState.value.config
-        val maxCodecBitrate = CodecProbe.getMaxBitrateFor(current.videoCodec)
+        val maxCodecBitrate = if (current.allowExperimentalFps) 120_000_000 else CodecProbe.getMaxBitrateFor(current.videoCodec)
         val targetBps = bitrateMbps * 1_000_000
         val clampedBps = kotlin.math.min(targetBps, maxCodecBitrate)
-        val updated = current.copy(videoBitrate = clampedBps)
+        val updated = current.copy(videoBitrate = clampedBps, activePreset = QuickPreset.CUSTOM)
         updateConfigAndStorage(updated)
     }
 

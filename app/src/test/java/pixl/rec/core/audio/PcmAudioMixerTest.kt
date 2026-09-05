@@ -96,4 +96,47 @@ class PcmAudioMixerTest {
         // Should be approximately 0.0 dB
         assertTrue("Full scale should be close to 0 dB, was $db", abs(db) < 0.5f)
     }
+
+    @Test
+    fun testMixStereo16BitWithGains() {
+        // Game sample: 1000, Mic sample: 1000
+        val gamePcm = byteArrayOf(0xE8.toByte(), 0x03.toByte(), 0xE8.toByte(), 0x03.toByte())
+        val micPcm = byteArrayOf(0xE8.toByte(), 0x03.toByte(), 0xE8.toByte(), 0x03.toByte())
+        val dest = ByteArray(4)
+
+        // gameGain = 0.5f (1000 * 0.5 = 500), micGain = 2.0f (1000 * 2.0 = 2000) -> mixed = 2500
+        val written = PcmAudioMixer.mixStereo16Bit(
+            gamePcm, 4,
+            micPcm, 4,
+            0.5f, 2.0f,
+            dest
+        )
+
+        assertEquals(4, written)
+        val leftLow = dest[0].toInt() and 0xFF
+        val leftHigh = dest[1].toInt()
+        val mixedSample = ((leftHigh shl 8) or leftLow).toShort()
+        assertEquals(2500.toShort(), mixedSample)
+    }
+
+    @Test
+    fun testCalculateDbLevelWithGains() {
+        val wave = ByteArray(16)
+        for (i in 0 until 4) {
+            wave[i * 4] = 0x00.toByte()
+            wave[i * 4 + 1] = 0x40.toByte() // 16384 (~ -6 dB)
+            wave[i * 4 + 2] = 0x00.toByte()
+            wave[i * 4 + 3] = 0x40.toByte()
+        }
+
+        val dbNormal = PcmAudioMixer.calculateDbLevel(wave, 16, gain = 1.0f)
+        assertTrue("Normal level should be roughly -6 dB, was $dbNormal", abs(dbNormal - (-6.0f)) < 0.5f)
+
+        val dbMuted = PcmAudioMixer.calculateDbLevel(wave, 16, gain = 0.0f)
+        assertEquals(-60.0f, dbMuted, 0.01f)
+
+        val dbBoosted = PcmAudioMixer.calculateDbLevel(wave, 16, gain = 2.0f)
+        // Doubling voltage (+6 dB) should bring -6 dB up to roughly 0 dB
+        assertTrue("Boosted level should be roughly 0 dB, was $dbBoosted", abs(dbBoosted - 0.0f) < 0.5f)
+    }
 }

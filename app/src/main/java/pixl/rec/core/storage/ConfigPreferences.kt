@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.BitrateMode
 import pixl.rec.core.model.CaptureTarget
+import pixl.rec.core.model.ColorRange
 import pixl.rec.core.model.HudAnimation
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecordingConfig
@@ -44,6 +45,12 @@ object ConfigPreferences {
     private const val KEY_SHAKE_TO_STOP = "shake_to_stop"
     private const val KEY_STOP_ON_SCREEN_OFF = "stop_on_screen_off"
     private const val KEY_CAPTURE_TARGET = "capture_target"
+    private const val KEY_COUNTDOWN_SECONDS = "rec_pref_countdown_seconds"
+    private const val KEY_ACTIVE_PRESET = "active_preset"
+    private const val KEY_ALLOW_EXPERIMENTAL_FPS = "allow_experimental_fps"
+    private const val KEY_COLOR_RANGE = "color_range"
+    private const val KEY_ENABLE_INTRA_REFRESH = "enable_intra_refresh"
+    private const val KEY_DISMISS_AUTOTUNE_BITRATE = "dismiss_autotune_bitrate"
 
     // Standby HUD Keys
     private const val KEY_STANDBY_ICON_SIZE_DP = "standby_hud_icon_size_dp"
@@ -121,7 +128,15 @@ object ConfigPreferences {
             videoBitrate = prefs.getInt(KEY_VIDEO_BITRATE, defaultConfig.videoBitrate),
             videoCodec = runCatching { VideoCodec.valueOf(prefs.getString(KEY_VIDEO_CODEC, defaultConfig.videoCodec.name) ?: defaultConfig.videoCodec.name) }.getOrDefault(defaultConfig.videoCodec),
             bitrateMode = runCatching { BitrateMode.valueOf(prefs.getString(KEY_BITRATE_MODE, defaultConfig.bitrateMode.name) ?: defaultConfig.bitrateMode.name) }.getOrDefault(defaultConfig.bitrateMode),
-            iFrameIntervalSeconds = prefs.getInt(KEY_IFRAME_INTERVAL, defaultConfig.iFrameIntervalSeconds),
+            iFrameIntervalSeconds = try {
+                prefs.getFloat(KEY_IFRAME_INTERVAL, defaultConfig.iFrameIntervalSeconds)
+            } catch (_: ClassCastException) {
+                try {
+                    prefs.getInt(KEY_IFRAME_INTERVAL, defaultConfig.iFrameIntervalSeconds.toInt()).toFloat()
+                } catch (_: Exception) {
+                    defaultConfig.iFrameIntervalSeconds
+                }
+            },
             audioSource = runCatching { AudioSource.valueOf(prefs.getString(KEY_AUDIO_SOURCE, defaultConfig.audioSource.name) ?: defaultConfig.audioSource.name) }.getOrDefault(defaultConfig.audioSource),
             audioBitrate = prefs.getInt(KEY_AUDIO_BITRATE, defaultConfig.audioBitrate),
             audioSampleRate = prefs.getInt(KEY_AUDIO_SAMPLE_RATE, defaultConfig.audioSampleRate),
@@ -129,6 +144,10 @@ object ConfigPreferences {
             micGain = prefs.getFloat(KEY_MIC_GAIN, defaultConfig.micGain),
             internalAudioGain = prefs.getFloat(KEY_INTERNAL_GAIN, defaultConfig.internalAudioGain),
             recordingOrientation = runCatching { RecordingOrientation.valueOf(prefs.getString(KEY_ORIENTATION, defaultConfig.recordingOrientation.name) ?: defaultConfig.recordingOrientation.name) }.getOrDefault(defaultConfig.recordingOrientation),
+            activePreset = runCatching { pixl.rec.core.model.QuickPreset.valueOf(prefs.getString(KEY_ACTIVE_PRESET, defaultConfig.activePreset.name) ?: defaultConfig.activePreset.name) }.getOrDefault(defaultConfig.activePreset),
+            allowExperimentalFps = prefs.getBoolean(KEY_ALLOW_EXPERIMENTAL_FPS, defaultConfig.allowExperimentalFps),
+            colorRange = runCatching { ColorRange.valueOf(prefs.getString(KEY_COLOR_RANGE, defaultConfig.colorRange.name) ?: defaultConfig.colorRange.name) }.getOrDefault(defaultConfig.colorRange),
+            enableIntraRefresh = prefs.getBoolean(KEY_ENABLE_INTRA_REFRESH, defaultConfig.enableIntraRefresh),
             showFloatingPill = prefs.getBoolean(KEY_SHOW_FLOATING_PILL, defaultConfig.showFloatingPill),
             alwaysOnFloatingPill = prefs.getBoolean(KEY_ALWAYS_ON_FLOATING_PILL, defaultConfig.alwaysOnFloatingPill),
             hidePillDuringRecording = prefs.getBoolean(KEY_HIDE_PILL_DURING_REC, defaultConfig.hidePillDuringRecording),
@@ -137,6 +156,9 @@ object ConfigPreferences {
             shakeToStop = prefs.getBoolean(KEY_SHAKE_TO_STOP, defaultConfig.shakeToStop),
             stopOnScreenOff = prefs.getBoolean(KEY_STOP_ON_SCREEN_OFF, defaultConfig.stopOnScreenOff),
             captureTarget = runCatching { CaptureTarget.valueOf(prefs.getString(KEY_CAPTURE_TARGET, defaultConfig.captureTarget.name) ?: defaultConfig.captureTarget.name) }.getOrDefault(defaultConfig.captureTarget),
+            countdownSeconds = prefs.getInt(KEY_COUNTDOWN_SECONDS, defaultConfig.countdownSeconds).let {
+                if (it in listOf(0, 3, 5)) it else 3
+            },
             standbyHudConfig = standbyHud,
             recordingHudConfig = recordingHud
         )
@@ -151,7 +173,7 @@ object ConfigPreferences {
             .putInt(KEY_VIDEO_BITRATE, config.videoBitrate)
             .putString(KEY_VIDEO_CODEC, config.videoCodec.name)
             .putString(KEY_BITRATE_MODE, config.bitrateMode.name)
-            .putInt(KEY_IFRAME_INTERVAL, config.iFrameIntervalSeconds)
+            .putFloat(KEY_IFRAME_INTERVAL, config.iFrameIntervalSeconds)
             .putString(KEY_AUDIO_SOURCE, config.audioSource.name)
             .putInt(KEY_AUDIO_BITRATE, config.audioBitrate)
             .putInt(KEY_AUDIO_SAMPLE_RATE, config.audioSampleRate)
@@ -159,6 +181,10 @@ object ConfigPreferences {
             .putFloat(KEY_MIC_GAIN, config.micGain)
             .putFloat(KEY_INTERNAL_GAIN, config.internalAudioGain)
             .putString(KEY_ORIENTATION, config.recordingOrientation.name)
+            .putString(KEY_ACTIVE_PRESET, config.activePreset.name)
+            .putBoolean(KEY_ALLOW_EXPERIMENTAL_FPS, config.allowExperimentalFps)
+            .putString(KEY_COLOR_RANGE, config.colorRange.name)
+            .putBoolean(KEY_ENABLE_INTRA_REFRESH, config.enableIntraRefresh)
             .putBoolean(KEY_SHOW_FLOATING_PILL, config.showFloatingPill)
             .putBoolean(KEY_ALWAYS_ON_FLOATING_PILL, config.alwaysOnFloatingPill)
             .putBoolean(KEY_HIDE_PILL_DURING_REC, config.hidePillDuringRecording)
@@ -167,6 +193,7 @@ object ConfigPreferences {
             .putBoolean(KEY_SHAKE_TO_STOP, config.shakeToStop)
             .putBoolean(KEY_STOP_ON_SCREEN_OFF, config.stopOnScreenOff)
             .putString(KEY_CAPTURE_TARGET, config.captureTarget.name)
+            .putInt(KEY_COUNTDOWN_SECONDS, config.countdownSeconds)
             // Standby HUD Customization
             .putInt(KEY_STANDBY_ICON_SIZE_DP, config.standbyHudConfig.iconSizeDp)
             .putFloat(KEY_STANDBY_ICON_OPACITY, config.standbyHudConfig.iconOpacity)
@@ -194,5 +221,13 @@ object ConfigPreferences {
             .putFloat(KEY_REC_STROKE_OPACITY, config.recordingHudConfig.strokeOpacity)
             .putString(KEY_REC_SNAP_BEHAVIOR, config.recordingHudConfig.snapBehavior.name)
             .apply()
+    }
+
+    fun isAutoTuneBitrateDismissed(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_DISMISS_AUTOTUNE_BITRATE, false)
+    }
+
+    fun setAutoTuneBitrateDismissed(context: Context, dismissed: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_DISMISS_AUTOTUNE_BITRATE, dismissed).apply()
     }
 }

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.2] - 2026-09-05
+
+### 🚀 Added
+* **High-Refresh 165 FPS Probing:**
+  * Added 165 FPS display probing and encoder tier support for modern 144Hz & 165Hz gaming flagships (ASUS ROG, RedMagic, Motorola Edge).
+* **Hardware AV1 Encoder Priority:**
+  * Automatically detects and prioritizes hardware AV1 ASIC encoders (`video/av01`) on cutting-edge silicon (Snapdragon 8 Gen 3+, Tensor G4) over HEVC/AVC.
+* **Proportional Scaling & Lite (540p) Tier:**
+  * Added Lite (540p) resolution preset calculated with strict 16-pixel macroblock alignment, ensuring 4 clean tiers across all devices: Native (100%), Smooth (83%), Performance (67%), and Lite (50%).
+* **Tactile Segmented Sliding Pill Selector (`SlidingPillSelector`):**
+  * Custom Jetpack Compose component featuring single-line non-wrapping rows, physics-based spring animations, and haptic feedback.
+* **Full-Screen Cyberpunk Countdown HUD & Tap-to-Cancel:**
+  * Animated rotating tech HUD ring with scale-punch transitions, per-second haptic ticks, and tap-anywhere cancellation safety.
+* **Hardware-Aligned Pixel-Square Digit Assets:**
+  * Designed custom 120×120 pixel-square grid digits (`1`, `2`, `3`, `4`, `5`, `REC`) using REC's signature 8.2-pitch rounded-square design language (`assets/digits/` and `res/drawable/ic_digit_*.xml`).
+* **Studio Audio Sliders & VU Multipliers:**
+  * Independent dual-channel audio controls for Game Audio (0–100%) and Microphone Gain boost (0–200% / +6 dB) with soft-knee limiter and VU meter calibration.
+* **Smart Bitrate Auto-Tune:**
+  * Added recommendation dialog suggesting ideal bitrates on resolution switch with persistent user opt-out preference.
+* **Safety Watchers (Battery & Storage Tripwires):**
+  * Emergency auto-stop tripwires on low battery (<3%) or low storage (<200MB) to finalize recordings cleanly and write the `moov` atom before system shutdown.
+
+### ⚡ Changed
+* **Countdown Options Refinement:**
+  * Streamlined countdown durations to `NONE (0s)`, `3s`, and `5s` with 100% custom pixel-square vector asset coverage.
+* **Settings Architecture Overhaul:**
+  * Replaced loose resolution tags with a full-width Material 3 `ExposedDropdownMenuBox` locked to the device's native panel aspect ratio.
+
+---
+
 ## [0.4.1] - 2026-09-03
 
 ### 🐛 Fixed
@@ -179,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.4.2]: https://github.com/pixlofficial/rec/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/pixlofficial/rec/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/pixlofficial/rec/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pixlofficial/rec/compare/v0.2.0...v0.3.0

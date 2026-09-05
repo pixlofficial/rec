@@ -8,13 +8,26 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.view.Gravity
+import android.view.WindowManager
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import pixl.rec.RecApp
 import pixl.rec.R
 import pixl.rec.core.engine.ScreenRecorderEngine
@@ -22,33 +35,48 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.sensor.ShakeDetector
 import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.ui.overlay.CountdownOverlayView
+import pixl.rec.ui.theme.RECTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
+private const val TAG = "RecordingService"
 
 /**
  * Android 14/15/16 Foreground Service hosting the zero-copy [ScreenRecorderEngine].
  * Implements [FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION] and [FOREGROUND_SERVICE_TYPE_MICROPHONE].
- * Integrates [ShakeDetector] and Screen-Off broadcast receiver for Clean Canvas mode.
+ * Integrates [CountdownOverlayView], [ShakeDetector], Screen-Off, Low-Battery, and Low-Storage safety watchers.
  */
-class RecordingService : Service() {
+class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
-    private val tag = "RecordingService"
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var stateCollectionJob: Job? = null
+    private var storageSafetyJob: Job? = null
+    private var countdownJob: Job? = null
+
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+
+    override val lifecycle: Lifecycle get() = lifecycleRegistry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
 
     private var mediaProjection: MediaProjection? = null
     private var engine: ScreenRecorderEngine? = null
     private var shakeDetector: ShakeDetector? = null
 
     private var screenOffReceiver: BroadcastReceiver? = null
+    private var batteryLowReceiver: BroadcastReceiver? = null
+    private var countdownOverlayView: ComposeView? = null
     private var recordingConfig: RecordingConfig = RecordingConfig()
 
     private val binder = LocalBinder()
@@ -58,6 +86,14 @@ class RecordingService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
+
+    override fun onCreate() {
+        super.onCreate()
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: return START_NOT_STICKY
@@ -81,7 +117,7 @@ class RecordingService : Service() {
                 if (resultCode != 0 && resultData != null) {
                     startRecordingSession(resultCode, resultData, config)
                 } else {
-                    Log.e(tag, "Missing MediaProjection result token")
+                    Log.e(TAG, "Missing MediaProjection result token")
                     stopSelf()
                 }
             }
@@ -101,12 +137,16 @@ class RecordingService : Service() {
 
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
         recordingConfig = config
+
         // 1. Enter foreground immediately with required Android 14/15/16 FGS types
-        val initialNotification = buildNotification("Initializing recording...", isPaused = false)
+        val initialNotification = buildNotification(
+            if (config.countdownSeconds > 0) "Starting in ${config.countdownSeconds}s..." else "Initializing recording...",
+            isPaused = false
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                val hasMicPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                val hasMicPermission = ContextCompat.checkSelfPermission(
                     this,
                     android.Manifest.permission.RECORD_AUDIO
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -127,7 +167,7 @@ class RecordingService : Service() {
         val projection = projectionManager.getMediaProjection(resultCode, resultData)
 
         if (projection == null) {
-            Log.e(tag, "Failed to obtain MediaProjection token")
+            Log.e(TAG, "Failed to obtain MediaProjection token")
             stopSelf()
             return
         }
@@ -137,38 +177,163 @@ class RecordingService : Service() {
         // Register MediaProjection stop callback
         projection.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
-                Log.w(tag, "MediaProjection revoked or stopped by system")
+                Log.w(TAG, "MediaProjection revoked or stopped by system")
                 stopRecordingSession()
             }
         }, null)
 
-        // 3. Register Shake-to-Stop detector if configured
+        // 3. Countdown delay & HUD integration
+        if (config.countdownSeconds > 0) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this)) {
+                showCountdownOverlay(config.countdownSeconds) {
+                    startEngineAndWatchers(projection, config)
+                }
+            } else {
+                // Fallback to notification timer countdown when overlay permission is unavailable
+                countdownJob = serviceScope.launch {
+                    for (sec in config.countdownSeconds downTo 1) {
+                        updateNotification("Starting in ${sec}s...", isPaused = false)
+                        delay(1000L)
+                    }
+                    startEngineAndWatchers(projection, config)
+                }
+            }
+        } else {
+            startEngineAndWatchers(projection, config)
+        }
+    }
+
+    private fun showCountdownOverlay(seconds: Int, onComplete: () -> Unit) {
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            layoutFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+
+        val composeView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@RecordingService)
+            setViewTreeSavedStateRegistryOwner(this@RecordingService)
+            setContent {
+                RECTheme {
+                    CountdownOverlayView(
+                        countdownSeconds = seconds,
+                        onCountdownComplete = {
+                            removeCountdownOverlay()
+                            onComplete()
+                        },
+                        onCancel = {
+                            removeCountdownOverlay()
+                            Log.i(TAG, "Countdown cancelled by user tap")
+                            stopRecordingSession()
+                        }
+                    )
+                }
+            }
+        }
+
+        try {
+            wm.addView(composeView, params)
+            countdownOverlayView = composeView
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to attach Countdown overlay, falling back to coroutine countdown", e)
+            countdownJob = serviceScope.launch {
+                for (sec in seconds downTo 1) {
+                    updateNotification("Starting in ${sec}s...", isPaused = false)
+                    delay(1000L)
+                }
+                onComplete()
+            }
+        }
+    }
+
+    private fun removeCountdownOverlay() {
+        countdownOverlayView?.let { view ->
+            try {
+                val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                wm.removeView(view)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error removing Countdown overlay", e)
+            }
+            countdownOverlayView = null
+        }
+    }
+
+    private fun startEngineAndWatchers(projection: MediaProjection, config: RecordingConfig) {
+        // 1. Register Shake-to-Stop detector if configured
         if (config.shakeToStop) {
             shakeDetector = ShakeDetector(this) {
-                Log.i(tag, "Shake detected -> Stopping recording")
+                Log.i(TAG, "Shake detected -> Stopping recording")
                 stopRecordingSession()
             }.also { it.start() }
         }
 
-        // 4. Register Screen-Off-to-Stop receiver if configured
+        // 2. Register Screen-Off-to-Stop receiver if configured
         if (config.stopOnScreenOff) {
             val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
             screenOffReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context?, intent: Intent?) {
                     if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                        Log.i(tag, "Screen turned off -> Finalizing recording")
+                        Log.i(TAG, "Screen turned off -> Finalizing recording")
                         stopRecordingSession()
                     }
                 }
             }
-            registerReceiver(screenOffReceiver, filter)
+            ContextCompat.registerReceiver(
+                this,
+                screenOffReceiver!!,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        }
+
+        // 3. Register Battery-Low receiver (<3%) for auto-finalization
+        val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_LOW)
+        batteryLowReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_BATTERY_LOW) {
+                    Log.w(TAG, "Low battery tripwire (<3%) -> Auto-saving recording to prevent corruption")
+                    stopRecordingSession()
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            this,
+            batteryLowReceiver!!,
+            batteryFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
+        // 4. Low Storage Safety Tripwire (<200MB)
+        storageSafetyJob?.cancel()
+        storageSafetyJob = serviceScope.launch {
+            while (isActive) {
+                delay(3000L) // 3-second interval check
+                val available = StorageCalculator.getAvailableStorageBytes()
+                if (StorageCalculator.isStorageCriticallyLow(available)) {
+                    Log.w(TAG, "Storage critically low (<200MB free) -> Auto-saving recording to prevent corruption")
+                    stopRecordingSession()
+                    break
+                }
+            }
         }
 
         // 5. Manage Floating Overlay Pill visibility ONLY if permission is granted
         if (config.showFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this))) {
             FloatingOverlayService.start(this, config)
-        } else {
-            // Do NOT call FloatingOverlayService.stop() if it was never started to avoid lifecycle state change
         }
 
         // 6. Initialize and start master recording engine
@@ -211,6 +376,10 @@ class RecordingService : Service() {
     }
 
     private fun stopRecordingSession() {
+        countdownJob?.cancel()
+        countdownJob = null
+        removeCountdownOverlay()
+
         shakeDetector?.stop()
         shakeDetector = null
 
@@ -218,13 +387,39 @@ class RecordingService : Service() {
             try {
                 unregisterReceiver(screenOffReceiver)
             } catch (e: Exception) {
-                Log.w(tag, "Error unregistering screenOffReceiver", e)
+                Log.w(TAG, "Error unregistering screenOffReceiver", e)
             }
             screenOffReceiver = null
         }
 
+        if (batteryLowReceiver != null) {
+            try {
+                unregisterReceiver(batteryLowReceiver)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error unregistering batteryLowReceiver", e)
+            }
+            batteryLowReceiver = null
+        }
+
+        storageSafetyJob?.cancel()
+        storageSafetyJob = null
+
         handleOverlayOnRecordingFinished()
-        engine?.stop()
+
+        if (engine != null) {
+            engine?.stop()
+        } else {
+            // Cancelled before engine started (e.g. user cancelled during countdown)
+            try {
+                mediaProjection?.stop()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error stopping MediaProjection on pre-start cancellation", e)
+            }
+            mediaProjection = null
+            _serviceState.value = RecorderState.Idle
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun handleOverlayOnRecordingFinished() {
@@ -273,7 +468,16 @@ class RecordingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+
+        countdownJob?.cancel()
+        countdownJob = null
+        removeCountdownOverlay()
+
         stateCollectionJob?.cancel()
+        storageSafetyJob?.cancel()
         serviceScope.cancel()
 
         shakeDetector?.stop()
@@ -283,9 +487,18 @@ class RecordingService : Service() {
             try {
                 unregisterReceiver(screenOffReceiver)
             } catch (e: Exception) {
-                Log.w(tag, "Error unregistering screenOffReceiver in onDestroy", e)
+                Log.w(TAG, "Error unregistering screenOffReceiver in onDestroy", e)
             }
             screenOffReceiver = null
+        }
+
+        if (batteryLowReceiver != null) {
+            try {
+                unregisterReceiver(batteryLowReceiver)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error unregistering batteryLowReceiver in onDestroy", e)
+            }
+            batteryLowReceiver = null
         }
 
         handleOverlayOnRecordingFinished()
@@ -296,12 +509,12 @@ class RecordingService : Service() {
         try {
             mediaProjection?.stop()
         } catch (e: Exception) {
-            Log.w(tag, "Error stopping MediaProjection", e)
+            Log.w(TAG, "Error stopping MediaProjection", e)
         }
         mediaProjection = null
 
         _serviceState.value = RecorderState.Idle
-        Log.i(tag, "RecordingService destroyed")
+        Log.i(TAG, "RecordingService destroyed")
     }
 
     companion object {

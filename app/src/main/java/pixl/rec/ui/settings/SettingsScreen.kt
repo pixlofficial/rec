@@ -2,7 +2,6 @@ package pixl.rec.ui.settings
 
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,15 +23,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Gesture
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -45,23 +44,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import pixl.rec.R
 import pixl.rec.core.engine.CodecProbe
+import pixl.rec.core.engine.ResolutionCalculator
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.PillRecallGesture
+import pixl.rec.core.model.QuickPreset
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.ui.components.SectionCard
+import pixl.rec.ui.components.SlidingPillSelector
 import pixl.rec.ui.components.SteppedVuMeter
 import pixl.rec.ui.components.TelemetryBadge
 import pixl.rec.ui.dashboard.DashboardViewModel
+import pixl.rec.ui.settings.components.AdvancedStudioControlsCard
+import pixl.rec.ui.settings.components.QuickPresetDeck
+import pixl.rec.ui.settings.components.ResolutionPreviewCanvas
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderHighlight
 import pixl.rec.ui.theme.BorderStark
@@ -76,6 +83,8 @@ import pixl.rec.ui.theme.TextPrimary
 import pixl.rec.ui.theme.TextSecondary
 import pixl.rec.ui.theme.ToxicLime
 import java.util.Locale
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -182,7 +191,7 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun VideoSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
@@ -192,32 +201,237 @@ private fun VideoSettingsSection(
     val config = uiState.config
     val capabilities = uiState.capabilities
 
-    // 1. Orientation Selection
-    SectionCard(title = "RECORDING ORIENTATION", titleTag = config.recordingOrientation.displayName) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            RecordingOrientation.entries.forEach { orientation ->
-                val isSelected = config.recordingOrientation == orientation
-                SettingsTag(
-                    text = orientation.displayName,
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { viewModel.updateRecordingOrientation(orientation) }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 2. Framerate Selection
     val context = LocalContext.current
     val maxDisplayHz = capabilities?.display?.supportedRefreshRates?.maxOrNull()
         ?: capabilities?.display?.currentRefreshRate ?: 120f
 
+    // 1. Quick Presets Deck
+    SectionCard(title = "QUICK PRESETS", titleTag = config.activePreset.displayName) {
+        QuickPresetDeck(
+            activePreset = config.activePreset,
+            onPresetSelect = { preset -> viewModel.applyQuickPreset(preset) },
+            enabled = !isRecordingActive
+        )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Resolution & Orientation Deck with WYSIWYG Preview Canvas & Material 3 Dropdown
+    val display = capabilities?.display
+    val nativeWidth = display?.physicalWidth ?: 1080
+    val nativeHeight = display?.physicalHeight ?: 2400
+    val isLandscape = config.width > config.height
+
+    val presets = remember(nativeWidth, nativeHeight, isLandscape) {
+        ResolutionCalculator.getPresetsForDevice(nativeWidth, nativeHeight, isLandscape)
+    }
+
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+    var pendingTier by remember { mutableStateOf<ResolutionCalculator.ResolutionTierItem?>(null) }
+    var showAutoTuneDialog by remember { mutableStateOf(false) }
+
+    fun handleResolutionSelect(tier: ResolutionCalculator.ResolutionTierItem) {
+        if (config.width == tier.width && config.height == tier.height) return
+
+        val newShortDim = min(tier.width, tier.height)
+        val recBitrateMbps = ResolutionCalculator.getRecommendedBitrateMbps(newShortDim)
+        val currentBitrateMbps = config.videoBitrate / 1_000_000
+        val isDismissed = ConfigPreferences.isAutoTuneBitrateDismissed(context)
+
+        if (currentBitrateMbps != recBitrateMbps && !isDismissed) {
+            pendingTier = tier
+            showAutoTuneDialog = true
+        } else {
+            viewModel.updateResolution(tier.width, tier.height)
+        }
+    }
+
+    SectionCard(title = "RESOLUTION & ORIENTATION", titleTag = "${config.width}×${config.height}") {
+        // Orientation Tabs: PORTRAIT | LANDSCAPE
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SurfaceElevated, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                .padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            val isCurrentLandscape = config.width > config.height
+            listOf(
+                false to "PORTRAIT",
+                true to "LANDSCAPE"
+            ).forEach { (isLand, label) ->
+                val isSelected = isCurrentLandscape == isLand
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            color = if (isSelected) TextPrimary else SurfaceElevated,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) HyperCrimson else BorderStark,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .clickable(enabled = !isRecordingActive) {
+                            if (!isSelected) {
+                                viewModel.updateRecordingOrientation(
+                                    if (isLand) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT
+                                )
+                            }
+                        }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) ObsidianCanvas else TextSecondary,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        ResolutionPreviewCanvas(
+            width = config.width,
+            height = config.height
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Full-Width Material 3 Exposed Dropdown Menu
+        val selectedTier = presets.find { it.width == config.width && it.height == config.height }
+        ExposedDropdownMenuBox(
+            expanded = isDropdownExpanded,
+            onExpandedChange = { if (!isRecordingActive) isDropdownExpanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                value = selectedTier?.let { "${it.displayDimensionString}   •   ${it.label.uppercase()}" }
+                    ?: "${config.width} × ${config.height}",
+                onValueChange = {},
+                readOnly = true,
+                label = {
+                    Text(
+                        text = "OUTPUT RESOLUTION",
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 10.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded)
+                },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = HyperCrimson,
+                    unfocusedBorderColor = BorderStark,
+                    focusedContainerColor = SurfaceElevated,
+                    unfocusedContainerColor = SurfaceElevated,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedLabelColor = HyperCrimson,
+                    unfocusedLabelColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            )
+
+            ExposedDropdownMenu(
+                expanded = isDropdownExpanded,
+                onDismissRequest = { isDropdownExpanded = false },
+                modifier = Modifier
+                    .background(SurfaceElevated)
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+            ) {
+                presets.forEach { tier ->
+                    val isSelected = config.width == tier.width && config.height == tier.height
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = tier.displayDimensionString,
+                                    fontFamily = BitcountPropSingle,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) HyperCrimson else TextPrimary
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "${tier.label.uppercase()} (${tier.tag})",
+                                    fontFamily = BitcountPropSingle,
+                                    fontSize = 11.sp,
+                                    color = if (isSelected) HyperCrimson else TextSecondary
+                                )
+                            }
+                        },
+                        onClick = {
+                            isDropdownExpanded = false
+                            handleResolutionSelect(tier)
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
+    }
+
+    // Auto-Tune Bitrate Confirmation Dialog
+    if (showAutoTuneDialog && pendingTier != null) {
+        val tier = pendingTier!!
+        val newShortDim = min(tier.width, tier.height)
+        val recBitrateMbps = ResolutionCalculator.getRecommendedBitrateMbps(newShortDim)
+        val currentBitrateMbps = config.videoBitrate / 1_000_000
+
+        AutoTuneBitrateDialog(
+            newTierTag = "${tier.label} (${tier.tag})",
+            newWidth = tier.width,
+            newHeight = tier.height,
+            currentBitrateMbps = currentBitrateMbps,
+            recommendedBitrateMbps = recBitrateMbps,
+            onDismiss = {
+                showAutoTuneDialog = false
+                pendingTier = null
+            },
+            onKeep = { doNotAskAgain ->
+                if (doNotAskAgain) {
+                    ConfigPreferences.setAutoTuneBitrateDismissed(context, true)
+                }
+                viewModel.updateResolution(tier.width, tier.height)
+                showAutoTuneDialog = false
+                pendingTier = null
+            },
+            onApply = { doNotAskAgain ->
+                if (doNotAskAgain) {
+                    ConfigPreferences.setAutoTuneBitrateDismissed(context, true)
+                }
+                viewModel.updateResolution(tier.width, tier.height)
+                viewModel.updateVideoBitrate(recBitrateMbps)
+                showAutoTuneDialog = false
+                pendingTier = null
+            }
+        )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 3. Framerate Selection with Wide Sliding Pill
     val supportedFpsList: List<Int> = remember(config.videoCodec, config.width, config.height, maxDisplayHz) {
         CodecProbe.getSupportedFrameratesFor(
             codec = config.videoCodec,
@@ -227,146 +441,131 @@ private fun VideoSettingsSection(
         )
     }
 
-    SectionCard(title = "CAPTURE REFRESH RATE", titleTag = "${config.framerate} FPS") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(30, 60, 90, 120).forEach { fps ->
-                val isSelected = config.framerate == fps
-                val displaySupports = capabilities?.display?.supportedRefreshRates?.any { it >= fps - 1 }
-                    ?: ((capabilities?.display?.currentRefreshRate ?: 60f) >= fps - 1)
-                val isSupported = supportedFpsList.contains(fps) || fps == 30
-
-                SettingsTag(
-                    text = "$fps FPS",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isSupported,
-                    onClick = { viewModel.updateFramerate(fps) },
-                    onDisabledClick = {
-                        val reason = if (!displaySupports) {
-                            "Display panel max refresh rate: ${maxDisplayHz.toInt()}Hz"
-                        } else {
-                            val maxCodecRate = CodecProbe.getMaxFramerateFor(config.videoCodec, config.width, config.height)
-                            "${config.videoCodec.displayName} ASIC limit at ${config.width}x${config.height}: ${maxCodecRate} FPS. Switch to a lower resolution for higher FPS."
-                        }
-                        Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
-                    }
-                )
-            }
-        }
+    val availableRates = remember(maxDisplayHz) {
+        listOf(30, 60, 90, 120, 144, 165).filter { it <= (maxDisplayHz + 1).toInt() }.ifEmpty { listOf(30) }
     }
 
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 2. Codec Selection
-    SectionCard(title = "ENCODER HARDWARE ASIC", titleTag = config.videoCodec.displayName) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            VideoCodec.entries.forEach { codec ->
-                val isSelected = config.videoCodec == codec
-                val isHardware = capabilities?.codecs?.get(codec)?.isHardwareAccelerated == true
-                val isAvailable = when (codec) {
-                    VideoCodec.HEVC -> true
-                    VideoCodec.AVC -> true
-                    VideoCodec.AV1 -> capabilities?.isAv1HardwareSupported == true
+    SectionCard(
+        title = "CAPTURE REFRESH RATE",
+        titleTag = if (config.allowExperimentalFps) "${config.framerate} FPS ⚡ OVERCLOCK" else "${config.framerate} FPS"
+    ) {
+        SlidingPillSelector(
+            items = availableRates,
+            selectedItem = if (availableRates.contains(config.framerate)) config.framerate else availableRates.first(),
+            itemLabel = { "$it" },
+            enabled = !isRecordingActive,
+            onItemSelected = { fps ->
+                val toastMsg = viewModel.requestFramerate(fps)
+                if (toastMsg != null) {
+                    Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
                 }
-                SettingsTag(
-                    text = "${codec.displayName}${if (isHardware) " (HW)" else ""}",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isAvailable,
-                    onClick = { viewModel.updateVideoCodec(codec) }
-                )
             }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val motionTier = when {
+            config.framerate >= 144 -> "ULTRA-HIGH REFRESH"
+            config.framerate >= 120 -> "EXTREME MOTION"
+            config.framerate >= 90 -> "ULTRA SMOOTH"
+            config.framerate >= 60 -> "FLUID MOTION"
+            else -> "POWER SAVER"
         }
+
+        Text(
+            text = "Status: ${config.framerate} FPS • $motionTier (Syncs to ${maxDisplayHz.toInt()}Hz Display)",
+            color = TextSecondary,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle
+        )
     }
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // 3. Resolution Selection
-    val display = capabilities?.display
-    val nativeWidth = display?.physicalWidth ?: 1080
-    val nativeHeight = display?.physicalHeight ?: 2400
+    // 4. Bitrate Deck with Wide Sliding Pill & Telemetry Readout
+    val bitrateOptions = listOf(8, 16, 28, 50, 80)
+    val currentBitrateMbps = (config.videoBitrate / 1_000_000).coerceIn(8, 80)
+    val maxCodecBitrateMbps = CodecProbe.getMaxBitrateFor(config.videoCodec) / 1_000_000
 
-    val minDim = kotlin.math.min(nativeWidth, nativeHeight)
-    val maxDim = kotlin.math.max(nativeWidth, nativeHeight)
-
-    // Pre-align all presets to 16-pixel macroblock boundary so config matches exactly
-    val alignedNativeW = ((minDim + 15) / 16) * 16
-    val alignedNativeH = ((maxDim + 15) / 16) * 16
-
-    val fhdHeight = (((1080L * maxDim / minDim + 15) / 16) * 16).toInt()
-    val alignedFhdW = ((1080 + 15) / 16) * 16 // 1088
-
-    val hdHeight = (((720L * maxDim / minDim + 15) / 16) * 16).toInt()
-    val alignedHdW = ((720 + 15) / 16) * 16 // 720
-
-    val nativeLabel = if (minDim >= 1440) "NATIVE (2K)" else "NATIVE"
-
-    SectionCard(title = "CAPTURE RESOLUTION", titleTag = "${config.width}x${config.height}") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val resolutions = listOf(
-                Triple(nativeLabel, "${minDim}p", alignedNativeW to alignedNativeH),
-                Triple("1080p FHD", "1080p", alignedFhdW to fhdHeight),
-                Triple("720p HD", "720p", alignedHdW to hdHeight)
-            )
-            resolutions.forEach { (label, displayTag, res) ->
-                val isSelected = config.width == res.first && config.height == res.second
-                val isSupported = CodecProbe.isSizeSupportedFor(config.videoCodec, res.first, res.second)
-                SettingsTag(
-                    text = "$label ($displayTag)",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isSupported,
-                    onClick = { viewModel.updateResolution(res.first, res.second) },
-                    onDisabledClick = {
-                        Toast.makeText(
-                            context,
-                            "${config.videoCodec.displayName} cannot encode ${res.first}x${res.second}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // 4. Bitrate Deck
-    val maxCodecBitrate = CodecProbe.getMaxBitrateFor(config.videoCodec)
     SectionCard(title = "ENCODING BITRATE", titleTag = "${config.videoBitrate / 1_000_000} MBPS") {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(8, 16, 28, 50, 80).forEach { mbps ->
-                val isSelected = config.videoBitrate == mbps * 1_000_000
-                val isBitrateSupported = (mbps * 1_000_000L) <= maxCodecBitrate
-                SettingsTag(
-                    text = "$mbps Mbps",
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive && isBitrateSupported,
-                    onClick = { viewModel.updateVideoBitrate(mbps) },
-                    onDisabledClick = {
-                        Toast.makeText(
-                            context,
-                            "${config.videoCodec.displayName} hardware limit: ${maxCodecBitrate / 1_000_000} Mbps",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+        SlidingPillSelector(
+            items = bitrateOptions,
+            selectedItem = currentBitrateMbps,
+            itemLabel = { "$it" },
+            enabled = !isRecordingActive,
+            onItemSelected = { mbps ->
+                if (mbps <= maxCodecBitrateMbps || config.allowExperimentalFps) {
+                    viewModel.updateVideoBitrate(mbps)
+                } else {
+                    Toast.makeText(
+                        context,
+                        "${config.videoCodec.displayName} hardware limit: $maxCodecBitrateMbps Mbps",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val estMbPer10Min = StorageCalculator.calculateMbPerMinute(config.videoBitrate, config.audioBitrate) * 10
+        Text(
+            text = String.format(
+                Locale.US,
+                "Target: %d Mbps • Est. Write Rate: ~%.0f MB / 10 min",
+                config.videoBitrate / 1_000_000,
+                estMbPer10Min
+            ),
+            color = TextSecondary,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle
+        )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 5. Codec Selection with Dynamic AV1 Discovery
+    val availableCodecs = remember(capabilities?.isAv1HardwareSupported) {
+        if (capabilities?.isAv1HardwareSupported == true) {
+            listOf(VideoCodec.AV1, VideoCodec.HEVC, VideoCodec.AVC)
+        } else {
+            listOf(VideoCodec.HEVC, VideoCodec.AVC)
         }
     }
+
+    SectionCard(title = "HARDWARE CODEC", titleTag = config.videoCodec.displayName) {
+        SlidingPillSelector(
+            items = availableCodecs,
+            selectedItem = config.videoCodec,
+            itemLabel = { it.displayName },
+            enabled = !isRecordingActive,
+            onItemSelected = { viewModel.updateVideoCodec(it) }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val isHardware = capabilities?.codecs?.get(config.videoCodec)?.isHardwareAccelerated == true
+        Text(
+            text = "Hardware Engine: ${if (isHardware) "Dedicated ASIC (Zero-Copy Surface)" else "Software Encoder Fallback"}",
+            color = if (isHardware) ToxicLime else CyberYellow,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle
+        )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 6. Pro-Grade Advanced Studio Controls (Collapsible Accordion)
+    AdvancedStudioControlsCard(
+        config = config,
+        isRecordingActive = isRecordingActive,
+        onToggleOverclock = { viewModel.toggleExperimentalFps(it) },
+        onUpdateBitrateMode = { viewModel.updateBitrateMode(it) },
+        onUpdateKeyframeInterval = { viewModel.updateKeyframeInterval(it) },
+        onUpdateColorRange = { viewModel.updateColorRange(it) },
+        onToggleIntraRefresh = { viewModel.toggleIntraRefresh(it) },
+        onUpdateCustomBitrate = { viewModel.updateCustomBitrate(it) }
+    )
 }
 
 @Composable
@@ -380,19 +579,118 @@ private fun AudioSettingsSection(
     val gameDb = if (recorderState is RecorderState.Recording) recorderState.gameAudioDb else -60f
     val micDb = if (recorderState is RecorderState.Recording) recorderState.micAudioDb else -60f
 
-    // 1. Audio Source Routing
-    SectionCard(title = "AUDIO SOURCE ROUTING", titleTag = config.audioSource.name) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AudioSource.entries.forEach { source ->
-                val isSelected = config.audioSource == source
-                SettingsRow(
-                    text = source.displayName,
-                    isSelected = isSelected,
-                    enabled = !isRecordingActive,
-                    onClick = { viewModel.updateAudioSource(source) }
-                )
-            }
+    val isGameAudioActive = config.audioSource == AudioSource.INTERNAL_AND_MIC || config.audioSource == AudioSource.INTERNAL_ONLY
+    val isMicAudioActive = config.audioSource == AudioSource.INTERNAL_AND_MIC || config.audioSource == AudioSource.MIC_ONLY
+
+    // 1. Audio Routing & Studio Controls
+    SectionCard(title = "AUDIO STUDIO", titleTag = "48 KHZ STEREO AAC") {
+        SlidingPillSelector(
+            items = listOf(
+                AudioSource.INTERNAL_AND_MIC,
+                AudioSource.INTERNAL_ONLY,
+                AudioSource.MIC_ONLY,
+                AudioSource.MUTE
+            ),
+            selectedItem = config.audioSource,
+            itemLabel = {
+                when (it) {
+                    AudioSource.INTERNAL_AND_MIC -> "Both"
+                    AudioSource.INTERNAL_ONLY -> "Game"
+                    AudioSource.MIC_ONLY -> "Mic"
+                    AudioSource.MUTE -> "Mute"
+                }
+            },
+            enabled = !isRecordingActive,
+            onItemSelected = { viewModel.updateAudioSource(it) }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Game Volume Slider (0 - 100%)
+        val gamePercent = (config.internalAudioGain * 100).roundToInt()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "GAME VOLUME",
+                fontFamily = BitcountPropSingle,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isGameAudioActive) TextPrimary else TextMuted
+            )
+            Text(
+                text = "$gamePercent%",
+                fontFamily = BitcountPropSingle,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isGameAudioActive) HyperCrimson else TextMuted
+            )
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Slider(
+            value = config.internalAudioGain,
+            onValueChange = { viewModel.updateInternalAudioGain(it) },
+            valueRange = 0f..1f,
+            enabled = !isRecordingActive && isGameAudioActive,
+            colors = SliderDefaults.colors(
+                thumbColor = HyperCrimson,
+                activeTrackColor = HyperCrimson,
+                inactiveTrackColor = BorderStark,
+                disabledThumbColor = TextMuted,
+                disabledActiveTrackColor = BorderStark.copy(alpha = 0.3f)
+            )
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Mic Gain Slider (0 - 200%, with dB boost calculation)
+        val micPercent = (config.micGain * 100).roundToInt()
+        val boostDb = if (config.micGain > 1.0f) {
+            " (+${String.format(Locale.US, "%.1f", 20 * kotlin.math.log10(config.micGain))} dB Boost)"
+        } else if (config.micGain < 1.0f && config.micGain > 0f) {
+            " (${String.format(Locale.US, "%.1f", 20 * kotlin.math.log10(config.micGain))} dB)"
+        } else ""
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "MIC GAIN",
+                fontFamily = BitcountPropSingle,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isMicAudioActive) TextPrimary else TextMuted
+            )
+            Text(
+                text = "$micPercent%$boostDb",
+                fontFamily = BitcountPropSingle,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isMicAudioActive) HyperCyan else TextMuted
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Slider(
+            value = config.micGain,
+            onValueChange = { viewModel.updateMicGain(it) },
+            valueRange = 0f..2f,
+            enabled = !isRecordingActive && isMicAudioActive,
+            colors = SliderDefaults.colors(
+                thumbColor = HyperCyan,
+                activeTrackColor = HyperCyan,
+                inactiveTrackColor = BorderStark,
+                disabledThumbColor = TextMuted,
+                disabledActiveTrackColor = BorderStark.copy(alpha = 0.3f)
+            )
+        )
     }
 
     Spacer(modifier = Modifier.height(14.dp))
@@ -402,10 +700,14 @@ private fun AudioSettingsSection(
         SteppedVuMeter(
             label = "Internal Audio Loopback",
             dbLevel = gameDb,
-            statusOverride = if (!isRecordingActive) "STANDBY" else null
+            statusOverride = if (!isRecordingActive) "STANDBY" else if (!isGameAudioActive) "MUTED" else null
         )
         Spacer(modifier = Modifier.height(12.dp))
-        SteppedVuMeter(label = "Microphone Audio (Stereo)", dbLevel = micDb)
+        SteppedVuMeter(
+            label = "Microphone Audio (Stereo)",
+            dbLevel = micDb,
+            statusOverride = if (!isMicAudioActive) "MUTED" else null
+        )
     }
 }
 
@@ -419,6 +721,40 @@ private fun ControlsSettingsSection(
 ) {
     val config = uiState.config
 
+    // 1. Recording Countdown HUD Section
+    SectionCard(
+        title = "RECORDING COUNTDOWN",
+        titleTag = if (config.countdownSeconds == 0) "NONE" else "${config.countdownSeconds}S HUD"
+    ) {
+        SlidingPillSelector(
+            items = listOf(0, 3, 5),
+            selectedItem = config.countdownSeconds,
+            itemLabel = {
+                when (it) {
+                    0 -> "NONE"
+                    else -> "${it}s"
+                }
+            },
+            enabled = !isRecordingActive,
+            onItemSelected = { viewModel.updateCountdownSeconds(it) }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = when (config.countdownSeconds) {
+                0 -> "Instant capture start upon permission grant (Zero Delay)"
+                else -> "${config.countdownSeconds}-second HUD timer with geometric digit animation & tap-to-cancel safety"
+            },
+            color = TextSecondary,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle
+        )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Overlay & Gesture Controls Section
     SectionCard(
         title = "OVERLAY & GESTURE CONTROLS",
         titleTag = if (config.alwaysOnFloatingPill) "STANDBY ON" else if (config.showFloatingPill) "REC PILL ON" else "CLEAN CANVAS"
@@ -518,7 +854,7 @@ private fun ControlsSettingsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 2. Auto-Hide Pill into Invisible Ghost
+        // 3. Auto-Hide Pill into Invisible Ghost
         AnimatedVisibility(visible = config.showFloatingPill) {
             Column {
                 SettingsSwitch(
@@ -562,7 +898,7 @@ private fun ControlsSettingsSection(
             }
         }
 
-        // 3. Shake to Stop Gesture
+        // 4. Shake to Stop Gesture
         SettingsSwitch(
             iconRes = R.drawable.ic_pixel_vibrate,
             title = "Shake to Stop",
@@ -574,7 +910,7 @@ private fun ControlsSettingsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 4. Stop on Screen Off
+        // 5. Stop on Screen Off
         SettingsSwitch(
             iconRes = R.drawable.ic_pixel_power,
             title = "Stop on Screen Off",
@@ -675,45 +1011,6 @@ private fun SettingsTag(
 }
 
 @Composable
-private fun SettingsRow(
-    text: String,
-    isSelected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    val bg = if (isSelected) SurfaceElevated else ObsidianCanvas
-    val border = if (isSelected) BorderHighlight else BorderStark
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bg, RoundedCornerShape(8.dp))
-            .border(1.5.dp, border, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = text,
-            color = if (isSelected) TextPrimary else TextSecondary,
-            fontSize = 13.sp,
-            fontFamily = BitcountPropSingle,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = 0.5.sp
-        )
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(BorderHighlight, CircleShape)
-                    .border(1.dp, BorderStark, CircleShape)
-            )
-        }
-    }
-}
-
-@Composable
 private fun SettingsSwitch(
     iconRes: Int,
     title: String,
@@ -776,5 +1073,124 @@ private fun SettingsSwitch(
                 uncheckedTrackColor = ObsidianCanvas
             )
         )
+    }
+}
+
+@Composable
+private fun AutoTuneBitrateDialog(
+    newTierTag: String,
+    newWidth: Int,
+    newHeight: Int,
+    currentBitrateMbps: Int,
+    recommendedBitrateMbps: Int,
+    onDismiss: () -> Unit,
+    onKeep: (doNotAskAgain: Boolean) -> Unit,
+    onApply: (doNotAskAgain: Boolean) -> Unit
+) {
+    var doNotAskAgain by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SurfaceElevated, RoundedCornerShape(12.dp))
+                .border(2.dp, BorderStark, RoundedCornerShape(12.dp))
+                .padding(20.dp)
+        ) {
+            Column {
+                Text(
+                    text = "⚡ AUTO-TUNE BITRATE?",
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = HyperCrimson,
+                    letterSpacing = 0.5.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Switched to $newTierTag ($newWidth × $newHeight).\nRecommended bitrate is $recommendedBitrateMbps Mbps for balanced quality and file size.",
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 12.sp,
+                    color = TextPrimary,
+                    lineHeight = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Checkbox: Don't ask again
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clickable { doNotAskAgain = !doNotAskAgain }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .background(if (doNotAskAgain) HyperCrimson else SurfaceElevated, RoundedCornerShape(4.dp))
+                            .border(1.5.dp, if (doNotAskAgain) HyperCrimson else BorderStark, RoundedCornerShape(4.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (doNotAskAgain) {
+                            Text(
+                                text = "✓",
+                                color = ObsidianCanvas,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Don't ask again",
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(SurfaceElevated, RoundedCornerShape(6.dp))
+                            .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
+                            .clickable { onKeep(doNotAskAgain) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "KEEP ${currentBitrateMbps}M",
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .background(TextPrimary, RoundedCornerShape(6.dp))
+                            .border(1.5.dp, HyperCrimson, RoundedCornerShape(6.dp))
+                            .clickable { onApply(doNotAskAgain) }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "APPLY ${recommendedBitrateMbps}M",
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextInverse
+                        )
+                    }
+                }
+            }
+        }
     }
 }

@@ -51,4 +51,7 @@ data class DeviceCapabilities(
 
     val is144FpsSupported: Boolean
         get() = maxHardwareFps >= 144
+
+    val is165FpsSupported: Boolean
+        get() = maxHardwareFps >= 165
 }

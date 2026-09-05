@@ -43,6 +43,15 @@ class StorageCalculatorTest {
     }
 
     @Test
+    fun testIsStorageCriticallyLowThreshold() {
+        val criticalBytes = 150_000_000L // 150 MB (< 200 MB)
+        val safeBytes = 500_000_000L // 500 MB (> 200 MB)
+
+        assertTrue(StorageCalculator.isStorageCriticallyLow(criticalBytes))
+        assertFalse(StorageCalculator.isStorageCriticallyLow(safeBytes))
+    }
+
+    @Test
     fun testEstimateRemainingMinutes() {
         // 6,282,000 Bytes/sec (~359.46 MB/min).
         // For 62,820,000 bytes available, should be exactly 10 seconds = 0.1667 minutes

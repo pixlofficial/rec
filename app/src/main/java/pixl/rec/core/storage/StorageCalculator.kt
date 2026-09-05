@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit
 object StorageCalculator {
 
     const val CRITICAL_LOW_STORAGE_THRESHOLD_BYTES = 2_147_483_648L // 2.0 GB
+    const val EMERGENCY_STOP_STORAGE_THRESHOLD_BYTES = 209_715_200L // 200 MB
 
     /**
      * Computes the data write rate in Megabytes per Minute:
@@ -55,6 +56,13 @@ object StorageCalculator {
      * Checks if remaining disk space is below safety threshold (2 GB).
      */
     fun isStorageLow(availableBytes: Long, thresholdBytes: Long = CRITICAL_LOW_STORAGE_THRESHOLD_BYTES): Boolean {
+        return availableBytes < thresholdBytes
+    }
+
+    /**
+     * Checks if remaining disk space has dropped below the emergency 200 MB crash-prevention threshold.
+     */
+    fun isStorageCriticallyLow(availableBytes: Long, thresholdBytes: Long = EMERGENCY_STOP_STORAGE_THRESHOLD_BYTES): Boolean {
         return availableBytes < thresholdBytes
     }
 

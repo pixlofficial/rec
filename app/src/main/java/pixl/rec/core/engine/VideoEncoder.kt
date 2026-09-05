@@ -162,8 +162,12 @@ class VideoEncoder(
             } catch (_: Exception) {
                 config.framerate
             }
-            val effectiveFps = min(config.framerate, maxSupportedFps).coerceAtLeast(30)
-            if (effectiveFps < config.framerate) {
+            val effectiveFps = if (config.allowExperimentalFps) {
+                config.framerate
+            } else {
+                min(config.framerate, maxSupportedFps).coerceAtLeast(30)
+            }
+            if (effectiveFps < config.framerate && !config.allowExperimentalFps) {
                 Log.w(tag, "Encoder ${codecInfo.name} caps framerate for ${width}x${height} from ${config.framerate} to $effectiveFps fps")
             }
 
@@ -172,11 +176,16 @@ class VideoEncoder(
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
                 setInteger(MediaFormat.KEY_BIT_RATE, config.videoBitrate)
                 setInteger(MediaFormat.KEY_FRAME_RATE, effectiveFps)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
+                setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
                 setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
 
                 // Real-time scheduling priority for Android kernel scheduler
                 setInteger(MediaFormat.KEY_PRIORITY, 0)
+
+                // Intra-refresh for ultra-smooth 3D gaming frametimes
+                if (config.enableIntraRefresh && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    setInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD, config.framerate)
+                }
 
                 // Explicit Profile & Level (if available and not falling back to auto)
                 if (profileLevel != null) {
@@ -187,9 +196,9 @@ class VideoEncoder(
                 }
 
                 if (includeOptionalKeys) {
-                    // Explicit Studio BT.709 sRGB Colorimetry & Full Dynamic Range Metadata
+                    // Explicit Studio BT.709 sRGB Colorimetry & Dynamic Range Metadata
                     setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
-                    setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_FULL)
+                    setInteger(MediaFormat.KEY_COLOR_RANGE, config.colorRange.androidRange)
                     setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
                 }
             }

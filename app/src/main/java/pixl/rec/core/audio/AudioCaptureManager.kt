@@ -277,8 +277,8 @@ class AudioCaptureManager(
             val nowNs = System.nanoTime()
             if (nowNs - lastDbCalcTimeNs >= DB_CALC_INTERVAL_NS) {
                 lastDbCalcTimeNs = nowNs
-                val gameDb = if (gameBytesRead > 0) PcmAudioMixer.calculateDbLevel(gameBuffer, gameBytesRead) else -60f
-                val micDb = if (micBytesRead > 0) PcmAudioMixer.calculateDbLevel(micBuffer, micBytesRead) else -60f
+                val gameDb = if (gameBytesRead > 0) PcmAudioMixer.calculateDbLevel(gameBuffer, gameBytesRead, config.internalAudioGain) else -60f
+                val micDb = if (micBytesRead > 0) PcmAudioMixer.calculateDbLevel(micBuffer, micBytesRead, config.micGain) else -60f
                 listener.onAudioLevels(gameDb, micDb)
             }
 

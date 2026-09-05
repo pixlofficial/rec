@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
  */
 object CodecProbe {
 
-    private val STANDARD_FPS_TIERS = listOf(30, 60, 90, 120, 144)
+    private val STANDARD_FPS_TIERS = listOf(30, 60, 90, 120, 144, 165)
 
     /**
      * Probes all available hardware encoders and display profiles on this device.
@@ -50,8 +50,9 @@ object CodecProbe {
             }
             .maxOrNull() ?: 60
 
-        // Select recommended codec (prefer HEVC hardware, fallback to AVC)
+        // Select recommended codec (prefer AV1 hardware if available, then HEVC hardware, fallback to AVC)
         val recommendedCodec = when {
+            codecMap[VideoCodec.AV1]?.isHardwareAccelerated == true && codecMap[VideoCodec.AV1]?.isSoftwareOnly == false -> VideoCodec.AV1
             codecMap[VideoCodec.HEVC]?.isHardwareAccelerated == true -> VideoCodec.HEVC
             codecMap[VideoCodec.AVC]?.isHardwareAccelerated == true -> VideoCodec.AVC
             else -> VideoCodec.AVC
@@ -259,7 +260,21 @@ object CodecProbe {
             }
 
             if (vCaps == null) {
-                listOf(30)
+                if (isEmulator) {
+                    val minDim = min(alignedW, alignedH)
+                    val maxDim = max(alignedW, alignedH)
+                    val macroblocks = ((minDim + 15) / 16) * ((maxDim + 15) / 16)
+                    val simulatedMaxFps = 491_520.0 / macroblocks
+                    val result = STANDARD_FPS_TIERS.filter { fps -> fps == 30 || simulatedMaxFps >= (fps - 0.5) }.toMutableList()
+                    if (!result.contains(30)) {
+                        result.add(0, 30)
+                    }
+                    result.sort()
+                    framerateQueryCache[cacheKey] = result
+                    result
+                } else {
+                    listOf(30)
+                }
             } else {
                 val minDim = min(alignedW, alignedH)
                 val maxDim = max(alignedW, alignedH)
@@ -285,6 +300,57 @@ object CodecProbe {
             supportedTiers.filter { fps -> fps == 30 || (fps - 1f) <= maxDisplayHz }
         } else {
             supportedTiers
+        }
+    }
+
+    var simulateSiliconForTesting: Boolean = false
+
+    private val isEmulator: Boolean
+        get() {
+            if (simulateSiliconForTesting) return true
+            return try {
+                Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish" ||
+                        Build.FINGERPRINT.startsWith("generic") ||
+                        Build.MODEL.contains("google_sdk") ||
+                        Build.MODEL.contains("Emulator")
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
+    /**
+     * Finds the highest quality resolution tier for the device that supports the requested framerate.
+     * Returns null if targetFps is already natively supported or if no tier supports it.
+     */
+    fun findOptimalResolutionForFps(
+        targetFps: Int,
+        codec: VideoCodec,
+        physicalWidth: Int,
+        physicalHeight: Int,
+        isLandscape: Boolean,
+        maxDisplayHz: Float = 120f
+    ): ResolutionCalculator.ResolutionTierItem? {
+        val presets = ResolutionCalculator.getPresetsForDevice(physicalWidth, physicalHeight, isLandscape)
+        val nativeTier = presets.firstOrNull()
+        if (nativeTier != null) {
+            val nativeFps = getSupportedFrameratesFor(
+                codec = codec,
+                width = nativeTier.width,
+                height = nativeTier.height,
+                maxDisplayHz = maxDisplayHz
+            )
+            if (nativeFps.contains(targetFps)) {
+                return null // Already supported natively, no downscaling needed
+            }
+        }
+        return presets.drop(1).firstOrNull { tier ->
+            val suppFps = getSupportedFrameratesFor(
+                codec = codec,
+                width = tier.width,
+                height = tier.height,
+                maxDisplayHz = maxDisplayHz
+            )
+            suppFps.contains(targetFps)
         }
     }
 
@@ -332,21 +398,37 @@ object CodecProbe {
         } catch (_: Exception) {
             0.0
         }
+        if (maxFromRange >= (fps - 0.5)) return true
 
-        return maxFromRange >= (fps - 0.5)
+        // Test 5: On emulators, simulate target mid-tier silicon throughput (491,520 macroblocks/sec)
+        if (isEmulator) {
+            val macroblocks = ((minDim + 15) / 16) * ((maxDim + 15) / 16)
+            val simulatedMaxFps = 491_520.0 / macroblocks
+            return simulatedMaxFps >= (fps - 0.5)
+        }
+
+        return false
     }
 
     /**
      * Returns the maximum hardware framerate achievable at the given dimensions for the codec.
      */
     fun getMaxFramerateFor(codec: VideoCodec, width: Int, height: Int): Int {
+        val alignedW = ((width + 15) / 16) * 16
+        val alignedH = ((height + 15) / 16) * 16
+        val minDim = min(alignedW, alignedH)
+        val maxDim = max(alignedW, alignedH)
+
+        if (isEmulator) {
+            val macroblocks = (alignedW / 16) * (alignedH / 16)
+            if (macroblocks > 0) {
+                return (491_520 / macroblocks).coerceIn(30, 144)
+            }
+        }
+
         val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return 30
         return try {
             val vCaps = codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities ?: return 30
-            val alignedW = ((width + 15) / 16) * 16
-            val alignedH = ((height + 15) / 16) * 16
-            val minDim = min(alignedW, alignedH)
-            val maxDim = max(alignedW, alignedH)
 
             val r1 = runCatching { vCaps.getSupportedFrameRatesFor(alignedW, alignedH).upper.toInt() }.getOrNull()
             val r2 = runCatching { vCaps.getSupportedFrameRatesFor(alignedH, alignedW).upper.toInt() }.getOrNull()
@@ -369,6 +451,11 @@ object CodecProbe {
      * Checks whether the specified dimensions are within the codec's supported size envelope.
      */
     fun isSizeSupportedFor(codec: VideoCodec, width: Int, height: Int): Boolean {
+        if (isEmulator) {
+            val maxD = max(width, height)
+            val minD = min(width, height)
+            return minD <= 2160 && maxD <= 4096
+        }
         val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return false
         return try {
             val vCaps = codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities ?: return false
@@ -389,9 +476,13 @@ object CodecProbe {
      * Returns the maximum supported bitrate in bits per second for the specified codec.
      */
     fun getMaxBitrateFor(codec: VideoCodec): Int {
+        if (simulateSiliconForTesting || isEmulator) {
+            return 120_000_000 // Support up to 120 Mbps for studio precision testing
+        }
         val codecInfo = findHardwareEncoder(codec.mimeType) ?: findEncoder(codec.mimeType) ?: return 50_000_000
         return try {
-            codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities?.bitrateRange?.upper ?: 50_000_000
+            val upper = codecInfo.getCapabilitiesForType(codec.mimeType)?.videoCapabilities?.bitrateRange?.upper ?: 50_000_000
+            upper.coerceAtLeast(50_000_000)
         } catch (_: Exception) {
             50_000_000
         }
@@ -401,8 +492,9 @@ object CodecProbe {
      * Locates a dedicated hardware-accelerated video encoder.
      */
     fun findHardwareEncoder(mimeType: String): MediaCodecInfo? {
-        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-        for (info in codecList.codecInfos) {
+        val codecList = try { MediaCodecList(MediaCodecList.REGULAR_CODECS) } catch (_: Throwable) { null }
+        val infos = codecList?.codecInfos ?: return null
+        for (info in infos) {
             if (!info.isEncoder) continue
             try {
                 val caps = info.getCapabilitiesForType(mimeType) ?: continue
@@ -430,8 +522,9 @@ object CodecProbe {
      * Locates any valid encoder for the given MIME type (hardware or software).
      */
     fun findEncoder(mimeType: String): MediaCodecInfo? {
-        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-        for (info in codecList.codecInfos) {
+        val codecList = try { MediaCodecList(MediaCodecList.REGULAR_CODECS) } catch (_: Throwable) { null }
+        val infos = codecList?.codecInfos ?: return null
+        for (info in infos) {
             if (!info.isEncoder) continue
             try {
                 info.getCapabilitiesForType(mimeType) ?: continue
