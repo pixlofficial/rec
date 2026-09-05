@@ -85,11 +85,14 @@ import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
+import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.ObsidianCanvas
 import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.TextPrimary
 import pixl.rec.ui.theme.TextSecondary
+import android.view.LayoutInflater
+import androidx.media3.common.PlaybackException
 import pixl.rec.ui.theme.ToxicLime
 import pixl.rec.ui.vault.model.RecordingItem
 
@@ -114,24 +117,24 @@ fun VaultVideoPlayer(
         }
     }
 
-    // Configure ultra-low buffer load control for instantaneous seeking on local files
+    // Configure robust buffer load control for local playback of high-res (up to 4K / 120 FPS) recordings
     val loadControl = remember {
         DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                500,  // minBufferMs (minimal buffering for local storage)
-                1500, // maxBufferMs
-                50,   // bufferForPlaybackMs (instant response upon seeking)
-                50    // bufferForPlaybackAfterRebufferMs (instant playback resume)
+                15_000, // minBufferMs (15s minimum buffer to prevent underrun starvation)
+                50_000, // maxBufferMs (50s maximum buffer)
+                250,    // bufferForPlaybackMs (fast 250ms initial startup)
+                500     // bufferForPlaybackAfterRebufferMs (500ms resume)
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setPrioritizeTimeOverSizeThresholds(false)
             .build()
     }
 
-    // Initialize ExoPlayer with closest keyframe sync seeking for zero-freeze scrubbing
+    // Initialize ExoPlayer with exact frame seeking
     val exoPlayer = remember(context, item.uri) {
         ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
-            .setSeekParameters(SeekParameters.CLOSEST_SYNC)
+            .setSeekParameters(SeekParameters.EXACT)
             .build().apply {
                 val mediaItem = MediaItem.fromUri(item.uri)
                 setMediaItem(mediaItem)
@@ -140,7 +143,9 @@ fun VaultVideoPlayer(
             }
     }
 
-    var isPlaying by remember { mutableStateOf(true) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var isBuffering by remember { mutableStateOf(true) }
+    var playbackErrorMessage by remember { mutableStateOf<String?>(null) }
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(item.durationMs.coerceAtLeast(1L)) }
     var isSeeking by remember { mutableStateOf(false) }
@@ -149,22 +154,45 @@ fun VaultVideoPlayer(
     var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
     var isLooping by remember { mutableStateOf(false) }
 
-    // Listen to Player state changes
+    // Listen to Player state changes & errors
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                if (playing) {
+                    isBuffering = false
+                    playbackErrorMessage = null
+                }
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) {
-                    val realDuration = exoPlayer.duration
-                    if (realDuration > 0) {
-                        durationMs = realDuration
+                when (state) {
+                    Player.STATE_BUFFERING -> {
+                        isBuffering = true
                     }
-                } else if (state == Player.STATE_ENDED) {
-                    isPlaying = false
+                    Player.STATE_READY -> {
+                        isBuffering = false
+                        playbackErrorMessage = null
+                        val realDuration = exoPlayer.duration
+                        if (realDuration > 0) {
+                            durationMs = realDuration
+                        }
+                    }
+                    Player.STATE_ENDED -> {
+                        isPlaying = false
+                        isBuffering = false
+                    }
+                    Player.STATE_IDLE -> {
+                        isBuffering = false
+                    }
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                android.util.Log.e("VaultVideoPlayer", "Playback error: ${error.errorCodeName}", error)
+                playbackErrorMessage = error.localizedMessage ?: "Playback error: ${error.errorCodeName}"
+                isPlaying = false
+                isBuffering = false
             }
         }
         exoPlayer.addListener(listener)
@@ -210,24 +238,100 @@ fun VaultVideoPlayer(
             },
         contentAlignment = Alignment.Center
     ) {
-        // 1. Hardware Accelerated Video Surface
+        // 1. Hardware Accelerated Video Surface using TextureView (eliminates SurfaceView hole-punching and Compose z-order occlusion)
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                val view = LayoutInflater.from(ctx)
+                    .inflate(R.layout.view_vault_player, null, false) as PlayerView
+                view.apply {
                     player = exoPlayer
-                    setBackgroundColor(android.graphics.Color.BLACK)
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
                 }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
+            update = { playerView ->
+                if (playerView.player != exoPlayer) {
+                    playerView.player = exoPlayer
+                }
+            },
+            modifier = Modifier.fillMaxSize()
         )
+
+        // Buffering / Loading Indicator
+        if (isBuffering && playbackErrorMessage == null) {
+            Box(
+                modifier = Modifier
+                    .background(ObsidianCanvas.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "BUFFERING...",
+                    color = ToxicLime,
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Error Banner with External Player Fallback
+        playbackErrorMessage?.let { errMsg ->
+            Box(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .background(ObsidianCanvas.copy(alpha = 0.95f), RoundedCornerShape(12.dp))
+                    .border(1.5.dp, HyperCrimson, RoundedCornerShape(12.dp))
+                    .padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "DECODER // PLAYBACK ERROR",
+                        color = HyperCrimson,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = errMsg,
+                        color = TextSecondary,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 11.sp
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier
+                            .background(SurfaceElevated, RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(item.uri, "video/mp4")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Open Video"))
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pixel_external),
+                            contentDescription = null,
+                            tint = TextPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "OPEN IN EXTERNAL PLAYER",
+                            color = TextPrimary,
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
 
         // 2. Custom Cyberpunk HUD Overlay Controls
         AnimatedVisibility(
