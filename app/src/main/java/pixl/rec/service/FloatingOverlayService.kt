@@ -15,10 +15,20 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -504,8 +514,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
 
         val menuParams = WindowManager.LayoutParams(
-            menuW,
-            menuH,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -513,8 +523,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = menuX
-            y = menuY
+            x = 0
+            y = 0
         }
 
         val isMenuExpandedState = mutableStateOf(false)
@@ -535,59 +545,86 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
                 val currentConfig = configState.value
                 RECTheme {
-                    FloatingRadialMenuView(
-                        isExpanded = isMenuExpandedState.value,
-                        isDockedOnLeft = isLeft,
-                        isDockedOnRight = isRight,
-                        isRecordingActive = isRecordingActive,
-                        isPaused = isPaused,
-                        durationMs = currentDuration,
-                        hudConfig = if (isRecordingActive) currentConfig.recordingHudConfig else currentConfig.standbyHudConfig,
-                        onToggleExpand = { expanded ->
-                            if (!expanded) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
                                 isMenuExpandedState.value = false
                             }
-                        },
-                        onCollapseComplete = {
-                            removeMenuOverlay()
-                        },
-                        onDrag = { _, _ -> },
-                        onDragEnd = {},
-                        onRecordClick = {
-                            removeMenuOverlay()
-                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
-                        },
-                        onPauseClick = {
-                            RecordingService.pauseService(this@FloatingOverlayService)
-                        },
-                        onResumeClick = {
-                            RecordingService.resumeService(this@FloatingOverlayService)
-                        },
-                        onStopClick = {
-                            removeMenuOverlay()
-                            RecordingService.stopService(this@FloatingOverlayService)
-                        },
-                        onGhostClick = {
-                            removeMenuOverlay()
-                        },
-                        onReplayClick = {
-                            removeMenuOverlay()
-                            android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
-                            openMainActivity()
-                        },
-                        onScreenshotClick = {
-                            removeMenuOverlay()
-                            openMainActivity(startRecord = false)
-                        },
-                        onVaultClick = {
-                            removeMenuOverlay()
-                            openMainActivity(tab = "VAULT")
-                        },
-                        onSettingsClick = {
-                            removeMenuOverlay()
-                            openMainActivity(tab = "SETTINGS")
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset { IntOffset(menuX, menuY) }
+                                .size(
+                                    width = with(LocalDensity.current) { menuW.toDp() },
+                                    height = with(LocalDensity.current) { menuH.toDp() }
+                                )
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    // Absorbs clicks within radial menu boundary to prevent dismissal
+                                }
+                        ) {
+                            FloatingRadialMenuView(
+                                isExpanded = isMenuExpandedState.value,
+                                isDockedOnLeft = isLeft,
+                                isDockedOnRight = isRight,
+                                isRecordingActive = isRecordingActive,
+                                isPaused = isPaused,
+                                durationMs = currentDuration,
+                                hudConfig = if (isRecordingActive) currentConfig.recordingHudConfig else currentConfig.standbyHudConfig,
+                                onToggleExpand = { expanded ->
+                                    if (!expanded) {
+                                        isMenuExpandedState.value = false
+                                    }
+                                },
+                                onCollapseComplete = {
+                                    removeMenuOverlay()
+                                },
+                                onDrag = { _, _ -> },
+                                onDragEnd = {},
+                                onRecordClick = {
+                                    removeMenuOverlay()
+                                    startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
+                                },
+                                onPauseClick = {
+                                    RecordingService.pauseService(this@FloatingOverlayService)
+                                },
+                                onResumeClick = {
+                                    RecordingService.resumeService(this@FloatingOverlayService)
+                                },
+                                onStopClick = {
+                                    removeMenuOverlay()
+                                    RecordingService.stopService(this@FloatingOverlayService)
+                                },
+                                onGhostClick = {
+                                    setTemporarilyHidden(true)
+                                    removeMenuOverlay()
+                                },
+                                onReplayClick = {
+                                    removeMenuOverlay()
+                                    android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
+                                    openMainActivity()
+                                },
+                                onScreenshotClick = {
+                                    removeMenuOverlay()
+                                    openMainActivity(startRecord = false)
+                                },
+                                onVaultClick = {
+                                    removeMenuOverlay()
+                                    openMainActivity(tab = "VAULT")
+                                },
+                                onSettingsClick = {
+                                    removeMenuOverlay()
+                                    openMainActivity(tab = "SETTINGS")
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -601,7 +638,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             }
         } catch (e: Exception) {
             menuOverlayView = null
-            overlayView?.visibility = View.VISIBLE
+            if (!_isTemporarilyHidden.value) {
+                overlayView?.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -613,7 +652,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         } catch (e: Exception) {
             // ignore
         }
-        overlayView?.visibility = View.VISIBLE
+        if (!_isTemporarilyHidden.value) {
+            overlayView?.visibility = View.VISIBLE
+        }
     }
 
     private fun openMainActivity(tab: String? = null, startRecord: Boolean = false) {
