@@ -11,8 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,14 +39,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import pixl.rec.R
 import pixl.rec.core.model.BitrateMode
 import pixl.rec.core.model.ColorRange
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.ui.components.SlidingPillSelector
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderHighlight
 import pixl.rec.ui.theme.BorderStark
@@ -64,7 +65,6 @@ import pixl.rec.ui.theme.TextSecondary
  * Pro-grade collapsible accordion housing advanced encoder controls,
  * overclocking, GOP mastering, color dynamic range, and intra-refresh.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AdvancedStudioControlsCard(
     config: RecordingConfig,
@@ -96,8 +96,15 @@ fun AdvancedStudioControlsCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_pixel_settings),
+                    contentDescription = null,
+                    tint = if (config.allowExperimentalFps) HyperCrimson else TextPrimary,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(7.dp))
                 Text(
-                    text = "⚙️ ADVANCED STUDIO CONTROLS",
+                    text = "ADVANCED STUDIO CONTROLS",
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
@@ -170,25 +177,32 @@ fun AdvancedStudioControlsCard(
                     letterSpacing = 0.5.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    BitrateMode.entries.forEach { mode ->
-                        val isSelected = config.bitrateMode == mode
-                        StudioChip(
-                            text = mode.displayName,
-                            isSelected = isSelected,
-                            enabled = !isRecordingActive,
-                            onClick = { onUpdateBitrateMode(mode) }
-                        )
-                    }
-                }
+                SlidingPillSelector(
+                    items = BitrateMode.entries,
+                    selectedItem = config.bitrateMode,
+                    itemLabel = { it.name },
+                    enabled = !isRecordingActive,
+                    onItemSelected = onUpdateBitrateMode
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = when (config.bitrateMode) {
+                        BitrateMode.VBR -> "Variable Bitrate — dynamic allocation saves bandwidth during static scenes"
+                        BitrateMode.CBR -> "Constant Bitrate — fixed bit stream, ideal for live streams and strict budgets"
+                        BitrateMode.CQ -> "Constant Quality — visual clarity priority, bitrate scales with complexity"
+                    },
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    lineHeight = 12.sp
+                )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // 4. Keyframe Interval
+                val intervals = listOf(0.5f, 1.0f, 2.0f)
+                val selectedInterval = intervals.minByOrNull { kotlin.math.abs(config.iFrameIntervalSeconds - it) } ?: 1.0f
+
                 Text(
                     text = "KEYFRAME / GOP INTERVAL",
                     fontFamily = BitcountPropSingle,
@@ -198,26 +212,25 @@ fun AdvancedStudioControlsCard(
                     letterSpacing = 0.5.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val intervals = listOf(
-                        0.5f to "0.5s (FAST EDIT)",
-                        1.0f to "1.0s (STANDARD)",
-                        2.0f to "2.0s (COMPACT)"
-                    )
-                    intervals.forEach { (sec, label) ->
-                        val isSelected = kotlin.math.abs(config.iFrameIntervalSeconds - sec) < 0.05f
-                        StudioChip(
-                            text = label,
-                            isSelected = isSelected,
-                            enabled = !isRecordingActive,
-                            onClick = { onUpdateKeyframeInterval(sec) }
-                        )
-                    }
-                }
+                SlidingPillSelector(
+                    items = intervals,
+                    selectedItem = selectedInterval,
+                    itemLabel = { "${it}s" },
+                    enabled = !isRecordingActive,
+                    onItemSelected = onUpdateKeyframeInterval
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = when {
+                        kotlin.math.abs(config.iFrameIntervalSeconds - 0.5f) < 0.05f -> "Fast edit (0.5s) — frequent keyframes for snappy scrubbing and editing"
+                        kotlin.math.abs(config.iFrameIntervalSeconds - 2.0f) < 0.05f -> "Compact (2.0s) — maximum compression, lower storage footprint"
+                        else -> "Standard (1.0s) — optimal balance between quality and compression"
+                    },
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    lineHeight = 12.sp
+                )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -231,21 +244,24 @@ fun AdvancedStudioControlsCard(
                     letterSpacing = 0.5.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ColorRange.entries.forEach { range ->
-                        val isSelected = config.colorRange == range
-                        StudioChip(
-                            text = range.displayName,
-                            isSelected = isSelected,
-                            enabled = !isRecordingActive,
-                            onClick = { onUpdateColorRange(range) }
-                        )
-                    }
-                }
+                SlidingPillSelector(
+                    items = ColorRange.entries,
+                    selectedItem = config.colorRange,
+                    itemLabel = { it.displayName.uppercase() },
+                    enabled = !isRecordingActive,
+                    onItemSelected = onUpdateColorRange
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = when (config.colorRange) {
+                        ColorRange.FULL -> "Full Range (0–255) — deep blacks and vibrant contrast for modern screens"
+                        ColorRange.LIMITED -> "Limited Range (16–235) — broadcast studio standard for legacy compatibility"
+                    },
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    lineHeight = 12.sp
+                )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -259,7 +275,7 @@ fun AdvancedStudioControlsCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = "CUSTOM BITRATE PRECISION",
                             fontFamily = BitcountPropSingle,
@@ -275,12 +291,30 @@ fun AdvancedStudioControlsCard(
                             color = TextPrimary
                         )
                     }
-                    StudioChip(
-                        text = "SET EXACT MBPS...",
-                        isSelected = false,
-                        enabled = !isRecordingActive,
-                        onClick = { showCustomBitrateDialog = true }
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .background(ObsidianCanvas, RoundedCornerShape(6.dp))
+                            .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
+                            .clickable(enabled = !isRecordingActive) { showCustomBitrateDialog = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pixel_edit),
+                            contentDescription = "Edit bitrate",
+                            tint = HyperCrimson,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "EDIT",
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = TextPrimary
+                        )
+                    }
                 }
             }
         }
@@ -345,37 +379,6 @@ private fun StudioSwitchRow(
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = ObsidianCanvas
             )
-        )
-    }
-}
-
-@Composable
-private fun StudioChip(
-    text: String,
-    isSelected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .background(
-                if (isSelected) TextPrimary else ObsidianCanvas,
-                RoundedCornerShape(6.dp)
-            )
-            .border(
-                1.5.dp,
-                if (isSelected) HyperCrimson else BorderStark,
-                RoundedCornerShape(6.dp)
-            )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            fontFamily = BitcountPropSingle,
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            color = if (isSelected) TextInverse else TextPrimary
         )
     }
 }

@@ -122,7 +122,7 @@ data class RecordingConfig(
     val shakeToStop: Boolean = true,
     val stopOnScreenOff: Boolean = true,
     val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN,
-    val countdownSeconds: Int = 3,
+    val countdownSeconds: Int = 0,
 
     // HUD Customization Configuration (Separate Standby & Recording Configs + Global Snap)
     val standbyHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.NONE),

@@ -62,7 +62,7 @@ import pixl.rec.ui.theme.TextSecondary
  */
 @Composable
 fun CountdownOverlayView(
-    countdownSeconds: Int = 3,
+    countdownSeconds: Int = 0,
     onCountdownComplete: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier

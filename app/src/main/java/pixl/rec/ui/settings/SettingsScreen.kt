@@ -111,54 +111,28 @@ fun SettingsScreen(
         Text(
             text = "CONFIG // SETTINGS",
             color = TextPrimary,
-            fontSize = 18.sp,
+            fontSize = 24.sp,
             fontFamily = BitcountPropSingle,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
+            letterSpacing = 1.sp
         )
         Text(
             text = "HARDWARE ENCODER & ENGINE PROFILES",
             color = TextSecondary,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontFamily = BitcountPropSingle
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
         // 2. Sub-Navigation Tabs
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SurfaceElevated, RoundedCornerShape(8.dp))
-                .border(1.5.dp, BorderStark, RoundedCornerShape(8.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            SettingsTab.entries.forEach { tab ->
-                val isSelected = selectedSubTab == tab
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(
-                            color = if (isSelected) TextPrimary else Color.Transparent,
-                            shape = RoundedCornerShape(6.dp)
-                        )
-                        .clickable { selectedSubTab = tab }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = tab.title,
-                        color = if (isSelected) TextInverse else TextSecondary,
-                        fontSize = 11.sp,
-                        fontFamily = BitcountPropSingle,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        letterSpacing = 0.5.sp,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
+        SlidingPillSelector(
+            items = SettingsTab.entries,
+            selectedItem = selectedSubTab,
+            onItemSelected = { selectedSubTab = it },
+            itemLabel = { it.title },
+            height = 42.dp
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -248,53 +222,22 @@ private fun VideoSettingsSection(
 
     SectionCard(title = "RESOLUTION & ORIENTATION", titleTag = "${config.width}×${config.height}") {
         // Orientation Tabs: PORTRAIT | LANDSCAPE
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SurfaceElevated, RoundedCornerShape(8.dp))
-                .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
-                .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            val isCurrentLandscape = config.width > config.height
-            listOf(
-                false to "PORTRAIT",
-                true to "LANDSCAPE"
-            ).forEach { (isLand, label) ->
-                val isSelected = isCurrentLandscape == isLand
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(
-                            color = if (isSelected) TextPrimary else SurfaceElevated,
-                            shape = RoundedCornerShape(6.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) HyperCrimson else BorderStark,
-                            shape = RoundedCornerShape(6.dp)
-                        )
-                        .clickable(enabled = !isRecordingActive) {
-                            if (!isSelected) {
-                                viewModel.updateRecordingOrientation(
-                                    if (isLand) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT
-                                )
-                            }
-                        }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = label,
-                        fontFamily = BitcountPropSingle,
-                        fontSize = 11.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) ObsidianCanvas else TextSecondary,
-                        letterSpacing = 0.5.sp
-                    )
-                }
+        val isCurrentLandscape = config.width > config.height
+        val orientationOptions = listOf("PORTRAIT", "LANDSCAPE")
+        val selectedOrientation = if (isCurrentLandscape) "LANDSCAPE" else "PORTRAIT"
+
+        SlidingPillSelector(
+            items = orientationOptions,
+            selectedItem = selectedOrientation,
+            itemLabel = { it },
+            enabled = !isRecordingActive,
+            onItemSelected = { selected ->
+                val targetLand = (selected == "LANDSCAPE")
+                viewModel.updateRecordingOrientation(
+                    if (targetLand) RecordingOrientation.LANDSCAPE else RecordingOrientation.PORTRAIT
+                )
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -445,9 +388,12 @@ private fun VideoSettingsSection(
         listOf(30, 60, 90, 120, 144, 165).filter { it <= (maxDisplayHz + 1).toInt() }.ifEmpty { listOf(30) }
     }
 
+    val isFpsOverclocked = config.allowExperimentalFps && config.framerate > maxDisplayHz
+
     SectionCard(
         title = "CAPTURE REFRESH RATE",
-        titleTag = if (config.allowExperimentalFps) "${config.framerate} FPS ⚡ OVERCLOCK" else "${config.framerate} FPS"
+        titleTag = "${config.framerate} FPS",
+        tagIcon = if (isFpsOverclocked) R.drawable.ic_pixel_lightning else null
     ) {
         SlidingPillSelector(
             items = availableRates,
@@ -729,6 +675,7 @@ private fun ControlsSettingsSection(
         SlidingPillSelector(
             items = listOf(0, 3, 5),
             selectedItem = config.countdownSeconds,
+            itemIcon = { if (it == 0) R.drawable.ic_pixel_none else null },
             itemLabel = {
                 when (it) {
                     0 -> "NONE"
@@ -1098,14 +1045,23 @@ private fun AutoTuneBitrateDialog(
                 .padding(20.dp)
         ) {
             Column {
-                Text(
-                    text = "⚡ AUTO-TUNE BITRATE?",
-                    fontFamily = BitcountPropSingle,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = HyperCrimson,
-                    letterSpacing = 0.5.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_pixel_lightning),
+                        contentDescription = null,
+                        tint = HyperCrimson,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "AUTO-TUNE BITRATE?",
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = HyperCrimson,
+                        letterSpacing = 0.5.sp
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -1134,11 +1090,11 @@ private fun AutoTuneBitrateDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         if (doNotAskAgain) {
-                            Text(
-                                text = "✓",
-                                color = ObsidianCanvas,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_pixel_check),
+                                contentDescription = "Checked",
+                                tint = ObsidianCanvas,
+                                modifier = Modifier.size(12.dp)
                             )
                         }
                     }

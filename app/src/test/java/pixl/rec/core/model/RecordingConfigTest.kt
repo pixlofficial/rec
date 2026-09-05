@@ -23,7 +23,7 @@ class RecordingConfigTest {
         assertFalse("enableIntraRefresh should default to false", config.enableIntraRefresh)
         assertEquals("iFrameIntervalSeconds should default to 1.0f", 1.0f, config.iFrameIntervalSeconds)
         assertEquals("bitrateMode should default to VBR", BitrateMode.VBR, config.bitrateMode)
-        assertEquals("countdownSeconds should default to 3", 3, config.countdownSeconds)
+        assertEquals("countdownSeconds should default to 0", 0, config.countdownSeconds)
     }
 
     @Test

@@ -157,7 +157,7 @@ object ConfigPreferences {
             stopOnScreenOff = prefs.getBoolean(KEY_STOP_ON_SCREEN_OFF, defaultConfig.stopOnScreenOff),
             captureTarget = runCatching { CaptureTarget.valueOf(prefs.getString(KEY_CAPTURE_TARGET, defaultConfig.captureTarget.name) ?: defaultConfig.captureTarget.name) }.getOrDefault(defaultConfig.captureTarget),
             countdownSeconds = prefs.getInt(KEY_COUNTDOWN_SECONDS, defaultConfig.countdownSeconds).let {
-                if (it in listOf(0, 3, 5)) it else 3
+                if (it in listOf(0, 3, 5)) it else 0
             },
             standbyHudConfig = standbyHud,
             recordingHudConfig = recordingHud

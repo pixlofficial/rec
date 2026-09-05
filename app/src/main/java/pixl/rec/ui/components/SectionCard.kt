@@ -14,35 +14,48 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pixl.rec.ui.theme.BorderStark
+import pixl.rec.ui.theme.HyperCrimson
+import pixl.rec.ui.theme.ObsidianCanvas
 import pixl.rec.ui.theme.ShadowSolid
 import pixl.rec.ui.theme.SurfaceCard
 import pixl.rec.ui.theme.TextInverse
 import pixl.rec.ui.theme.TextPrimary
+
+private val TagCrimson = Color(0xFFFF3864)
 
 @Composable
 fun SectionCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     titleTag: String? = null,
-    tagColor: Color = Color.White,
-    tagTextColor: Color = TextInverse,
+    tagIcon: Int? = null,
+    tagColor: Color? = null,
+    tagTextColor: Color? = null,
+    tagBorderColor: Color? = null,
     borderColor: Color = BorderStark,
     containerColor: Color = SurfaceCard,
     shape: Shape = RoundedCornerShape(12.dp),
     shadowOffset: Dp = 4.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val effectiveTagBg = tagColor ?: ObsidianCanvas
+    val effectiveTagBorder = tagBorderColor ?: (if (tagColor != null) tagColor else HyperCrimson)
+    val effectiveTagText = tagTextColor ?: (if (tagColor != null) TextInverse else TagCrimson)
+
     Box(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -63,7 +76,7 @@ fun SectionCard(
                 .border(2.dp, borderColor, shape)
                 .padding(16.dp)
         ) {
-            if (title != null || titleTag != null) {
+            if (title != null || titleTag != null || tagIcon != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -80,27 +93,42 @@ fun SectionCard(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                     }
-                    if (titleTag != null) {
+                    if (titleTag != null || tagIcon != null) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
-                                .background(tagColor, RoundedCornerShape(4.dp))
-                                .border(1.dp, Color.White, RoundedCornerShape(4.dp))
+                                .background(effectiveTagBg, RoundedCornerShape(4.dp))
+                                .border(1.dp, effectiveTagBorder, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text(
-                                text = titleTag.uppercase(),
-                                color = tagTextColor,
-                                fontSize = 12.sp,
-                                fontFamily = pixl.rec.ui.theme.BitcountPropSingle,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                maxLines = 1
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (tagIcon != null) {
+                                    Icon(
+                                        painter = painterResource(id = tagIcon),
+                                        contentDescription = null,
+                                        tint = effectiveTagText,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    if (titleTag != null) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                }
+                                if (titleTag != null) {
+                                    Text(
+                                        text = titleTag.uppercase(),
+                                        color = effectiveTagText,
+                                        fontSize = 12.sp,
+                                        fontFamily = pixl.rec.ui.theme.BitcountPropSingle,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
             content()

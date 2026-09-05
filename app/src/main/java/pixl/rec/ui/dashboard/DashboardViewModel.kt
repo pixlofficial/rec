@@ -275,16 +275,22 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 framerate = validatedFps,
                 videoBitrate = kotlin.math.min(savedConfig.videoBitrate, maxBitrate)
             )
+            val matchingPreset = resolveMatchingPreset(validatedConfig, probedCapabilities)
+            val finalConfig = if (validatedConfig.activePreset != matchingPreset) {
+                validatedConfig.copy(activePreset = matchingPreset)
+            } else {
+                validatedConfig
+            }
 
             val remainingMin = StorageCalculator.estimateRemainingMinutes(
                 availableBytes = availableBytes,
-                videoBitrateBps = validatedConfig.videoBitrate,
-                audioBitrateBps = validatedConfig.audioBitrate
+                videoBitrateBps = finalConfig.videoBitrate,
+                audioBitrateBps = finalConfig.audioBitrate
             )
 
             _uiState.value = DashboardUiState(
                 capabilities = probedCapabilities,
-                config = validatedConfig,
+                config = finalConfig,
                 availableStorageBytes = availableBytes,
                 remainingMinutes = remainingMin,
                 isStorageLow = StorageCalculator.isStorageLow(availableBytes)
@@ -743,20 +749,110 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun updateConfigAndStorage(newConfig: RecordingConfig) {
+        val matchingPreset = resolveMatchingPreset(newConfig)
+        val reconciledConfig = if (newConfig.activePreset != matchingPreset) {
+            newConfig.copy(activePreset = matchingPreset)
+        } else {
+            newConfig
+        }
+
         // Persist to SharedPreferences immediately
-        ConfigPreferences.saveConfig(getApplication(), newConfig)
+        ConfigPreferences.saveConfig(getApplication(), reconciledConfig)
 
         val availableBytes = _uiState.value.availableStorageBytes
         val remainingMin = StorageCalculator.estimateRemainingMinutes(
             availableBytes = availableBytes,
-            videoBitrateBps = newConfig.videoBitrate,
-            audioBitrateBps = newConfig.audioBitrate
+            videoBitrateBps = reconciledConfig.videoBitrate,
+            audioBitrateBps = reconciledConfig.audioBitrate
         )
 
         _uiState.value = _uiState.value.copy(
-            config = newConfig,
+            config = reconciledConfig,
             remainingMinutes = remainingMin
         )
+    }
+
+    private fun resolveMatchingPreset(
+        config: RecordingConfig,
+        caps: DeviceCapabilities? = _uiState.value.capabilities
+    ): QuickPreset {
+        val display = caps?.display
+        val physW = display?.physicalWidth ?: 1080
+        val physH = display?.physicalHeight ?: 2400
+        val maxDisplayHz = display?.supportedRefreshRates?.maxOrNull()
+            ?: display?.currentRefreshRate ?: 120f
+
+        val isLandscape = config.width > config.height
+        val presets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape)
+        val nativeTier = presets.first()
+        val perfTier = presets.last()
+        val maxBitrate = CodecProbe.getMaxBitrateFor(config.videoCodec)
+
+        // 1. Check BEST_QUALITY
+        val suppBestFps = CodecProbe.getSupportedFrameratesFor(
+            codec = config.videoCodec,
+            width = nativeTier.width,
+            height = nativeTier.height,
+            maxDisplayHz = maxDisplayHz
+        )
+        val bestFps = suppBestFps.maxOrNull() ?: 30
+        val targetBestBitrate = kotlin.math.min(28_000_000, maxBitrate)
+        if (config.width == nativeTier.width &&
+            config.height == nativeTier.height &&
+            config.framerate == bestFps &&
+            config.videoBitrate == targetBestBitrate
+        ) {
+            return QuickPreset.BEST_QUALITY
+        }
+
+        // 2. Check GAMING (must be landscape, 60fps, 16M bitrate)
+        val landscapePresets = ResolutionCalculator.getPresetsForDevice(physW, physH, isLandscape = true)
+        val gamingTier = landscapePresets.firstOrNull { tier ->
+            val suppFps = CodecProbe.getSupportedFrameratesFor(
+                codec = config.videoCodec,
+                width = tier.width,
+                height = tier.height,
+                maxDisplayHz = maxDisplayHz
+            )
+            suppFps.contains(60)
+        } ?: landscapePresets.last()
+        val targetGamingBitrate = kotlin.math.min(16_000_000, maxBitrate)
+        if (isLandscape &&
+            config.width == gamingTier.width &&
+            config.height == gamingTier.height &&
+            config.framerate == 60 &&
+            config.videoBitrate == targetGamingBitrate
+        ) {
+            return QuickPreset.GAMING
+        }
+
+        // 3. Check MAX_FPS (perfTier, maxFps, 16M bitrate)
+        val suppMaxFps = CodecProbe.getSupportedFrameratesFor(
+            codec = config.videoCodec,
+            width = perfTier.width,
+            height = perfTier.height,
+            maxDisplayHz = maxDisplayHz
+        )
+        val maxFps = suppMaxFps.maxOrNull() ?: 60
+        val targetMaxFpsBitrate = kotlin.math.min(16_000_000, maxBitrate)
+        if (config.width == perfTier.width &&
+            config.height == perfTier.height &&
+            config.framerate == maxFps &&
+            config.videoBitrate == targetMaxFpsBitrate
+        ) {
+            return QuickPreset.MAX_FPS
+        }
+
+        // 4. Check SMALL_SIZE (perfTier, 30fps, 8M bitrate)
+        if (config.width == perfTier.width &&
+            config.height == perfTier.height &&
+            config.framerate == 30 &&
+            config.videoBitrate == 8_000_000
+        ) {
+            return QuickPreset.SMALL_SIZE
+        }
+
+        return QuickPreset.CUSTOM
     }
 
     fun startStandbyMicMonitor() {
