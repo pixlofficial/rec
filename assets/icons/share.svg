@@ -1,34 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-    <g transform="scale(1.2) translate(-10, -10)">
-        <!-- Left Hub Node -->
-        <rect x="36.2" y="52.6" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="28.0" y="60.8" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="36.2" y="60.8" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="44.4" y="60.8" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="36.2" y="69.0" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
+  <!-- PixL REC - White Pixel Share Network Icon (46 blocks, 15x15 matrix) -->
+  <g fill="#FFFFFF">
+    <!-- Top-Right Hub (Center x=89.8, y=28.0) -->
+    <rect x="83.3" y="18.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="18.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="76.8" y="24.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="24.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="24.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="96.3" y="24.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="76.8" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="96.3" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="37.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="37.8" width="5.4" height="5.4" rx="1.0"/>
 
-        <!-- Top-Right Node -->
-        <rect x="85.4" y="28.0" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="77.2" y="36.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="85.4" y="36.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="93.6" y="36.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="85.4" y="44.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
+    <!-- Upper Connecting Arm (Clean 2:1 Slope) -->
+    <rect x="63.8" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="70.3" y="31.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="50.8" y="37.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="57.3" y="37.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="44.3" y="44.3" width="5.4" height="5.4" rx="1.0"/>
 
-        <!-- Bottom-Right Node -->
-        <rect x="85.4" y="77.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="77.2" y="85.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="85.4" y="85.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="93.6" y="85.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="85.4" y="93.6" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
+    <!-- Left Source Hub (Center x=28.0, y=54.0) -->
+    <rect x="24.8" y="44.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="31.3" y="44.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="18.3" y="50.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="24.8" y="50.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="31.3" y="50.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="37.8" y="50.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="18.3" y="57.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="24.8" y="57.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="31.3" y="57.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="37.8" y="57.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="24.8" y="63.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="31.3" y="63.8" width="5.4" height="5.4" rx="1.0"/>
 
-        <!-- Upper Diagonal -->
-        <rect x="52.6" y="52.6" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="60.8" y="44.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="69.0" y="44.4" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
+    <!-- Lower Connecting Arm (Clean 2:1 Slope) -->
+    <rect x="44.3" y="63.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="50.8" y="70.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="57.3" y="70.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="63.8" y="76.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="70.3" y="76.8" width="5.4" height="5.4" rx="1.0"/>
 
-        <!-- Lower Diagonal -->
-        <rect x="52.6" y="69.0" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="60.8" y="77.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-        <rect x="69.0" y="77.2" width="6.6" height="6.6" rx="1.0" fill="#FFFFFF" />
-    </g>
+    <!-- Bottom-Right Hub (Center x=89.8, y=80.0) -->
+    <rect x="83.3" y="70.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="70.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="76.8" y="76.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="76.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="76.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="96.3" y="76.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="76.8" y="83.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="83.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="83.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="96.3" y="83.3" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="83.3" y="89.8" width="5.4" height="5.4" rx="1.0"/>
+    <rect x="89.8" y="89.8" width="5.4" height="5.4" rx="1.0"/>
+  </g>
 </svg>

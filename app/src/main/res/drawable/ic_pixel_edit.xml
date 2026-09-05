@@ -1,0 +1,93 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- PixL REC - White Pixel Edit Icon (56 blocks, 14x14 matrix) -->
+
+    <!-- Row 1 (y=17.6) - Eraser Apex -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 85.1,17.6 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 2 (y=23.8) - Eraser Top Shoulders -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 78.9,23.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 85.1,23.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 91.2,23.8 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 3 (y=29.9) - Eraser Body -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 85.1,29.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 91.2,29.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 97.3,29.9 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 4 (y=36.0) - Ferrule / Upper Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 66.7,36.0 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 72.8,36.0 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 91.2,36.0 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 5 (y=42.1) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 60.5,42.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 66.7,42.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 72.8,42.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 78.9,42.1 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 6 (y=48.3) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 54.4,48.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 60.5,48.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 66.7,48.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 72.8,48.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 78.9,48.3 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 7 (y=54.4) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 48.3,54.4 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 54.4,54.4 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 60.5,54.4 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 66.7,54.4 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 72.8,54.4 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 8 (y=60.5) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 42.1,60.5 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 48.3,60.5 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 54.4,60.5 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 60.5,60.5 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 66.7,60.5 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 9 (y=66.7) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 36.0,66.7 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 42.1,66.7 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 48.3,66.7 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 54.4,66.7 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 60.5,66.7 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 10 (y=72.8) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 29.9,72.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 36.0,72.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 42.1,72.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 48.3,72.8 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 54.4,72.8 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 11 (y=78.9) - Shaft -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 23.8,78.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 29.9,78.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 36.0,78.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 42.1,78.9 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 48.3,78.9 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 12 (y=85.1) - Lower Shaft & Collar -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 17.6,85.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 23.8,85.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 29.9,85.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 36.0,85.1 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 42.1,85.1 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 13 (y=91.2) - Chiseled Nib -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 17.6,91.2 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 23.8,91.2 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 29.9,91.2 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 36.0,91.2 h 4.99 v 4.99 h -4.99 Z" />
+
+    <!-- Row 14 (y=97.3) - Tip Base Point -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 17.6,97.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 23.8,97.3 h 4.99 v 4.99 h -4.99 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M 29.9,97.3 h 4.99 v 4.99 h -4.99 Z" />
+
+</vector>
