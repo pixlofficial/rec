@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.3] - 2026-09-05
+
+### 🚀 Added
+* **Hardware-Aligned Pixel-Square Vector Icons:**
+  * Created custom 120×120 pixel-square grid icons (`ic_pixel_diamond`, `ic_pixel_gamepad`, `ic_pixel_rocket`, `ic_pixel_none`, `ic_pixel_edit`, `ic_pixel_check`) replacing raw system emojis and generic glyphs with REC's signature retro cyberpunk aesthetic.
+  * Added corresponding SVG sources in `assets/icons/`.
+* **Icon-Aware Sliding Pill Selector:**
+  * Added optional icon support (`itemIcon`) to `SlidingPillSelector` alongside glowing text shadows, enabling rich visual iconography in segmented controls.
+* **Live Preset Auto-Reconciliation:**
+  * Added `resolveMatchingPreset()` in `DashboardViewModel` to continuously evaluate active resolution, framerate, and bitrate against hardware capabilities, ensuring the correct preset card is highlighted without getting out of sync.
+* **ExoPlayer Buffering & Error Handling UI:**
+  * Integrated real-time buffering indicators and a cyberpunk error banner with an immediate **"OPEN IN EXTERNAL PLAYER"** fallback intent in `VaultVideoPlayer`.
+
+### ⚡ Changed
+* **Default Countdown Duration:**
+  * Changed the default countdown duration from `3s` to `0s` (`NONE`), allowing immediate recording startup out-of-the-box.
+* **Pixel Share Icon Refinement:**
+  * Redesigned `ic_pixel_share.xml` with refined node proportions and high-contrast styling.
+* **Unified Section Card Typography:**
+  * Standardized section header font sizing and badge vertical centering across all settings cards.
+
+### 🐛 Fixed
+* **In-App Video Player Freeze & Black Screen:**
+  * Replaced default Media3 `SurfaceView` with `TextureView` via `view_vault_player.xml` to eliminate Compose surface hole-punching and z-order occlusion.
+  * Removed buffer underrun deadlock caused by hyper-aggressive 1.5s `DefaultLoadControl` limits; expanded buffer headroom (15s–50s) tailored for high-framerate local recordings.
+  * Synchronized `isPlaying` state with real `Player.Listener` events instead of assuming playback is running on screen entry.
+* **Floating Radial Menu Outside-Tap Dismissal:**
+  * Wrapped radial menu in a full-screen scrim interceptor, allowing users to dismiss the radial menu by tapping anywhere outside the pill container.
+  * Fixed temporary hidden state restoration when collapsing the menu.
+
+---
+
 ## [0.4.2] - 2026-09-05
 
 ### 🚀 Added
@@ -209,6 +241,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.4.3]: https://github.com/pixlofficial/rec/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/pixlofficial/rec/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/pixlofficial/rec/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/pixlofficial/rec/compare/v0.3.0...v0.4.0
