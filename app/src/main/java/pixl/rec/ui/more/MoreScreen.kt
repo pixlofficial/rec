@@ -73,7 +73,8 @@ private enum class LegalSheetType {
 fun MoreScreen(
     viewModel: DashboardViewModel,
     onReportBugClick: (() -> Unit)? = null,
-    onRequestFeatureClick: (() -> Unit)? = null
+    onRequestFeatureClick: (() -> Unit)? = null,
+    onOpenSetupGuide: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -193,6 +194,21 @@ fun MoreScreen(
 
                     // 3. Section: APP INFO & SYSTEM
                     SectionHeader(title = "APP INFO & SYSTEM")
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Setup & Permissions Guide Card
+                    MoreActionCard(
+                        iconResId = R.drawable.ic_pixel_shield,
+                        iconTint = HyperCyan,
+                        title = "SETUP & PERMISSIONS",
+                        subtitle = "Review permissions and device setup",
+                        badgeText = "GUIDE",
+                        badgeColor = HyperCyan,
+                        onClick = {
+                            onOpenSetupGuide?.invoke()
+                        }
+                    )
+
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // About PixL REC Card

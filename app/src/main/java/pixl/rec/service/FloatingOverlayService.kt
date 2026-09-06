@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -39,6 +40,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.notification.StandbyNotificationManager
+import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.ui.CapturePermissionActivity
 import pixl.rec.ui.MainActivity
 import pixl.rec.ui.overlay.FloatingPillView
@@ -96,6 +99,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         } else {
             overlayView?.visibility = View.VISIBLE
         }
+        _isRunning.value = true
+        val currentCfg = ConfigPreferences.loadConfig(this, configState.value)
+        StandbyNotificationManager.show(this, currentCfg)
         return START_STICKY
     }
 
@@ -212,7 +218,25 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         serviceScope.launch {
             isTemporarilyHidden.collect { hidden ->
-                overlayView?.visibility = if (hidden) android.view.View.GONE else android.view.View.VISIBLE
+                val view = overlayView ?: return@collect
+                val wm = windowManager ?: return@collect
+                val params = layoutParams ?: return@collect
+                try {
+                    if (hidden) {
+                        if (view.isAttachedToWindow) {
+                            wm.removeView(view)
+                        }
+                    } else {
+                        if (!view.isAttachedToWindow) {
+                            wm.addView(view, params)
+                        }
+                        view.visibility = android.view.View.VISIBLE
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("FloatingOverlayService", "Error toggling overlay window attachment", e)
+                }
+                val currentCfg = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                StandbyNotificationManager.show(this@FloatingOverlayService, currentCfg)
             }
         }
 
@@ -255,6 +279,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
     private fun createOverlayView() {
         val composeView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(this@FloatingOverlayService))
             setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
             setViewTreeLifecycleOwner(this@FloatingOverlayService)
 
@@ -604,6 +629,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                                 onGhostClick = {
                                     setTemporarilyHidden(true)
                                     removeMenuOverlay()
+                                    val currentCfg = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                                    StandbyNotificationManager.show(this@FloatingOverlayService, currentCfg)
                                 },
                                 onReplayClick = {
                                     removeMenuOverlay()
@@ -676,12 +703,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         removeMenuOverlay()
         if (overlayView != null) {
             try {
-                windowManager?.removeView(overlayView)
+                if (overlayView?.isAttachedToWindow == true) {
+                    windowManager?.removeView(overlayView)
+                }
             } catch (e: Exception) {
                 android.util.Log.w("FloatingOverlayService", "Error removing overlay view", e)
             }
             overlayView = null
         }
+        _isRunning.value = false
+        _isTemporarilyHidden.value = false
+        val currentCfg = ConfigPreferences.loadConfig(this, configState.value)
+        StandbyNotificationManager.show(this, currentCfg)
         serviceScope.cancel()
     }
 
@@ -693,11 +726,22 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         const val PILL_BEZEL_OFFSET_DP = 46f
         const val PILL_ONSCREEN_TOUCH_DP = 70f
 
+        private val _isRunning = kotlinx.coroutines.flow.MutableStateFlow(false)
+        val isRunning: kotlinx.coroutines.flow.StateFlow<Boolean> = _isRunning
+        val isServiceRunning: Boolean get() = _isRunning.value
+
         private val _isTemporarilyHidden = kotlinx.coroutines.flow.MutableStateFlow(false)
         val isTemporarilyHidden: kotlinx.coroutines.flow.StateFlow<Boolean> = _isTemporarilyHidden
 
-        fun setTemporarilyHidden(hidden: Boolean) {
+        val isPillVisible: Boolean
+            get() = _isRunning.value && !_isTemporarilyHidden.value
+
+        fun setTemporarilyHidden(hidden: Boolean, context: Context? = null) {
             _isTemporarilyHidden.value = hidden
+            if (context != null) {
+                val currentCfg = ConfigPreferences.loadConfig(context, RecordingConfig())
+                StandbyNotificationManager.show(context, currentCfg)
+            }
         }
 
         fun start(context: Context, config: RecordingConfig = RecordingConfig()) {
@@ -711,8 +755,24 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
 
         fun stop(context: Context) {
+            _isRunning.value = false
+            _isTemporarilyHidden.value = false
             val intent = Intent(context, FloatingOverlayService::class.java)
             context.stopService(intent)
+            val currentCfg = ConfigPreferences.loadConfig(context, RecordingConfig())
+            StandbyNotificationManager.show(context, currentCfg)
+        }
+
+        fun toggle(context: Context, config: RecordingConfig = RecordingConfig()) {
+            if (isPillVisible) {
+                stop(context)
+            } else {
+                if (isServiceRunning) {
+                    setTemporarilyHidden(false, context)
+                } else {
+                    start(context, config)
+                }
+            }
         }
     }
 }

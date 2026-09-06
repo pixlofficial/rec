@@ -33,7 +33,9 @@ import pixl.rec.R
 import pixl.rec.core.engine.ScreenRecorderEngine
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.sensor.ShakeDetector
+import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.ui.overlay.CountdownOverlayView
 import pixl.rec.ui.theme.RECTheme
@@ -138,11 +140,18 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
         recordingConfig = config
 
+        // 0. Cancel Standby Notification while recording session is active
+        StandbyNotificationManager.cancel(this)
+
         // 1. Enter foreground immediately with required Android 14/15/16 FGS types
-        val initialNotification = buildNotification(
-            if (config.countdownSeconds > 0) "Starting in ${config.countdownSeconds}s..." else "Initializing recording...",
-            isPaused = false
-        )
+        val initialNotification = if (config.recordingNotification) {
+            buildNotification(
+                if (config.countdownSeconds > 0) "Starting in ${config.countdownSeconds}s..." else "Initializing recording...",
+                isPaused = false
+            )
+        } else {
+            buildSilentNotification()
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
@@ -431,6 +440,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     }
 
     private fun updateNotification(timerText: String, isPaused: Boolean) {
+        if (!recordingConfig.recordingNotification) return
         val notification = buildNotification(timerText, isPaused)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         notificationManager.notify(RecApp.NOTIFICATION_ID_RECORDING, notification)
@@ -453,16 +463,27 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         val title = if (isPaused) getString(R.string.notification_paused_title) else getString(R.string.notification_recording_title)
         val pauseResumeActionTitle = if (isPaused) getString(R.string.notification_action_resume) else getString(R.string.notification_action_pause)
-        val pauseResumeIcon = if (isPaused) R.drawable.ic_resume else R.drawable.ic_pause
+        val pauseResumeIcon = if (isPaused) R.drawable.ic_pixel_play else R.drawable.ic_pixel_pause
 
         return NotificationCompat.Builder(this, RecApp.CHANNEL_ID_RECORDING)
             .setContentTitle(title)
             .setContentText(contentText)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_pixel_record)
+            .setColor(0xFFFF0033.toInt()) // HyperCrimson
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(pauseResumeIcon, pauseResumeActionTitle, pauseResumePendingIntent)
-            .addAction(R.drawable.ic_stop, getString(R.string.notification_action_stop), stopPendingIntent)
+            .addAction(R.drawable.ic_pixel_stop, getString(R.string.notification_action_stop), stopPendingIntent)
+            .build()
+    }
+
+    private fun buildSilentNotification(): Notification {
+        return NotificationCompat.Builder(this, RecApp.CHANNEL_ID_RECORDING_SILENT)
+            .setContentTitle("REC // RECORDING")
+            .setContentText("Screen recording active")
+            .setSmallIcon(R.drawable.ic_pixel_record)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
     }
 
@@ -514,6 +535,13 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         mediaProjection = null
 
         _serviceState.value = RecorderState.Idle
+
+        // Restore Standby Notification if enabled
+        val savedConfig = ConfigPreferences.loadConfig(this, RecordingConfig())
+        if (savedConfig.standbyNotification) {
+            StandbyNotificationManager.show(this, savedConfig)
+        }
+
         Log.i(TAG, "RecordingService destroyed")
     }
 

@@ -43,7 +43,8 @@ fun MainScreen(
     dashboardViewModel: DashboardViewModel,
     vaultViewModel: VaultViewModel = viewModel(),
     initialTab: NavigationTab = NavigationTab.DASHBOARD,
-    onRequestRecordPermission: () -> Unit
+    onRequestRecordPermission: () -> Unit,
+    onOpenSetupGuide: () -> Unit = {}
 ) {
     var currentTab by rememberSaveable { mutableStateOf(initialTab) }
     var isHudStudioOpen by rememberSaveable { mutableStateOf(false) }
@@ -87,7 +88,8 @@ fun MainScreen(
                         onNavigateToHudStudio = { isHudStudioOpen = true }
                     )
                     NavigationTab.MORE -> MoreScreen(
-                        viewModel = dashboardViewModel
+                        viewModel = dashboardViewModel,
+                        onOpenSetupGuide = onOpenSetupGuide
                     )
                 }
             }

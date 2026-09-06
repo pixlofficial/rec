@@ -123,6 +123,9 @@ data class RecordingConfig(
     val stopOnScreenOff: Boolean = true,
     val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN,
     val countdownSeconds: Int = 0,
+    val smartGameOptimization: Boolean = false,
+    val standbyNotification: Boolean = true,
+    val recordingNotification: Boolean = true,
 
     // HUD Customization Configuration (Separate Standby & Recording Configs + Global Snap)
     val standbyHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.NONE),

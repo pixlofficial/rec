@@ -44,11 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
+import pixl.rec.ui.theme.GlowingCrimson
 import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.TextSecondary
-
-private val GlowingCrimson = Color(0xFFFF3864)
 
 /**
  * Premium, non-wrapping segmented sliding selector component with spring physics,

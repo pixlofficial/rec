@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package pixl.rec.ui.settings
 
 import android.os.Build
@@ -19,10 +21,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -41,6 +56,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.lerp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import pixl.rec.core.game.GameDetector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -77,6 +105,7 @@ import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.ObsidianCanvas
 import pixl.rec.ui.theme.SurfaceElevated
+import pixl.rec.ui.theme.SurfaceRaised
 import pixl.rec.ui.theme.TextInverse
 import pixl.rec.ui.theme.TextMuted
 import pixl.rec.ui.theme.TextPrimary
@@ -98,6 +127,77 @@ fun SettingsScreen(
 
     var selectedSubTab by remember { mutableStateOf(SettingsTab.VIDEO) }
     val scrollState = rememberScrollState()
+
+    val context = LocalContext.current
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    val cardShineProgress = remember { Animatable(0f) }
+    val pillTraceProgress = remember { Animatable(0f) }
+    var showGamingOptDialog by remember { mutableStateOf(false) }
+    var awaitingUsagePermission by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (awaitingUsagePermission && GameDetector.hasUsageAccessPermission(context)) {
+                    awaitingUsagePermission = false
+                    viewModel.toggleSmartGameOptimization(true)
+                    Toast.makeText(context, "🎮 Smart Game Optimization Enabled", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    if (showGamingOptDialog) {
+        GamingOptimizationDialog(
+            onDismiss = { doNotAskAgain ->
+                if (doNotAskAgain) {
+                    ConfigPreferences.setGamingPresetPromptDismissed(context, true)
+                }
+                showGamingOptDialog = false
+                viewModel.applyQuickPreset(QuickPreset.GAMING)
+            },
+            onConfigure = { doNotAskAgain ->
+                if (doNotAskAgain) {
+                    ConfigPreferences.setGamingPresetPromptDismissed(context, true)
+                }
+                showGamingOptDialog = false
+                viewModel.applyQuickPreset(QuickPreset.GAMING)
+                selectedSubTab = SettingsTab.CONTROLS
+                coroutineScope.launch {
+                    delay(200)
+                    if (scrollState.maxValue == 0) {
+                        delay(150)
+                    }
+                    scrollState.animateScrollTo(scrollState.maxValue, tween(500))
+                    try {
+                        bringIntoViewRequester.bringIntoView()
+                    } catch (_: Exception) {}
+
+                    cardShineProgress.snapTo(0f)
+                    pillTraceProgress.snapTo(0f)
+
+                    // Phase 1: Slanted red beam passes across the card (left to right)
+                    val shineJob = launch {
+                        cardShineProgress.animateTo(1f, tween(550))
+                    }
+
+                    // Phase 2: As red shine reaches the toggle pill, ignite border trace
+                    delay(300)
+                    pillTraceProgress.animateTo(1.3f, tween(650))
+
+                    shineJob.join()
+                    cardShineProgress.snapTo(0f)
+                    pillTraceProgress.snapTo(0f)
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -141,7 +241,8 @@ fun SettingsScreen(
             SettingsTab.VIDEO -> VideoSettingsSection(
                 uiState = uiState,
                 isRecordingActive = isRecordingActive,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onSelectGamingPreset = { showGamingOptDialog = true }
             )
             SettingsTab.AUDIO -> AudioSettingsSection(
                 uiState = uiState,
@@ -153,6 +254,18 @@ fun SettingsScreen(
                 uiState = uiState,
                 isRecordingActive = isRecordingActive,
                 viewModel = viewModel,
+                smartGameOptRequester = bringIntoViewRequester,
+                cardShineProgress = cardShineProgress,
+                pillTraceProgress = pillTraceProgress,
+                onRequestUsagePermission = {
+                    awaitingUsagePermission = true
+                    GameDetector.openUsageAccessSettings(context)
+                    Toast.makeText(
+                        context,
+                        "Grant Usage Access to enable Game Auto-Detection",
+                        Toast.LENGTH_LONG
+                    ).show()
+                },
                 onNavigateToHudStudio = onNavigateToHudStudio
             )
             SettingsTab.STORAGE -> StorageSettingsSection(
@@ -170,7 +283,8 @@ fun SettingsScreen(
 private fun VideoSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
     isRecordingActive: Boolean,
-    viewModel: DashboardViewModel
+    viewModel: DashboardViewModel,
+    onSelectGamingPreset: () -> Unit
 ) {
     val config = uiState.config
     val capabilities = uiState.capabilities
@@ -183,7 +297,18 @@ private fun VideoSettingsSection(
     SectionCard(title = "QUICK PRESETS", titleTag = config.activePreset.displayName) {
         QuickPresetDeck(
             activePreset = config.activePreset,
-            onPresetSelect = { preset -> viewModel.applyQuickPreset(preset) },
+            onPresetSelect = { preset ->
+                if (preset == QuickPreset.GAMING) {
+                    val isDismissed = ConfigPreferences.isGamingPresetPromptDismissed(context)
+                    if (!config.smartGameOptimization && !isDismissed) {
+                        onSelectGamingPreset()
+                    } else {
+                        viewModel.applyQuickPreset(preset)
+                    }
+                } else {
+                    viewModel.applyQuickPreset(preset)
+                }
+            },
             enabled = !isRecordingActive
         )
     }
@@ -525,7 +650,7 @@ private fun AudioSettingsSection(
     val gameDb = if (recorderState is RecorderState.Recording) recorderState.gameAudioDb else -60f
     val micDb = if (recorderState is RecorderState.Recording) recorderState.micAudioDb else -60f
 
-    val isGameAudioActive = config.audioSource == AudioSource.INTERNAL_AND_MIC || config.audioSource == AudioSource.INTERNAL_ONLY
+    val isInternalAudioActive = config.audioSource == AudioSource.INTERNAL_AND_MIC || config.audioSource == AudioSource.INTERNAL_ONLY
     val isMicAudioActive = config.audioSource == AudioSource.INTERNAL_AND_MIC || config.audioSource == AudioSource.MIC_ONLY
 
     // 1. Audio Routing & Studio Controls
@@ -541,7 +666,7 @@ private fun AudioSettingsSection(
             itemLabel = {
                 when (it) {
                     AudioSource.INTERNAL_AND_MIC -> "Both"
-                    AudioSource.INTERNAL_ONLY -> "Game"
+                    AudioSource.INTERNAL_ONLY -> "Internal"
                     AudioSource.MIC_ONLY -> "Mic"
                     AudioSource.MUTE -> "Mute"
                 }
@@ -552,26 +677,26 @@ private fun AudioSettingsSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Game Volume Slider (0 - 100%)
-        val gamePercent = (config.internalAudioGain * 100).roundToInt()
+        // Internal Volume Slider (0 - 100%)
+        val internalPercent = (config.internalAudioGain * 100).roundToInt()
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "GAME VOLUME",
+                text = "INTERNAL VOLUME",
                 fontFamily = BitcountPropSingle,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isGameAudioActive) TextPrimary else TextMuted
+                color = if (isInternalAudioActive) TextPrimary else TextMuted
             )
             Text(
-                text = "$gamePercent%",
+                text = "$internalPercent%",
                 fontFamily = BitcountPropSingle,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isGameAudioActive) HyperCrimson else TextMuted
+                color = if (isInternalAudioActive) HyperCrimson else TextMuted
             )
         }
 
@@ -581,7 +706,7 @@ private fun AudioSettingsSection(
             value = config.internalAudioGain,
             onValueChange = { viewModel.updateInternalAudioGain(it) },
             valueRange = 0f..1f,
-            enabled = !isRecordingActive && isGameAudioActive,
+            enabled = !isRecordingActive && isInternalAudioActive,
             colors = SliderDefaults.colors(
                 thumbColor = HyperCrimson,
                 activeTrackColor = HyperCrimson,
@@ -646,7 +771,7 @@ private fun AudioSettingsSection(
         SteppedVuMeter(
             label = "Internal Audio Loopback",
             dbLevel = gameDb,
-            statusOverride = if (!isRecordingActive) "STANDBY" else if (!isGameAudioActive) "MUTED" else null
+            statusOverride = if (!isRecordingActive) "STANDBY" else if (!isInternalAudioActive) "MUTED" else null
         )
         Spacer(modifier = Modifier.height(12.dp))
         SteppedVuMeter(
@@ -663,9 +788,14 @@ private fun ControlsSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
     isRecordingActive: Boolean,
     viewModel: DashboardViewModel,
+    smartGameOptRequester: BringIntoViewRequester,
+    cardShineProgress: Animatable<Float, *>,
+    pillTraceProgress: Animatable<Float, *>,
+    onRequestUsagePermission: () -> Unit,
     onNavigateToHudStudio: () -> Unit = {}
 ) {
     val config = uiState.config
+    val context = LocalContext.current
 
     // 1. Recording Countdown HUD Section
     SectionCard(
@@ -866,6 +996,91 @@ private fun ControlsSettingsSection(
             enabled = !isRecordingActive,
             onCheckedChange = { viewModel.toggleStopOnScreenOff(it) }
         )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 6. Smart Game Optimization
+        Box(
+            modifier = Modifier
+                .bringIntoViewRequester(smartGameOptRequester)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .drawWithContent {
+                    drawContent()
+                    val p = cardShineProgress.value
+                    if (p in 0.001f..0.999f) {
+                        val w = size.width
+                        val h = size.height
+                        val beamWidth = w * 0.45f
+                        val centerX = -beamWidth + (w + beamWidth * 2f) * p
+
+                        val startOffset = Offset(centerX - beamWidth * 0.5f, 0f)
+                        val endOffset = Offset(centerX + beamWidth * 0.5f, h)
+
+                        val shineBrush = Brush.linearGradient(
+                            0.0f to Color.Transparent,
+                            0.3f to HyperCrimson.copy(alpha = 0.25f),
+                            0.5f to Color(0xFFFF4D4D).copy(alpha = 0.75f),
+                            0.7f to HyperCrimson.copy(alpha = 0.25f),
+                            1.0f to Color.Transparent,
+                            start = startOffset,
+                            end = endOffset
+                        )
+                        drawRect(brush = shineBrush, blendMode = BlendMode.Screen)
+                    }
+                }
+        ) {
+            SettingsSwitch(
+                iconRes = R.drawable.ic_pixel_gamepad,
+                title = "Smart Game Optimization",
+                subtitle = "Auto-detects games to lock landscape, 60 FPS cap & low overhead",
+                checked = config.smartGameOptimization,
+                enabled = !isRecordingActive,
+                pillTraceProgress = pillTraceProgress.value,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        if (GameDetector.hasUsageAccessPermission(context)) {
+                            viewModel.toggleSmartGameOptimization(true)
+                        } else {
+                            onRequestUsagePermission()
+                        }
+                    } else {
+                        viewModel.toggleSmartGameOptimization(false)
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 3. Notification Shade Controls Section
+        SectionCard(
+            title = "NOTIFICATION SHADE CONTROLS",
+            titleTag = if (config.standbyNotification && config.recordingNotification) "ALL ACTIVE"
+            else if (config.standbyNotification) "STANDBY ON"
+            else if (config.recordingNotification) "REC ONLY"
+            else "OFF"
+        ) {
+            SettingsSwitch(
+                iconRes = if (config.standbyNotification) R.drawable.ic_notification else R.drawable.ic_pixel_close,
+                title = "Standby Quick Controls",
+                subtitle = if (config.standbyNotification) "Persistent notification in shade with 1-tap Record & Tool controls when idle" else "Standby notification disabled",
+                checked = config.standbyNotification,
+                enabled = !isRecordingActive,
+                onCheckedChange = { viewModel.toggleStandbyNotification(it) }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SettingsSwitch(
+                iconRes = if (config.recordingNotification) R.drawable.ic_pixel_record else R.drawable.ic_pixel_power,
+                title = "Recording Status Controls",
+                subtitle = if (config.recordingNotification) "Live timer, pause, and stop controls in notification shade during recording" else "Clean Canvas: Minimized silent recording service",
+                checked = config.recordingNotification,
+                enabled = !isRecordingActive,
+                onCheckedChange = { viewModel.toggleRecordingNotification(it) }
+            )
+        }
     }
 }
 
@@ -964,6 +1179,7 @@ private fun SettingsSwitch(
     subtitle: String,
     checked: Boolean,
     enabled: Boolean,
+    pillTraceProgress: Float = 0f,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -1009,17 +1225,86 @@ private fun SettingsSwitch(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = TextInverse,
-                checkedTrackColor = TextPrimary,
-                uncheckedThumbColor = TextMuted,
-                uncheckedTrackColor = ObsidianCanvas
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.wrapContentSize()
+        ) {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = TextInverse,
+                    checkedTrackColor = TextPrimary,
+                    uncheckedThumbColor = TextMuted,
+                    uncheckedTrackColor = ObsidianCanvas
+                )
             )
-        )
+
+            if (pillTraceProgress > 0f) {
+                Canvas(
+                    modifier = Modifier.size(52.dp, 32.dp)
+                ) {
+                    val strokeWidth = 2.5.dp.toPx()
+                    val cornerRadius = 16.dp.toPx()
+
+                    val inset = strokeWidth / 2f
+                    val rectWidth = size.width - strokeWidth
+                    val rectHeight = size.height - strokeWidth
+
+                    val fullPath = Path().apply {
+                        addRoundRect(
+                            RoundRect(
+                                left = inset,
+                                top = inset,
+                                right = inset + rectWidth,
+                                bottom = inset + rectHeight,
+                                cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                            )
+                        )
+                    }
+
+                    val pathMeasure = PathMeasure()
+                    pathMeasure.setPath(fullPath, true)
+                    val totalLength = pathMeasure.length
+
+                    if (pillTraceProgress <= 1.0f) {
+                        val headDist = pillTraceProgress * totalLength
+                        val tailLength = totalLength * 0.45f
+                        val startDist = (headDist - tailLength).coerceAtLeast(0f)
+
+                        val segmentPath = Path()
+                        pathMeasure.getSegment(startDist, headDist, segmentPath, true)
+
+                        // Outer soft crimson neon glow
+                        drawPath(
+                            path = segmentPath,
+                            color = HyperCrimson.copy(alpha = 0.5f),
+                            style = Stroke(width = strokeWidth * 2.2f, cap = StrokeCap.Round)
+                        )
+                        // Inner intense bright red tracer core
+                        drawPath(
+                            path = segmentPath,
+                            color = Color(0xFFFF5252),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                    } else {
+                        // Dissolving glow across entire border
+                        val fadeAlpha = (1f - (pillTraceProgress - 1.0f) / 0.3f).coerceIn(0f, 1f)
+                        drawPath(
+                            path = fullPath,
+                            color = HyperCrimson.copy(alpha = 0.45f * fadeAlpha),
+                            style = Stroke(width = strokeWidth * 2f, cap = StrokeCap.Round)
+                        )
+                        drawPath(
+                            path = fullPath,
+                            color = Color(0xFFFF5252).copy(alpha = 0.9f * fadeAlpha),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1144,6 +1429,148 @@ private fun AutoTuneBitrateDialog(
                             fontWeight = FontWeight.Bold,
                             color = TextInverse
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GamingOptimizationDialog(
+    onDismiss: (doNotAskAgain: Boolean) -> Unit,
+    onConfigure: (doNotAskAgain: Boolean) -> Unit
+) {
+    var doNotAskAgain by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = { onDismiss(doNotAskAgain) },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ObsidianCanvas.copy(alpha = 0.75f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onDismiss(doNotAskAgain) },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .background(SurfaceRaised, RoundedCornerShape(12.dp))
+                    .border(1.5.dp, ToxicLime, RoundedCornerShape(12.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {}
+                    .padding(20.dp)
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pixel_gamepad),
+                            contentDescription = null,
+                            tint = ToxicLime,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SMART GAME OPTIMIZATION",
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = ToxicLime,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Would you like REC to automatically detect when games launch, lock landscape canvas, enforce a 60 FPS cap on 120Hz panels, and minimize background overhead?",
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 12.sp,
+                        color = TextPrimary,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Checkbox: Do not show again
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clickable { doNotAskAgain = !doNotAskAgain }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(if (doNotAskAgain) ToxicLime else SurfaceElevated, RoundedCornerShape(4.dp))
+                                .border(1.5.dp, if (doNotAskAgain) ToxicLime else BorderStark, RoundedCornerShape(4.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (doNotAskAgain) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_pixel_check),
+                                    contentDescription = "Checked",
+                                    tint = ObsidianCanvas,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Do not show again",
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(SurfaceElevated, RoundedCornerShape(6.dp))
+                                .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
+                                .clickable { onDismiss(doNotAskAgain) }
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                        ) {
+                            Text(
+                                text = "LATER",
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .background(TextPrimary, RoundedCornerShape(6.dp))
+                                .border(1.5.dp, ToxicLime, RoundedCornerShape(6.dp))
+                                .clickable { onConfigure(doNotAskAgain) }
+                                .padding(horizontal = 16.dp, vertical = 9.dp)
+                        ) {
+                            Text(
+                                text = "YES, CONFIGURE",
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextInverse
+                            )
+                        }
                     }
                 }
             }

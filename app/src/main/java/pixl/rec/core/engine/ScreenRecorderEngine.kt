@@ -125,22 +125,32 @@ class ScreenRecorderEngine(
             val portraitWidth = kotlin.math.min(config.width, config.height)
             val portraitHeight = kotlin.math.max(config.width, config.height)
 
-            val (canvasWidth, canvasHeight) = when (config.recordingOrientation) {
-                RecordingOrientation.AUTO -> if (isLandscape) {
-                    portraitHeight to portraitWidth
-                } else {
-                    portraitWidth to portraitHeight
+            val isGameForeground = config.smartGameOptimization && pixl.rec.core.game.GameDetector.isForegroundAppGame(context)
+
+            val (canvasWidth, canvasHeight) = if (isGameForeground) {
+                Log.i(tag, "🎮 Smart Game Optimization: Foreground game detected. Enforcing landscape canvas & 60 FPS cap.")
+                portraitHeight to portraitWidth
+            } else {
+                when (config.recordingOrientation) {
+                    RecordingOrientation.AUTO -> if (isLandscape) {
+                        portraitHeight to portraitWidth
+                    } else {
+                        portraitWidth to portraitHeight
+                    }
+                    RecordingOrientation.LANDSCAPE -> portraitHeight to portraitWidth
+                    RecordingOrientation.PORTRAIT -> portraitWidth to portraitHeight
                 }
-                RecordingOrientation.LANDSCAPE -> portraitHeight to portraitWidth
-                RecordingOrientation.PORTRAIT -> portraitWidth to portraitHeight
             }
+
+            val gameCappedFps = if (isGameForeground && config.framerate > 60) 60 else config.framerate
 
             val activeConfig = config.copy(
                 width = canvasWidth,
-                height = canvasHeight
+                height = canvasHeight,
+                framerate = gameCappedFps
             ).withMacroblockAlignment()
 
-            Log.i(tag, "Configuring recording canvas: ${activeConfig.width}x${activeConfig.height} (Policy: ${config.recordingOrientation.displayName}, Device Landscape: $isLandscape)")
+            Log.i(tag, "Configuring recording canvas: ${activeConfig.width}x${activeConfig.height} @ ${activeConfig.framerate}fps (Game Mode: $isGameForeground, Policy: ${config.recordingOrientation.displayName}, Device Landscape: $isLandscape)")
 
             // 1. Initialize Video Encoder with active canvas configuration
             val vEncoder = VideoEncoder(activeConfig, object : VideoEncoder.OutputListener {

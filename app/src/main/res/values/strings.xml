@@ -2,6 +2,10 @@
     <string name="app_name">REC</string>
     <string name="notification_channel_name">Screen Recording Service</string>
     <string name="notification_channel_desc">Active status and controls for zero-copy screen recording</string>
+    <string name="notification_channel_silent_name">Screen Recording (Silent)</string>
+    <string name="notification_channel_silent_desc">Silent foreground service compliance</string>
+    <string name="notification_channel_standby_name">Standby Quick Controls</string>
+    <string name="notification_channel_standby_desc">Quick recording and overlay controls in notification shade</string>
     <string name="notification_recording_title">Recording Active</string>
     <string name="notification_paused_title">Recording Paused</string>
     <string name="notification_action_stop">Stop</string>

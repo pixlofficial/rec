@@ -17,58 +17,6 @@ val BitcountPropSingle = FontFamily(
     Font(R.font.bitcount_prop_single, FontWeight.Black)
 )
 
-val BitcountSingle = FontFamily(
-    Font(R.font.bitcount_single, FontWeight.Normal),
-    Font(R.font.bitcount_single, FontWeight.Medium),
-    Font(R.font.bitcount_single, FontWeight.SemiBold),
-    Font(R.font.bitcount_single, FontWeight.Bold),
-    Font(R.font.bitcount_single, FontWeight.Black)
-)
-
-val Doto = FontFamily(
-    Font(R.font.doto, FontWeight.Normal),
-    Font(R.font.doto, FontWeight.Medium),
-    Font(R.font.doto, FontWeight.SemiBold),
-    Font(R.font.doto, FontWeight.Bold),
-    Font(R.font.doto, FontWeight.Black)
-)
-
-val DotGothic16 = FontFamily(
-    Font(R.font.dotgothic16_regular, FontWeight.Normal),
-    Font(R.font.dotgothic16_regular, FontWeight.Medium),
-    Font(R.font.dotgothic16_regular, FontWeight.SemiBold),
-    Font(R.font.dotgothic16_regular, FontWeight.Bold),
-    Font(R.font.dotgothic16_regular, FontWeight.Black)
-)
-
-val GeistPixel = FontFamily(
-    Font(R.font.geist_pixel, FontWeight.Normal),
-    Font(R.font.geist_pixel, FontWeight.Medium),
-    Font(R.font.geist_pixel, FontWeight.SemiBold),
-    Font(R.font.geist_pixel, FontWeight.Bold),
-    Font(R.font.geist_pixel, FontWeight.Black)
-)
-
-val SpaceMono = FontFamily(
-    Font(R.font.space_mono_regular, FontWeight.Normal),
-    Font(R.font.space_mono_bold, FontWeight.Bold)
-)
-
-val Handjet = FontFamily(
-    Font(R.font.handjet, FontWeight.Normal),
-    Font(R.font.handjet, FontWeight.Medium),
-    Font(R.font.handjet, FontWeight.SemiBold),
-    Font(R.font.handjet, FontWeight.Bold),
-    Font(R.font.handjet, FontWeight.Black)
-)
-
-val LexendTera = FontFamily(
-    Font(R.font.lexend_tera, FontWeight.Normal),
-    Font(R.font.lexend_tera, FontWeight.Medium),
-    Font(R.font.lexend_tera, FontWeight.SemiBold),
-    Font(R.font.lexend_tera, FontWeight.Bold),
-    Font(R.font.lexend_tera, FontWeight.Black)
-)
 
 val AppTypography = Typography(
     displayLarge = TextStyle(

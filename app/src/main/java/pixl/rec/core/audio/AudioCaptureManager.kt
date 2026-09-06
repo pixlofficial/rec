@@ -282,8 +282,9 @@ class AudioCaptureManager(
                 listener.onAudioLevels(gameDb, micDb)
             }
 
-            // Mix audio buffers
+            // Mix audio buffers with Zero-Math Fast-Path for unity gain (1.0x)
             val outputBytes: Int
+            val bufferToSend: ByteArray
             if (gameBytesRead > 0 && micBytesRead > 0) {
                 outputBytes = PcmAudioMixer.mixStereo16Bit(
                     gameBuffer, gameBytesRead,
@@ -291,18 +292,33 @@ class AudioCaptureManager(
                     config.internalAudioGain, config.micGain,
                     mixedBuffer
                 )
+                bufferToSend = mixedBuffer
             } else if (gameBytesRead > 0) {
-                outputBytes = PcmAudioMixer.applyGain16Bit(
-                    gameBuffer, gameBytesRead,
-                    config.internalAudioGain,
-                    mixedBuffer
-                )
+                // Fast-path: When internal audio gain is unity (1.0f), bypass array cloning and math completely
+                if (kotlin.math.abs(config.internalAudioGain - 1.0f) < 0.001f) {
+                    outputBytes = gameBytesRead
+                    bufferToSend = gameBuffer
+                } else {
+                    outputBytes = PcmAudioMixer.applyGain16Bit(
+                        gameBuffer, gameBytesRead,
+                        config.internalAudioGain,
+                        mixedBuffer
+                    )
+                    bufferToSend = mixedBuffer
+                }
             } else {
-                outputBytes = PcmAudioMixer.applyGain16Bit(
-                    micBuffer, micBytesRead,
-                    config.micGain,
-                    mixedBuffer
-                )
+                // Fast-path for mic-only unity gain
+                if (kotlin.math.abs(config.micGain - 1.0f) < 0.001f) {
+                    outputBytes = micBytesRead
+                    bufferToSend = micBuffer
+                } else {
+                    outputBytes = PcmAudioMixer.applyGain16Bit(
+                        micBuffer, micBytesRead,
+                        config.micGain,
+                        mixedBuffer
+                    )
+                    bufferToSend = mixedBuffer
+                }
             }
 
             if (outputBytes > 0) {
@@ -311,7 +327,7 @@ class AudioCaptureManager(
                 val adjustedPtsUs = elapsedUs.coerceAtLeast(lastEmittedPtsUs)
                 lastEmittedPtsUs = adjustedPtsUs
 
-                listener.onPcmAudioData(mixedBuffer, outputBytes, adjustedPtsUs)
+                listener.onPcmAudioData(bufferToSend, outputBytes, adjustedPtsUs)
             }
         }
     }

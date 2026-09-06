@@ -45,7 +45,8 @@ class AudioEncoder(
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
             setInteger(MediaFormat.KEY_BIT_RATE, config.audioBitrate)
             setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
-            setInteger(MediaFormat.KEY_PRIORITY, 0)
+            // Cooperative scheduling priority: yields CPU to active foreground applications
+            setInteger(MediaFormat.KEY_PRIORITY, 1)
         }
 
         val codec = MediaCodec.createEncoderByType(mime)

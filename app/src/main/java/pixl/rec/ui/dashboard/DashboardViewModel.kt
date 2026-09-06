@@ -22,6 +22,7 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
@@ -689,6 +690,29 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         updateConfigAndStorage(updated)
     }
 
+    fun toggleSmartGameOptimization(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(smartGameOptimization = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun toggleStandbyNotification(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(standbyNotification = enabled)
+        updateConfigAndStorage(updated)
+        if (enabled) {
+            StandbyNotificationManager.show(getApplication(), updated)
+        } else {
+            StandbyNotificationManager.cancel(getApplication())
+        }
+    }
+
+    fun toggleRecordingNotification(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(recordingNotification = enabled)
+        updateConfigAndStorage(updated)
+    }
+
     fun updateCaptureTarget(target: CaptureTarget) {
         val current = _uiState.value.config
         val updated = current.copy(captureTarget = target)
@@ -770,6 +794,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             config = reconciledConfig,
             remainingMinutes = remainingMin
         )
+
+        // Keep Standby Notification synced with updated config if enabled and not currently recording
+        if (reconciledConfig.standbyNotification && !isRecordingActive.value) {
+            StandbyNotificationManager.show(getApplication(), reconciledConfig)
+        }
     }
 
     private fun resolveMatchingPreset(

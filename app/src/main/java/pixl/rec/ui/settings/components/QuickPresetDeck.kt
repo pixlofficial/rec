@@ -10,16 +10,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,11 +37,10 @@ import pixl.rec.core.model.QuickPreset
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
 import pixl.rec.ui.theme.CyberYellow
+import pixl.rec.ui.theme.GlowingCrimson
 import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.SurfaceElevated
-import pixl.rec.ui.theme.TextInverse
-import pixl.rec.ui.theme.TextMuted
 import pixl.rec.ui.theme.TextPrimary
 import pixl.rec.ui.theme.TextSecondary
 import pixl.rec.ui.theme.ToxicLime
@@ -120,17 +127,57 @@ private fun PresetCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bg = if (isSelected) TextPrimary else SurfaceElevated
-    val border = if (isSelected) item.iconColor else BorderStark
-    val titleColor = if (isSelected) TextInverse else TextPrimary
-    val subtitleColor = if (isSelected) TextInverse.copy(alpha = 0.7f) else TextSecondary
-    val iconTint = if (isSelected) TextInverse else item.iconColor
+    val haptic = LocalHapticFeedback.current
+    val cardRadius = 8.dp
+    val activeColor = HyperCrimson
+
+    val bg = if (isSelected) {
+        if (enabled) activeColor.copy(alpha = 0.18f) else activeColor.copy(alpha = 0.08f)
+    } else {
+        SurfaceElevated
+    }
+
+    val border = if (isSelected) {
+        if (enabled) activeColor else activeColor.copy(alpha = 0.4f)
+    } else {
+        BorderStark
+    }
+
+    val titleColor = if (isSelected) GlowingCrimson else TextPrimary
+    val subtitleColor = if (isSelected) GlowingCrimson.copy(alpha = 0.75f) else TextSecondary
+    val iconTint = if (isSelected) GlowingCrimson else item.iconColor
+
+    val textShadow = if (isSelected && enabled) {
+        Shadow(
+            color = activeColor.copy(alpha = 0.85f),
+            blurRadius = 10f
+        )
+    } else {
+        Shadow.None
+    }
 
     Column(
         modifier = modifier
-            .background(bg, RoundedCornerShape(8.dp))
-            .border(1.5.dp, border, RoundedCornerShape(8.dp))
-            .clickable(enabled = enabled, onClick = onClick)
+            .drawBehind {
+                if (isSelected && enabled) {
+                    // Faint outer ambient glow
+                    drawRoundRect(
+                        color = activeColor.copy(alpha = 0.16f),
+                        topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
+                        size = Size(
+                            width = size.width + 4.dp.toPx(),
+                            height = size.height + 4.dp.toPx()
+                        ),
+                        cornerRadius = CornerRadius((cardRadius + 2.dp).toPx())
+                    )
+                }
+            }
+            .background(bg, RoundedCornerShape(cardRadius))
+            .border(1.dp, border, RoundedCornerShape(cardRadius))
+            .clickable(enabled = enabled) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Center
@@ -151,6 +198,7 @@ private fun PresetCard(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = titleColor,
+                style = TextStyle(shadow = textShadow),
                 maxLines = 1,
                 letterSpacing = 0.5.sp
             )

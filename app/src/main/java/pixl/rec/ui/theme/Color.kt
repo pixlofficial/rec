@@ -15,6 +15,7 @@ val ShadowSolid = Color(0xFF000000)
 
 // Primary Brand & Action Accents (Red & White)
 val HyperCrimson = Color(0xFFFF0033) // Electric Neon Red: Recording, Action, Stop, Active Pill
+val GlowingCrimson = Color(0xFFFF3864) // Neon Crimson for glowing text & pill highlights
 val TextPrimary = Color(0xFFFFFFFF)  // Pure Crisp White: Hero typography, Data, Primary Highlights
 val TextSecondary = Color(0xFF8A8D9F) // Subtitles, Units, Secondary Specs
 val TextMuted = Color(0xFF525464)     // Inactive Hints & Placeholders

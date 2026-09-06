@@ -24,6 +24,9 @@ class RecordingConfigTest {
         assertEquals("iFrameIntervalSeconds should default to 1.0f", 1.0f, config.iFrameIntervalSeconds)
         assertEquals("bitrateMode should default to VBR", BitrateMode.VBR, config.bitrateMode)
         assertEquals("countdownSeconds should default to 0", 0, config.countdownSeconds)
+        assertFalse("smartGameOptimization should default to false", config.smartGameOptimization)
+        assertTrue("standbyNotification should default to true", config.standbyNotification)
+        assertTrue("recordingNotification should default to true", config.recordingNotification)
     }
 
     @Test

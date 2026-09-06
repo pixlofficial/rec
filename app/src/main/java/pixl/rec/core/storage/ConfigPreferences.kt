@@ -50,7 +50,12 @@ object ConfigPreferences {
     private const val KEY_ALLOW_EXPERIMENTAL_FPS = "allow_experimental_fps"
     private const val KEY_COLOR_RANGE = "color_range"
     private const val KEY_ENABLE_INTRA_REFRESH = "enable_intra_refresh"
+    private const val KEY_SMART_GAME_OPTIMIZATION = "smart_game_optimization"
+    private const val KEY_STANDBY_NOTIFICATION = "standby_notification"
+    private const val KEY_RECORDING_NOTIFICATION = "recording_notification"
+    private const val KEY_DISMISS_GAMING_PRESET_PROMPT = "dismiss_gaming_preset_prompt"
     private const val KEY_DISMISS_AUTOTUNE_BITRATE = "dismiss_autotune_bitrate"
+    private const val KEY_HAS_SEEN_WELCOME = "has_seen_welcome"
 
     // Standby HUD Keys
     private const val KEY_STANDBY_ICON_SIZE_DP = "standby_hud_icon_size_dp"
@@ -159,6 +164,9 @@ object ConfigPreferences {
             countdownSeconds = prefs.getInt(KEY_COUNTDOWN_SECONDS, defaultConfig.countdownSeconds).let {
                 if (it in listOf(0, 3, 5)) it else 0
             },
+            smartGameOptimization = prefs.getBoolean(KEY_SMART_GAME_OPTIMIZATION, defaultConfig.smartGameOptimization),
+            standbyNotification = prefs.getBoolean(KEY_STANDBY_NOTIFICATION, defaultConfig.standbyNotification),
+            recordingNotification = prefs.getBoolean(KEY_RECORDING_NOTIFICATION, defaultConfig.recordingNotification),
             standbyHudConfig = standbyHud,
             recordingHudConfig = recordingHud
         )
@@ -192,6 +200,9 @@ object ConfigPreferences {
             .putString(KEY_PILL_RECALL_GESTURE, config.pillRecallGesture.name)
             .putBoolean(KEY_SHAKE_TO_STOP, config.shakeToStop)
             .putBoolean(KEY_STOP_ON_SCREEN_OFF, config.stopOnScreenOff)
+            .putBoolean(KEY_SMART_GAME_OPTIMIZATION, config.smartGameOptimization)
+            .putBoolean(KEY_STANDBY_NOTIFICATION, config.standbyNotification)
+            .putBoolean(KEY_RECORDING_NOTIFICATION, config.recordingNotification)
             .putString(KEY_CAPTURE_TARGET, config.captureTarget.name)
             .putInt(KEY_COUNTDOWN_SECONDS, config.countdownSeconds)
             // Standby HUD Customization
@@ -229,5 +240,33 @@ object ConfigPreferences {
 
     fun setAutoTuneBitrateDismissed(context: Context, dismissed: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_DISMISS_AUTOTUNE_BITRATE, dismissed).apply()
+    }
+
+    fun isGamingPresetPromptDismissed(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_DISMISS_GAMING_PRESET_PROMPT, false)
+    }
+
+    fun setGamingPresetPromptDismissed(context: Context, dismissed: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_DISMISS_GAMING_PRESET_PROMPT, dismissed).apply()
+    }
+
+    fun getStandbyNotification(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_STANDBY_NOTIFICATION, true)
+    }
+
+    fun setStandbyNotification(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_STANDBY_NOTIFICATION, enabled).apply()
+    }
+
+    fun getRecordingNotification(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_RECORDING_NOTIFICATION, true)
+    }
+
+    fun hasSeenWelcome(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_HAS_SEEN_WELCOME, false)
+    }
+
+    fun setHasSeenWelcome(context: Context, seen: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HAS_SEEN_WELCOME, seen).apply()
     }
 }
