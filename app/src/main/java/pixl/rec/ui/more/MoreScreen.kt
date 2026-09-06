@@ -213,21 +213,56 @@ fun MoreScreen(
 
                     // About PixL REC Card
                     SectionCard(title = "ABOUT PIXL REC", titleTag = "v${pixl.rec.BuildConfig.VERSION_NAME}") {
-                        Text(
-                            text = "High-performance, zero-copy, hardware-accelerated screen recorder engineered in Kotlin and Jetpack Compose.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontFamily = BitcountPropSingle,
-                            lineHeight = 16.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Crafted by PixL • Precision Edition",
-                            color = TextPrimary,
-                            fontSize = 12.sp,
-                            fontFamily = BitcountPropSingle,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SurfaceElevated)
+                                    .border(1.dp, BorderStark, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_pixl_logo),
+                                    contentDescription = "PixL Logo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "High-performance, zero-copy, hardware-accelerated screen recorder engineered in Kotlin and Jetpack Compose.",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = BitcountPropSingle,
+                                    lineHeight = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Crafted by PixL",
+                                        color = TextPrimary,
+                                        fontSize = 12.sp,
+                                        fontFamily = BitcountPropSingle,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "• Precision Edition",
+                                        color = HyperCyan,
+                                        fontSize = 11.sp,
+                                        fontFamily = BitcountPropSingle,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
