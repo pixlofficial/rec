@@ -141,6 +141,30 @@ fun LicensesScreen(
             )
         }
 
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // 7. Section 5: PixL Font & Typographic Lineage
+        NumberedSectionHeader(
+            title = "5. PIXL FONT (TYPOGRAPHIC LINEAGE)",
+            iconResId = R.drawable.ic_pixel_edit,
+            iconTint = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        ClauseCard {
+            ClauseItem(
+                title = "Copyright & Authors:",
+                description = "PixL Font. Derived from Bitcount by Petr van Blokland (TYPETR)."
+            )
+            ClauseItem(
+                title = "License:",
+                description = "Licensed under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL)."
+            )
+            ClauseItem(
+                title = "Description:",
+                description = "Provides the official square-matrix typography across REC. Adapted with custom square pixel block geometry by PixL under the SIL OFL v1.1."
+            )
+        }
+
         Spacer(modifier = Modifier.height(120.dp))
     }
 }

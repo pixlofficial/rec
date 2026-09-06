@@ -8,19 +8,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import pixl.rec.R
 
-// Bitcount Prop Single: Official 100% Dot-Matrix Typography System
-val BitcountPropSingle = FontFamily(
-    Font(R.font.bitcount_prop_single, FontWeight.Normal),
-    Font(R.font.bitcount_prop_single, FontWeight.Medium),
-    Font(R.font.bitcount_prop_single, FontWeight.SemiBold),
-    Font(R.font.bitcount_prop_single, FontWeight.Bold),
-    Font(R.font.bitcount_prop_single, FontWeight.Black)
+// PixL Font: Official Square-Matrix Typography System (by PixL)
+val PixlFont = FontFamily(
+    Font(R.font.pixl_font, FontWeight.Normal),
+    Font(R.font.pixl_font, FontWeight.Medium),
+    Font(R.font.pixl_font, FontWeight.SemiBold),
+    Font(R.font.pixl_font, FontWeight.Bold),
+    Font(R.font.pixl_font, FontWeight.Black)
 )
+
+// Legacy alias to preserve backwards-compatibility with existing UI call sites
+val BitcountPropSingle = PixlFont
 
 
 val AppTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 42.sp,
         lineHeight = 44.sp,
@@ -28,7 +31,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     displayMedium = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 32.sp,
@@ -36,7 +39,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     headlineLarge = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 26.sp,
@@ -44,7 +47,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     headlineMedium = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
         lineHeight = 22.sp,
@@ -52,7 +55,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     titleLarge = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 15.sp,
         lineHeight = 19.sp,
@@ -60,7 +63,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     titleMedium = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -68,7 +71,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -76,7 +79,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     bodyMedium = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
         lineHeight = 17.sp,
@@ -84,7 +87,7 @@ val AppTypography = Typography(
         color = TextSecondary
     ),
     labelLarge = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         lineHeight = 17.sp,
@@ -92,7 +95,7 @@ val AppTypography = Typography(
         color = TextPrimary
     ),
     labelMedium = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         lineHeight = 15.sp,
@@ -100,7 +103,7 @@ val AppTypography = Typography(
         color = TextSecondary
     ),
     labelSmall = TextStyle(
-        fontFamily = BitcountPropSingle,
+        fontFamily = PixlFont,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,
