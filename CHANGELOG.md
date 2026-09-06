@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-09-06
+
+### 🚀 Added
+* **Welcome Onboarding & Setup Modal (`SetupModal`):**
+  * Added first-launch welcome modal introducing REC's core features with quick-grant actions for notification and floating overlay permissions.
+  * Added "Skip for now" option for users who want to jump straight into the app.
+* **Config-Aware First Record Permission Wizard:**
+  * Added smart permission wizard triggered upon tapping "Record" if required permissions are missing.
+  * Dynamic evaluation of `RecordingConfig` ensures microphone permission (`RECORD_AUDIO`) is only requested when external audio recording is active, skipping it entirely when recording in Mute or Internal audio modes.
+  * Interactive permission gating: dynamic button state keeps "Continue to Record" disabled until all configuration-mandated permissions are granted, then automatically prompts for `MediaProjection` consent.
+* **Standby Quick-Action Notification & Game Detector:**
+  * Implemented low-overhead standby foreground/quick-access notification (`StandbyNotificationManager`) with custom collapsed and expanded layouts (`bg_notif_btn_record`, `bg_notif_btn_neutral`).
+  * Instant action buttons to Start Recording, Toggle Overlay, or Open App directly from the Android notification shade.
+  * Added background `GameDetector` utilizing package category detection and activity tracking to automatically trigger standby readiness when games launch.
+
+### ⚡ Changed
+* **App Bundle Optimization & Typography Consolidation:**
+  * Purged 8 redundant font files (`dotgothic16`, `doto`, `geist_pixel`, `handjet`, `lexend_tera`, `space_mono_bold`, `space_mono_regular`, `bitcount_single`), reducing package size by ~8+ MB.
+  * Standardized typography system across all screens and components on `bitcount_prop_single.ttf` and system sans-serif.
+* **Audio Terminology Alignment:**
+  * Renamed "Game" audio references to "Internal" audio across settings menus, badges, dialogs, and configuration tooltips for technical precision.
+
+---
+
 ## [0.4.3] - 2026-09-05
 
 ### 🚀 Added
@@ -241,6 +265,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.5.0]: https://github.com/pixlofficial/rec/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/pixlofficial/rec/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/pixlofficial/rec/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/pixlofficial/rec/compare/v0.4.0...v0.4.1
