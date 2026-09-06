@@ -334,12 +334,17 @@ fun MoreScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 5. Section: ABOUT PIXL
-                    SectionHeader(title = "ABOUT PIXL")
+                    // 5. Section: STUDIO
+                    SectionHeader(title = "STUDIO")
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // About PixL Studio Card
-                    SectionCard(title = "PIXL", titleTag = "STUDIO") {
+                    // About PixL Card
+                    SectionCard(
+                        title = "ABOUT PIXL",
+                        titleTag = "FORGE",
+                        tagBorderColor = HyperCyan,
+                        tagTextColor = HyperCyan
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
