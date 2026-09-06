@@ -11,6 +11,15 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,7 +28,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +67,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,10 +75,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -92,8 +109,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import pixl.rec.R
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
@@ -106,7 +125,10 @@ import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.TextPrimary
 import pixl.rec.ui.theme.TextSecondary
 import pixl.rec.ui.vault.model.RecordingItem
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private fun Context.findActivity(): Activity? {
     var ctx = this
@@ -147,20 +169,20 @@ fun VaultVideoPlayer(
         }
     }
 
-    // Configure robust buffer load control for local playback of high-res (up to 4K / 120 FPS) recordings
+    // Configure ultra-fast buffer load control for local playback of recordings
     val loadControl = remember {
         DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                15_000, // minBufferMs (15s minimum buffer to prevent underrun starvation)
-                50_000, // maxBufferMs (50s maximum buffer)
-                250,    // bufferForPlaybackMs (fast 250ms initial startup)
-                500     // bufferForPlaybackAfterRebufferMs (500ms resume)
+                2_500, // minBufferMs (local disk playback doesn't need huge network buffers)
+                10_000, // maxBufferMs
+                40,    // bufferForPlaybackMs (instant 40ms initial startup)
+                50     // bufferForPlaybackAfterRebufferMs (virtually instant 50ms resume on seek)
             )
             .setPrioritizeTimeOverSizeThresholds(false)
             .build()
     }
 
-    // Initialize ExoPlayer with Movie AudioAttributes and exact seeking capability
+    // Initialize ExoPlayer with Movie AudioAttributes and instant keyframe sync seeking
     val exoPlayer = remember(context, item.uri) {
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -170,7 +192,7 @@ fun VaultVideoPlayer(
         ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
             .setAudioAttributes(audioAttributes, true)
-            .setSeekParameters(SeekParameters.EXACT)
+            .setSeekParameters(SeekParameters.CLOSEST_SYNC)
             .build().apply {
                 val mediaItem = MediaItem.fromUri(item.uri)
                 setMediaItem(mediaItem)
@@ -180,7 +202,8 @@ fun VaultVideoPlayer(
     }
 
     var isPlaying by remember { mutableStateOf(false) }
-    var isBuffering by remember { mutableStateOf(true) }
+    var isBuffering by remember { mutableStateOf(false) }
+    var showBufferingCard by remember { mutableStateOf(false) }
     var playbackErrorMessage by remember { mutableStateOf<String?>(null) }
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(item.durationMs.coerceAtLeast(1L)) }
@@ -211,10 +234,14 @@ fun VaultVideoPlayer(
     var displayedGestureHud by remember { mutableStateOf(GestureHudType.BRIGHTNESS) }
     var hudDismissKey by remember { mutableLongStateOf(0L) }
 
-    // Double-tap seek indicators
+    // Multi-tap seek indicators & directional ripple state
     var showLeftSeekRipple by remember { mutableStateOf(false) }
     var showRightSeekRipple by remember { mutableStateOf(false) }
     var rippleDismissKey by remember { mutableLongStateOf(0L) }
+    var seekSeconds by remember { mutableIntStateOf(0) }
+    var touchFraction by remember { mutableStateOf(Offset(0.5f, 0.5f)) }
+    var rippleAnimationTrigger by remember { mutableLongStateOf(0L) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Auto-rotate if video recording is landscape
     LaunchedEffect(Unit) {
@@ -268,6 +295,19 @@ fun VaultVideoPlayer(
             delay(650)
             showLeftSeekRipple = false
             showRightSeekRipple = false
+            delay(350) // Wait for 300ms exit fadeOut transition to complete before resetting counter
+            seekSeconds = 0
+        }
+    }
+
+    // Suppress "BUFFERING..." card on fast seeks or brief buffer updates;
+    // only show if genuinely stalled for >500ms and not actively seeking
+    LaunchedEffect(isBuffering, isSeeking, showLeftSeekRipple, showRightSeekRipple) {
+        if (isBuffering && !isSeeking && !showLeftSeekRipple && !showRightSeekRipple) {
+            delay(500)
+            showBufferingCard = true
+        } else {
+            showBufferingCard = false
         }
     }
 
@@ -409,85 +449,137 @@ fun VaultVideoPlayer(
                     )
                 }
                 .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            areControlsVisible = !areControlsVisible
-                        },
-                        onDoubleTap = { offset ->
+                    val doubleTapTimeout = 280L
+                    var pendingSingleTapJob: Job? = null
+                    var lastTapTime = 0L
+                    var lastTapPosition = Offset.Zero
+
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val downTime = System.currentTimeMillis()
+                        val downPos = down.position
+                        var isTap = true
+
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) {
+                                break
+                            }
+                            if ((change.position - downPos).getDistance() > 30f) {
+                                isTap = false
+                            }
+                        }
+
+                        val upTime = System.currentTimeMillis()
+                        if (isTap && (upTime - downTime) < 400L) {
                             val screenWidth = size.width
-                            val xFraction = offset.x / screenWidth
-                            if (xFraction < 0.35f) {
-                                // Double-tap Left 35%: Seek -10s
-                                val target = (exoPlayer.currentPosition - 10_000L).coerceAtLeast(0L)
+                            val screenHeight = size.height
+                            val xFraction = downPos.x / screenWidth
+                            val currentTouchFraction = Offset(
+                                (downPos.x / screenWidth).coerceIn(0f, 1f),
+                                (downPos.y / screenHeight).coerceIn(0f, 1f)
+                            )
+
+                            val inLeftSeek = showLeftSeekRipple
+                            val inRightSeek = showRightSeekRipple
+
+                            if (xFraction < 0.35f && inLeftSeek) {
+                                // Multi-tap Left (+5s for tap 3, +10s for tap 4+)
+                                pendingSingleTapJob?.cancel()
+                                val addSec = if (seekSeconds < 10) 5 else 10
+                                seekSeconds += addSec
+                                val target = (exoPlayer.currentPosition - addSec * 1000L).coerceAtLeast(0L)
                                 exoPlayer.seekTo(target)
                                 currentPositionMs = target
-                                showLeftSeekRipple = true
-                                showRightSeekRipple = false
+                                touchFraction = currentTouchFraction
+                                rippleAnimationTrigger++
                                 rippleDismissKey++
-                            } else if (xFraction > 0.65f) {
-                                // Double-tap Right 35%: Seek +10s
-                                val target = (exoPlayer.currentPosition + 10_000L).coerceAtMost(durationMs)
+                                lastTapTime = upTime
+                                lastTapPosition = downPos
+                            } else if (xFraction > 0.65f && inRightSeek) {
+                                // Multi-tap Right (+5s for tap 3, +10s for tap 4+)
+                                pendingSingleTapJob?.cancel()
+                                val addSec = if (seekSeconds < 10) 5 else 10
+                                seekSeconds += addSec
+                                val target = (exoPlayer.currentPosition + addSec * 1000L).coerceAtMost(durationMs)
                                 exoPlayer.seekTo(target)
                                 currentPositionMs = target
-                                showRightSeekRipple = true
-                                showLeftSeekRipple = false
+                                touchFraction = currentTouchFraction
+                                rippleAnimationTrigger++
                                 rippleDismissKey++
+                                lastTapTime = upTime
+                                lastTapPosition = downPos
                             } else {
-                                // Double-tap Center 30%: Toggle Play/Pause
-                                if (isPlaying) {
-                                    exoPlayer.pause()
-                                } else {
-                                    if (exoPlayer.playbackState == Player.STATE_ENDED) {
-                                        exoPlayer.seekTo(0)
+                                val timeDelta = upTime - lastTapTime
+                                val posDelta = (downPos - lastTapPosition).getDistance()
+
+                                if (timeDelta < doubleTapTimeout && posDelta < 120f) {
+                                    // Double-tap detected
+                                    pendingSingleTapJob?.cancel()
+                                    lastTapTime = 0L
+
+                                    if (xFraction < 0.35f) {
+                                        // Double-tap Left: Seek -5s
+                                        seekSeconds = 5
+                                        val target = (exoPlayer.currentPosition - 5_000L).coerceAtLeast(0L)
+                                        exoPlayer.seekTo(target)
+                                        currentPositionMs = target
+                                        touchFraction = currentTouchFraction
+                                        showLeftSeekRipple = true
+                                        showRightSeekRipple = false
+                                        rippleAnimationTrigger++
+                                        rippleDismissKey++
+                                    } else if (xFraction > 0.65f) {
+                                        // Double-tap Right: Seek +5s
+                                        seekSeconds = 5
+                                        val target = (exoPlayer.currentPosition + 5_000L).coerceAtMost(durationMs)
+                                        exoPlayer.seekTo(target)
+                                        currentPositionMs = target
+                                        touchFraction = currentTouchFraction
+                                        showRightSeekRipple = true
+                                        showLeftSeekRipple = false
+                                        rippleAnimationTrigger++
+                                        rippleDismissKey++
+                                    } else {
+                                        // Double-tap Center: Toggle Play/Pause
+                                        if (isPlaying) {
+                                            exoPlayer.pause()
+                                        } else {
+                                            if (exoPlayer.playbackState == Player.STATE_ENDED) {
+                                                exoPlayer.seekTo(0)
+                                            }
+                                            exoPlayer.play()
+                                        }
                                     }
-                                    exoPlayer.play()
+                                } else {
+                                    // First tap
+                                    lastTapTime = upTime
+                                    lastTapPosition = downPos
+                                    pendingSingleTapJob?.cancel()
+                                    pendingSingleTapJob = coroutineScope.launch {
+                                        delay(doubleTapTimeout)
+                                        areControlsVisible = !areControlsVisible
+                                    }
                                 }
                             }
                         }
-                    )
+                    }
                 }
         )
 
-        // 3. Double-Tap Seek Ripples (+/- 10s Feedback)
+        // 3. Directional Seeking Ripples with Translucent Red Chevron & Internal Laser Sweep
         AnimatedVisibility(
             visible = showLeftSeekRipple,
             enter = fadeIn(animationSpec = tween(150)),
             exit = fadeOut(animationSpec = tween(300)),
             modifier = Modifier.align(Alignment.CenterStart)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.35f)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                HyperCrimson.copy(alpha = 0.28f),
-                                Color.Transparent
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_pixel_replay_10),
-                        contentDescription = null,
-                        tint = HyperCrimson,
-                        modifier = Modifier.size(44.dp)
-                    )
-                    Text(
-                        text = "-10s",
-                        color = TextPrimary,
-                        fontFamily = BitcountPropSingle,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            SeekRippleFeedback(
+                isForward = false,
+                seekSeconds = seekSeconds,
+                animationKey = rippleAnimationTrigger
+            )
         }
 
         AnimatedVisibility(
@@ -496,39 +588,11 @@ fun VaultVideoPlayer(
             exit = fadeOut(animationSpec = tween(300)),
             modifier = Modifier.align(Alignment.CenterEnd)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.35f)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                HyperCrimson.copy(alpha = 0.28f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_pixel_forward_10),
-                        contentDescription = null,
-                        tint = HyperCrimson,
-                        modifier = Modifier.size(44.dp)
-                    )
-                    Text(
-                        text = "+10s",
-                        color = TextPrimary,
-                        fontFamily = BitcountPropSingle,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            SeekRippleFeedback(
+                isForward = true,
+                seekSeconds = seekSeconds,
+                animationKey = rippleAnimationTrigger
+            )
         }
 
         // 4. Gesture Feedback HUD (Edge-Anchored Telemetry Pillar: Icon -> Pixel Capsule Bar -> Percentage)
@@ -734,8 +798,8 @@ fun VaultVideoPlayer(
             }
         }
 
-        // 5. Buffering / Loading Indicator
-        if (isBuffering && playbackErrorMessage == null) {
+        // 5. Buffering / Loading Indicator (only shown if genuinely stalled for >500ms and not seeking)
+        if (showBufferingCard && playbackErrorMessage == null) {
             Box(
                 modifier = Modifier
                     .background(ObsidianCanvas.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
@@ -902,7 +966,6 @@ fun VaultVideoPlayer(
                         onSeekEnd = {
                             val targetMs = (seekFraction * durationMs).toLong()
                             currentPositionMs = targetMs
-                            exoPlayer.setSeekParameters(SeekParameters.EXACT)
                             exoPlayer.seekTo(targetMs)
                             isSeeking = false
                         },
@@ -1536,3 +1599,244 @@ private fun BottomHudDeck(
         }
     }
 }
+
+/**
+ * Directional Laser Ripple Feedback for multi-tap seeking.
+ * The double chevron icon sits as a sleek translucent red graphic, and on each tap,
+ * an internal glowing crimson/white laser wavefront surges through the icon in the seek direction
+ * (Left->Right for forward seek >>, Right->Left for backward seek <<).
+ */
+@Composable
+private fun SeekRippleFeedback(
+    isForward: Boolean,
+    seekSeconds: Int,
+    animationKey: Long,
+    modifier: Modifier = Modifier
+) {
+    val rippleProgress = remember { Animatable(1f) }
+    val badgeScale = remember { Animatable(1f) }
+    val surge = remember { Animatable(0f) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "EdgeGlowTransition")
+
+    // Gentle waving phase: 0f -> 2*PI
+    val wavePhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "EdgeGlowPhase"
+    )
+
+    LaunchedEffect(animationKey) {
+        if (animationKey > 0L) {
+            launch {
+                rippleProgress.snapTo(0f)
+                rippleProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 380, easing = LinearOutSlowInEasing)
+                )
+            }
+            launch {
+                badgeScale.snapTo(1.30f)
+                badgeScale.animateTo(
+                    targetValue = 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                )
+            }
+            launch {
+                surge.snapTo(1f)
+                surge.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+        }
+    }
+
+    val glowPath = remember { Path() }
+
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .fillMaxWidth(0.35f),
+        contentAlignment = Alignment.Center
+    ) {
+        // Faint, slightly waving glow hugging the screen edge
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            if (w <= 0f || h <= 0f) return@Canvas
+
+            val surgeVal = surge.value
+            val baseDepth = w * (0.45f + 0.10f * surgeVal)
+            val amp = 10.dp.toPx() * (1f + 0.3f * surgeVal)
+            val steps = 24
+            val stepY = h / steps
+
+            glowPath.reset()
+
+            if (isForward) {
+                // Hugs the right screen edge (x = w)
+                glowPath.moveTo(w, 0f)
+                for (i in 0..steps) {
+                    val y = i * stepY
+                    val yNorm = i.toFloat() / steps
+                    val waveOffset = sin(yNorm * 2.5f * (2f * PI.toFloat()) + wavePhase) * amp
+                    val x = (w - baseDepth + waveOffset).coerceIn(0f, w)
+                    glowPath.lineTo(x, y)
+                }
+                glowPath.lineTo(w, h)
+                glowPath.close()
+
+                drawPath(
+                    path = glowPath,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            HyperCrimson.copy(alpha = 0.04f + 0.02f * surgeVal),
+                            HyperCrimson.copy(alpha = 0.12f + 0.05f * surgeVal)
+                        ),
+                        startX = w - baseDepth - amp,
+                        endX = w
+                    )
+                )
+            } else {
+                // Hugs the left screen edge (x = 0)
+                glowPath.moveTo(0f, 0f)
+                for (i in 0..steps) {
+                    val y = i * stepY
+                    val yNorm = i.toFloat() / steps
+                    val waveOffset = sin(yNorm * 2.5f * (2f * PI.toFloat()) + wavePhase) * amp
+                    val x = (baseDepth + waveOffset).coerceIn(0f, w)
+                    glowPath.lineTo(x, y)
+                }
+                glowPath.lineTo(0f, h)
+                glowPath.close()
+
+                drawPath(
+                    path = glowPath,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            HyperCrimson.copy(alpha = 0.12f + 0.05f * surgeVal),
+                            HyperCrimson.copy(alpha = 0.04f + 0.02f * surgeVal),
+                            Color.Transparent
+                        ),
+                        startX = 0f,
+                        endX = baseDepth + amp
+                    )
+                )
+            }
+        }
+        val iconPainter = painterResource(
+            id = if (isForward) R.drawable.ic_pixel_double_chevron_right
+            else R.drawable.ic_pixel_double_chevron_left
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.graphicsLayer {
+                scaleX = badgeScale.value
+                scaleY = badgeScale.value
+            }
+        ) {
+            Box(
+                modifier = Modifier.size(54.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Layer 1: Directional dark silhouette drop shadow for maximum contrast over arbitrary video frames
+                Icon(
+                    painter = iconPainter,
+                    contentDescription = null,
+                    tint = Color.Black.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .size(54.dp)
+                        .offset(x = 1.5.dp, y = 2.dp)
+                )
+
+                // Layer 2: Base translucent red chevron
+                Icon(
+                    painter = iconPainter,
+                    contentDescription = null,
+                    tint = HyperCrimson.copy(alpha = 0.35f),
+                    modifier = Modifier.size(54.dp)
+                )
+
+                // Layer 3: Directional Laser Ripple Surge sweeping INSIDE the chevron icon
+                Canvas(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                ) {
+                    val p = rippleProgress.value
+                    if (p in 0f..1f) {
+                        // 1. Draw the chevron icon onto the offscreen canvas as an alpha mask
+                        with(iconPainter) {
+                            draw(size = size)
+                        }
+
+                        // 2. Draw the traveling laser energy sweep using BlendMode.SrcIn
+                        val bandWidth = size.width * 0.50f
+                        val sweepCenter = if (isForward) {
+                            -bandWidth + p * (size.width + bandWidth * 2f)
+                        } else {
+                            (size.width + bandWidth) - p * (size.width + bandWidth * 2f)
+                        }
+
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colors = if (isForward) {
+                                    listOf(
+                                        Color.Transparent,
+                                        HyperCrimson.copy(alpha = 0.75f),
+                                        Color.White,
+                                        HyperCrimson,
+                                        Color.Transparent
+                                    )
+                                } else {
+                                    listOf(
+                                        Color.Transparent,
+                                        HyperCrimson,
+                                        Color.White,
+                                        HyperCrimson.copy(alpha = 0.75f),
+                                        Color.Transparent
+                                    )
+                                },
+                                startX = sweepCenter - bandWidth,
+                                endX = sweepCenter + bandWidth
+                            ),
+                            blendMode = BlendMode.SrcIn
+                        )
+                    }
+                }
+            }
+
+            // High-Contrast Dynamic Badge Text (+5s, -10s, +20s...)
+            Text(
+                text = if (isForward) "+${seekSeconds}s" else "-${seekSeconds}s",
+                color = Color.White,
+                fontFamily = BitcountPropSingle,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.9f),
+                        offset = Offset(2f, 2f),
+                        blurRadius = 6f
+                    )
+                )
+            )
+        }
+    }
+}
+
+

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-09-06
+
+### 🚀 Added
+* **Multi-Tap Dynamic Seeking Engine:**
+  * Implemented cumulative multi-tap seek gesture recognition in `VaultVideoPlayer`:
+    * Double-tap seeks $\pm 5\text{s}$.
+    * Triple-tap seeks $\pm 10\text{s}$.
+    * Every subsequent tap inside the 650ms accumulation latch adds an extra $\pm 10\text{s}$ ($\pm 20\text{s}, \pm 30\text{s}, \pm 40\text{s}\dots$).
+  * Coupled single-tap delay (280ms) ensures single taps toggle player controls seamlessly without accidental seek triggers.
+* **Custom Pixel Double Chevron Vector Suite:**
+  * Handcrafted bespoke 15×15 42-block double-chevron pixel icons (`assets/icons/double_chevron_left.svg`, `assets/icons/double_chevron_right.svg`) and matching Android Vector Drawables (`ic_pixel_double_chevron_left.xml`, `ic_pixel_double_chevron_right.xml`).
+* **Internal Directional Laser Wavefront Ripple:**
+  * Implemented an offscreen-composited laser energy sweep (`CompositingStrategy.Offscreen` + `BlendMode.SrcIn`) that pulses horizontally inside the chevron icon in the seek direction (Left $\to$ Right for forward seek $\gg$, Right $\to$ Left for backward seek $\ll$).
+* **Faint Waving Edge Glow Aura:**
+  * Subtle translucent crimson ambient edge glow (`HyperCrimson`, `alpha ~0.04–0.12`) anchored along the active screen bezel with gentle sinusoidal breathing undulation and touch pulse response.
+
+### ⚡ Changed
+* **Ultra-Fast Local Playback & Instant Seeking:**
+  * Replaced `SeekParameters.EXACT` with `SeekParameters.CLOSEST_SYNC` across player initialization, timeline scrubbing, and double-tap gestures to jump directly to sync keyframes without decoding catchup latency.
+  * Optimized `DefaultLoadControl` for local flash storage: reduced re-buffer resume requirement from 500ms down to 50ms, and startup threshold from 250ms down to 40ms.
+
+### 🐛 Fixed
+* **Seek Buffering Card Suppression:**
+  * Suppressed the intrusive `"BUFFERING..."` card during active seek and scrubbing gestures.
+  * Added a 500ms debounce grace period for transient buffer updates, eliminating screen flickering.
+* **Seek Counter Fade-Out Latch:**
+  * Fixed an issue where `seekSeconds` counter reset to 0 before the 300ms exit fade-out transition finished, ensuring the final accumulated seek time remains displayed during dismiss.
+
+---
+
 ## [0.6.0] - 2026-09-06
 
 ### 🚀 Added
@@ -303,6 +333,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.7.0]: https://github.com/pixlofficial/rec/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pixlofficial/rec/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/pixlofficial/rec/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/pixlofficial/rec/compare/v0.4.2...v0.4.3

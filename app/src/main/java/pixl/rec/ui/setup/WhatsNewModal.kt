@@ -80,28 +80,28 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
-                title = "Custom REC Pixel Player Icons",
-                description = "Six bespoke, high-density pixel vector icons (Aspect Ratio, Brightness, Loop, Forward/Replay 10s, Screen Rotate) designed from scratch on REC's signature ~5px voxel grid.",
+                title = "Multi-Tap Dynamic Seeking Engine",
+                description = "Double-tap seeks ±5s, triple-tap seeks ±10s, and every add-on tap rapidly accumulates an extra ±10s (±20s, ±30s...) within a responsive 650ms latch window.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Unified Edge Telemetry Pillar",
-                description = "Replaced intrusive center HUD cards with an edge-aligned gauge stack (Icon → 5×80 Capsule Bar → Percentage Readout), keeping the center video canvas 100% unobstructed.",
+                title = "Custom Pixel Double Chevron Vector Suite",
+                description = "Handcrafted 15×15 42-block double-chevron pixel icons with internal laser wavefront energy sweep that travels inside the icon in the seek direction.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Double-Tap Seek & Speed Dropdown",
-                description = "Double-tap left/right edges to seek ±10 seconds with animated crimson ripple feedback, plus a frosted glassmorphic playback speed menu (0.25× to 2.0×).",
+                title = "Faint Waving Edge Glow Aura",
+                description = "A subtle, breathing ambient crimson glow anchored along the active screen edge that gently waves and pulses with touch feedback.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Configuration Import & Export",
-                description = "Export and import your entire recording configuration profiles as portable JSON files directly in Settings, with instant profile verification.",
-                category = PatchCategory.ADDED
+                title = "Instant Keyframe Sync Seeking",
+                description = "Replaced exact timestamp decoding with instant keyframe sync seek across player controls and slider, eliminating seek stutter.",
+                category = PatchCategory.CHANGED
             ),
             PatchNote(
-                title = "High-Contrast HUD Drop Shadows",
-                description = "Deep ambient radial halos and directional dark silhouette drop shadows ensure all player gauges and readouts are razor sharp against any background.",
+                title = "Seek Buffering Card Suppression",
+                description = "Suppressed the intrusive buffering card during all seeking and scrubbing interactions, backed by a 500ms debounce grace period.",
                 category = PatchCategory.FIXED
             )
         )
