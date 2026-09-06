@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -211,8 +212,8 @@ fun MoreScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // About PixL REC Card
-                    SectionCard(title = "ABOUT PIXL REC", titleTag = "v${pixl.rec.BuildConfig.VERSION_NAME}") {
+                    // About REC Card
+                    SectionCard(title = "ABOUT REC", titleTag = "v${pixl.rec.BuildConfig.VERSION_NAME}") {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -225,10 +226,9 @@ fun MoreScreen(
                                     .border(1.dp, BorderStark, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_pixl_logo),
-                                    contentDescription = "PixL Logo",
-                                    tint = Color.White,
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_logo_core),
+                                    contentDescription = "REC Logo",
                                     modifier = Modifier.size(36.dp)
                                 )
                             }
@@ -331,6 +331,56 @@ fun MoreScreen(
                             activeSubPage = MoreSubPage.LICENSES
                         }
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // 5. Section: ABOUT PIXL
+                    SectionHeader(title = "ABOUT PIXL")
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // About PixL Studio Card
+                    SectionCard(title = "PIXL", titleTag = "STUDIO") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SurfaceElevated)
+                                    .border(1.dp, BorderStark, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_pixl_logo),
+                                    contentDescription = "PixL Logo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Independent software forge dedicated to bare-metal performance, zero-bloat utilities, and bespoke digital craftsmanship.",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = BitcountPropSingle,
+                                    lineHeight = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Forged by PixL",
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontFamily = BitcountPropSingle,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(120.dp))
                 }
