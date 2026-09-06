@@ -7,8 +7,10 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import pixl.rec.core.storage.ConfigSerializer
 import pixl.rec.core.engine.CodecProbe
 import pixl.rec.core.engine.ResolutionCalculator
 import pixl.rec.core.model.AudioSource
@@ -770,6 +772,32 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun resumeRecording() {
         RecordingService.resumeService(getApplication())
+    }
+
+    fun exportConfigJson(): String {
+        return ConfigSerializer.exportToJson(_uiState.value.config)
+    }
+
+    fun generateDefaultExportFilename(): String {
+        return ConfigSerializer.generateDefaultExportFilename()
+    }
+
+    fun applyFullConfig(newConfig: RecordingConfig): Boolean {
+        updateConfigAndStorage(newConfig)
+        val context = getApplication<Application>()
+        if (newConfig.alwaysOnFloatingPill || (newConfig.showFloatingPill && isRecordingActive.value)) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
+                FloatingOverlayService.start(context, newConfig)
+            }
+        } else if (!isRecordingActive.value) {
+            FloatingOverlayService.stop(context)
+        }
+        return true
+    }
+
+    fun resetConfigToDefaults(): Boolean {
+        val defaultConfig = RecordingConfig()
+        return applyFullConfig(defaultConfig)
     }
 
     private fun updateConfigAndStorage(newConfig: RecordingConfig) {

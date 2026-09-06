@@ -73,29 +73,44 @@ class AudioEncoder(
     }
 
     /**
-     * Enqueues a chunk of PCM audio data with nanosecond presentation timestamp.
+     * Enqueues a chunk of PCM audio data with sample-accurate presentation timestamp.
+     * Slices buffers if necessary to strictly respect MediaCodec input buffer capacity.
      */
     fun enqueuePcmData(pcmBytes: ByteArray, length: Int, ptsUs: Long) {
         val codec = mediaCodec ?: return
         if (!isRunning.get()) return
 
         try {
-            val inputBufferIndex = codec.dequeueInputBuffer(5_000L) // 5ms timeout
-            if (inputBufferIndex >= 0) {
-                val inputBuffer = codec.getInputBuffer(inputBufferIndex)
-                if (inputBuffer != null) {
-                    inputBuffer.clear()
-                    inputBuffer.put(pcmBytes, 0, length)
-                    codec.queueInputBuffer(
-                        inputBufferIndex,
-                        0,
-                        length,
-                        ptsUs,
-                        0
-                    )
+            var offset = 0
+            val bytesPerStereoFrame = config.audioChannelCount * 2
+            while (offset < length && isRunning.get()) {
+                val inputBufferIndex = codec.dequeueInputBuffer(10_000L) // 10ms timeout
+                if (inputBufferIndex >= 0) {
+                    val inputBuffer = codec.getInputBuffer(inputBufferIndex)
+                    if (inputBuffer != null) {
+                        inputBuffer.clear()
+                        val bytesToWrite = kotlin.math.min(length - offset, inputBuffer.capacity())
+                        inputBuffer.put(pcmBytes, offset, bytesToWrite)
+
+                        val chunkPtsUs = ptsUs + if (bytesPerStereoFrame > 0 && config.audioSampleRate > 0) {
+                            ((offset / bytesPerStereoFrame).toLong() * 1_000_000L) / config.audioSampleRate
+                        } else 0L
+
+                        codec.queueInputBuffer(
+                            inputBufferIndex,
+                            0,
+                            bytesToWrite,
+                            chunkPtsUs,
+                            0
+                        )
+                        offset += bytesToWrite
+                    } else {
+                        break
+                    }
+                } else {
+                    Log.w(tag, "Audio input buffer timeout, dropping remaining frame")
+                    break
                 }
-            } else {
-                Log.w(tag, "Audio input buffer timeout, dropping frame")
             }
         } catch (e: Exception) {
             if (isRunning.get()) {

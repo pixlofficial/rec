@@ -7,7 +7,6 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
-import android.media.AudioTimestamp
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.os.Build
@@ -21,13 +20,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.Arrays
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Manages dual-stream audio capture:
  * 1. Internal game audio via [AudioPlaybackCaptureConfiguration] (API 29+)
  * 2. Microphone audio via [AudioRecord]
- * Mixes both streams in real-time with nanosecond PTS synchronization.
+ * Mixes both streams in real-time with sample-accurate monotonic PTS synchronization
+ * and seamless silence synthesis for immediate MediaMuxer startup.
  */
 class AudioCaptureManager(
     private val context: Context,
@@ -46,13 +48,11 @@ class AudioCaptureManager(
     private var micAudioRecord: AudioRecord? = null
 
     private var captureJob: Job? = null
+    private var internalReaderJob: Job? = null
+    private var micReaderJob: Job? = null
+
     private val isRunning = AtomicBoolean(false)
     private val isPaused = AtomicBoolean(false)
-
-    private var pauseStartTimeNs = 0L
-    private var totalPauseOffsetNs = 0L
-    private var startTimestampNs = 0L
-    private var lastEmittedPtsUs = 0L
 
     // Throttled VU calculation state (10Hz UI matching)
     private var lastDbCalcTimeNs = 0L
@@ -63,6 +63,25 @@ class AudioCaptureManager(
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private val bytesPerSample = 2 * 2 // 16-bit (2 bytes) * 2 channels = 4 bytes per stereo frame
 
+    // Standard AAC-LC frame: 1024 samples per channel = 4096 bytes per frame
+    private val CHUNK_FRAME_COUNT = 1024
+    private val CHUNK_BYTES = CHUNK_FRAME_COUNT * bytesPerSample // 4096 bytes
+    private val CHUNK_INTERVAL_NS = (CHUNK_FRAME_COUNT.toLong() * 1_000_000_000L) / sampleRate.toLong() // 21,333,333 ns
+
+    private val internalQueue = ConcurrentLinkedQueue<ByteArray>()
+    private val micQueue = ConcurrentLinkedQueue<ByteArray>()
+    private val bufferPool = ConcurrentLinkedQueue<ByteArray>()
+
+    private fun getBuffer(): ByteArray {
+        return bufferPool.poll() ?: ByteArray(CHUNK_BYTES)
+    }
+
+    private fun recycleBuffer(buf: ByteArray) {
+        if (bufferPool.size < 32) {
+            bufferPool.offer(buf)
+        }
+    }
+
     private var bufferSizeInBytes: Int = 0
 
     /**
@@ -71,7 +90,7 @@ class AudioCaptureManager(
     @SuppressLint("MissingPermission")
     fun prepare() {
         val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-        bufferSizeInBytes = (minBufferSize * 2).coerceAtLeast(4096)
+        bufferSizeInBytes = (minBufferSize * 2).coerceAtLeast(CHUNK_BYTES * 2)
 
         val audioFormatConfig = AudioFormat.Builder()
             .setEncoding(audioFormat)
@@ -174,27 +193,96 @@ class AudioCaptureManager(
 
         isRunning.set(true)
         isPaused.set(false)
-        startTimestampNs = sessionBaseTimeNs
-        lastEmittedPtsUs = 0L
-        totalPauseOffsetNs = 0L
         lastDbCalcTimeNs = 0L
 
+        internalQueue.clear()
+        micQueue.clear()
+
+        // 1. Dedicated asynchronous reader for Internal Game Audio
+        if (config.audioSource.hasInternal && internalAudioRecord != null) {
+            internalReaderJob = scope.launch(Dispatchers.IO) {
+                val tempBuf = ByteArray(CHUNK_BYTES)
+                while (isRunning.get()) {
+                    val intRecord = internalAudioRecord ?: break
+                    if (isPaused.get()) {
+                        delay(10)
+                        continue
+                    }
+                    try {
+                        val read = intRecord.read(tempBuf, 0, CHUNK_BYTES)
+                        if (read > 0) {
+                            val chunk = getBuffer()
+                            System.arraycopy(tempBuf, 0, chunk, 0, read)
+                            if (read < CHUNK_BYTES) {
+                                Arrays.fill(chunk, read, CHUNK_BYTES, 0.toByte())
+                            }
+                            // Cap queue to avoid unbounded latency drift
+                            while (internalQueue.size >= 8) {
+                                internalQueue.poll()?.let { recycleBuffer(it) }
+                            }
+                            internalQueue.offer(chunk)
+                        } else {
+                            delay(5)
+                        }
+                    } catch (e: Exception) {
+                        if (isRunning.get()) {
+                            Log.w(tag, "Error in internal audio reader", e)
+                        }
+                        delay(10)
+                    }
+                }
+            }
+        }
+
+        // 2. Dedicated asynchronous reader for Microphone Audio
+        if (config.audioSource.hasMic && micAudioRecord != null) {
+            micReaderJob = scope.launch(Dispatchers.IO) {
+                val tempBuf = ByteArray(CHUNK_BYTES)
+                while (isRunning.get()) {
+                    val micRecord = micAudioRecord ?: break
+                    if (isPaused.get()) {
+                        delay(10)
+                        continue
+                    }
+                    try {
+                        val read = micRecord.read(tempBuf, 0, CHUNK_BYTES)
+                        if (read > 0) {
+                            val chunk = getBuffer()
+                            System.arraycopy(tempBuf, 0, chunk, 0, read)
+                            if (read < CHUNK_BYTES) {
+                                Arrays.fill(chunk, read, CHUNK_BYTES, 0.toByte())
+                            }
+                            while (micQueue.size >= 8) {
+                                micQueue.poll()?.let { recycleBuffer(it) }
+                            }
+                            micQueue.offer(chunk)
+                        } else {
+                            delay(5)
+                        }
+                    } catch (e: Exception) {
+                        if (isRunning.get()) {
+                            Log.w(tag, "Error in mic audio reader", e)
+                        }
+                        delay(10)
+                    }
+                }
+            }
+        }
+
+        // 3. Master Mixing & Pacing Loop
         captureJob = scope.launch(Dispatchers.IO) {
-            runCaptureLoop()
+            runMixerLoop()
         }
     }
 
     fun pause() {
         if (isPaused.compareAndSet(false, true)) {
-            pauseStartTimeNs = System.nanoTime()
             Log.i(tag, "AudioCaptureManager paused")
         }
     }
 
     fun resume() {
         if (isPaused.compareAndSet(true, false)) {
-            val pausedDuration = System.nanoTime() - pauseStartTimeNs
-            totalPauseOffsetNs += pausedDuration
             Log.i(tag, "AudioCaptureManager resumed")
         }
     }
@@ -202,6 +290,8 @@ class AudioCaptureManager(
     fun stop() {
         isRunning.set(false)
         captureJob?.cancel()
+        internalReaderJob?.cancel()
+        micReaderJob?.cancel()
 
         try {
             internalAudioRecord?.stop()
@@ -214,6 +304,10 @@ class AudioCaptureManager(
         } catch (e: Exception) {
             Log.w(tag, "Error stopping mic AudioRecord", e)
         }
+
+        internalQueue.clear()
+        micQueue.clear()
+        bufferPool.clear()
     }
 
     fun release() {
@@ -233,102 +327,127 @@ class AudioCaptureManager(
         Log.i(tag, "AudioCaptureManager released")
     }
 
-    private suspend fun runCaptureLoop() {
-        val chunkSize = bufferSizeInBytes
-        val gameBuffer = ByteArray(chunkSize)
-        val micBuffer = ByteArray(chunkSize)
-        val mixedBuffer = ByteArray(chunkSize)
+    private suspend fun runMixerLoop() {
+        val silenceBuf = ByteArray(CHUNK_BYTES)
+        val mixedBuf = ByteArray(CHUNK_BYTES)
+        var totalEmittedSamples = 0L
+
+        var nextChunkTimeNs = System.nanoTime()
 
         while (isRunning.get()) {
-            var gameBytesRead = 0
-            var micBytesRead = 0
-
-            // 1. Read Internal Game Audio
-            val intRecord = internalAudioRecord
-            if (intRecord != null && intRecord.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                gameBytesRead = intRecord.read(gameBuffer, 0, chunkSize)
-                if (gameBytesRead < 0) {
-                    gameBytesRead = 0
-                }
-            }
-
-            // 2. Read Mic Audio
-            val micRecord = micAudioRecord
-            if (micRecord != null && micRecord.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                micBytesRead = micRecord.read(micBuffer, 0, chunkSize)
-                if (micBytesRead < 0) {
-                    micBytesRead = 0
-                }
-            }
-
             if (isPaused.get()) {
-                // Non-blocking coroutine delay during pause
                 delay(10)
+                nextChunkTimeNs = System.nanoTime()
                 continue
             }
 
-            // If neither source provided data, back off slightly with non-blocking delay
-            if (gameBytesRead == 0 && micBytesRead == 0) {
-                delay(10)
-                continue
+            val now = System.nanoTime()
+            if (now < nextChunkTimeNs) {
+                val waitMs = (nextChunkTimeNs - now) / 1_000_000L
+                if (waitMs > 1) {
+                    delay(waitMs)
+                }
             }
+            nextChunkTimeNs += CHUNK_INTERVAL_NS
+            if (System.nanoTime() - nextChunkTimeNs > CHUNK_INTERVAL_NS * 5) {
+                // Reset clock pacing if background scheduling delayed the loop
+                nextChunkTimeNs = System.nanoTime() + CHUNK_INTERVAL_NS
+            }
+
+            val gameChunk = internalQueue.poll()
+            val micChunk = micQueue.poll()
+
+            val hasGame = gameChunk != null
+            val hasMic = micChunk != null
+
+            val gBuf = gameChunk ?: silenceBuf
+            val mBuf = micChunk ?: silenceBuf
 
             // Throttled VU decibel level calculation (10Hz matching UI telemetry ticker)
-            val nowNs = System.nanoTime()
-            if (nowNs - lastDbCalcTimeNs >= DB_CALC_INTERVAL_NS) {
-                lastDbCalcTimeNs = nowNs
-                val gameDb = if (gameBytesRead > 0) PcmAudioMixer.calculateDbLevel(gameBuffer, gameBytesRead, config.internalAudioGain) else -60f
-                val micDb = if (micBytesRead > 0) PcmAudioMixer.calculateDbLevel(micBuffer, micBytesRead, config.micGain) else -60f
+            if (now - lastDbCalcTimeNs >= DB_CALC_INTERVAL_NS) {
+                lastDbCalcTimeNs = now
+                val gameDb = if (hasGame) PcmAudioMixer.calculateDbLevel(gBuf, CHUNK_BYTES, config.internalAudioGain) else -60f
+                val micDb = if (hasMic) PcmAudioMixer.calculateDbLevel(mBuf, CHUNK_BYTES, config.micGain) else -60f
                 listener.onAudioLevels(gameDb, micDb)
             }
 
-            // Mix audio buffers with Zero-Math Fast-Path for unity gain (1.0x)
             val outputBytes: Int
             val bufferToSend: ByteArray
-            if (gameBytesRead > 0 && micBytesRead > 0) {
-                outputBytes = PcmAudioMixer.mixStereo16Bit(
-                    gameBuffer, gameBytesRead,
-                    micBuffer, micBytesRead,
-                    config.internalAudioGain, config.micGain,
-                    mixedBuffer
-                )
-                bufferToSend = mixedBuffer
-            } else if (gameBytesRead > 0) {
-                // Fast-path: When internal audio gain is unity (1.0f), bypass array cloning and math completely
-                if (kotlin.math.abs(config.internalAudioGain - 1.0f) < 0.001f) {
-                    outputBytes = gameBytesRead
-                    bufferToSend = gameBuffer
-                } else {
-                    outputBytes = PcmAudioMixer.applyGain16Bit(
-                        gameBuffer, gameBytesRead,
-                        config.internalAudioGain,
-                        mixedBuffer
-                    )
-                    bufferToSend = mixedBuffer
+
+            when (config.audioSource) {
+                AudioSource.INTERNAL_AND_MIC -> {
+                    if (hasGame && hasMic) {
+                        outputBytes = PcmAudioMixer.mixStereo16Bit(
+                            gBuf, CHUNK_BYTES,
+                            mBuf, CHUNK_BYTES,
+                            config.internalAudioGain, config.micGain,
+                            mixedBuf
+                        )
+                        bufferToSend = mixedBuf
+                    } else if (hasGame) {
+                        outputBytes = PcmAudioMixer.applyGain16Bit(
+                            gBuf, CHUNK_BYTES,
+                            config.internalAudioGain,
+                            mixedBuf
+                        )
+                        bufferToSend = mixedBuf
+                    } else if (hasMic) {
+                        outputBytes = PcmAudioMixer.applyGain16Bit(
+                            mBuf, CHUNK_BYTES,
+                            config.micGain,
+                            mixedBuf
+                        )
+                        bufferToSend = mixedBuf
+                    } else {
+                        // Both streams currently silent: send digital silence to keep AAC encoder alive
+                        outputBytes = CHUNK_BYTES
+                        bufferToSend = silenceBuf
+                    }
                 }
-            } else {
-                // Fast-path for mic-only unity gain
-                if (kotlin.math.abs(config.micGain - 1.0f) < 0.001f) {
-                    outputBytes = micBytesRead
-                    bufferToSend = micBuffer
-                } else {
-                    outputBytes = PcmAudioMixer.applyGain16Bit(
-                        micBuffer, micBytesRead,
-                        config.micGain,
-                        mixedBuffer
-                    )
-                    bufferToSend = mixedBuffer
+                AudioSource.INTERNAL_ONLY -> {
+                    if (hasGame) {
+                        outputBytes = PcmAudioMixer.applyGain16Bit(
+                            gBuf, CHUNK_BYTES,
+                            config.internalAudioGain,
+                            mixedBuf
+                        )
+                        bufferToSend = mixedBuf
+                    } else {
+                        // Game audio idle/quiet: output digital silence to guarantee immediate muxer startup
+                        outputBytes = CHUNK_BYTES
+                        bufferToSend = silenceBuf
+                    }
+                }
+                AudioSource.MIC_ONLY -> {
+                    if (hasMic) {
+                        outputBytes = PcmAudioMixer.applyGain16Bit(
+                            mBuf, CHUNK_BYTES,
+                            config.micGain,
+                            mixedBuf
+                        )
+                        bufferToSend = mixedBuf
+                    } else {
+                        outputBytes = CHUNK_BYTES
+                        bufferToSend = silenceBuf
+                    }
+                }
+                AudioSource.MUTE -> {
+                    outputBytes = 0
+                    bufferToSend = silenceBuf
                 }
             }
 
-            if (outputBytes > 0) {
-                // Compute presentation timestamp synchronized against the monotonic session baseline
-                val elapsedUs = ((nowNs - startTimestampNs - totalPauseOffsetNs) / 1000L).coerceAtLeast(0L)
-                val adjustedPtsUs = elapsedUs.coerceAtLeast(lastEmittedPtsUs)
-                lastEmittedPtsUs = adjustedPtsUs
+            if (gameChunk != null) recycleBuffer(gameChunk)
+            if (micChunk != null) recycleBuffer(micChunk)
 
-                listener.onPcmAudioData(bufferToSend, outputBytes, adjustedPtsUs)
+            if (outputBytes > 0) {
+                // Strictly monotonic presentation timestamp based on the continuous audio sample clock
+                val ptsUs = (totalEmittedSamples * 1_000_000L) / sampleRate.toLong()
+                totalEmittedSamples += CHUNK_FRAME_COUNT
+
+                listener.onPcmAudioData(bufferToSend, outputBytes, ptsUs)
             }
         }
     }
 }
+

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-09-06
+
+### 🚀 Added
+* **Custom REC Pixel Player Icon Suite:**
+  * Created 6 high-density custom pixel vector icons adhering to REC's signature ~5px voxel grid and cyberpunk design language (`assets/icons/` and `app/src/main/res/drawable/`):
+    * **`aspect_ratio`:** 58-block widescreen monitor frame with viewfinder corner reticles (`┌`, `┘`).
+    * **`brightness`:** 56-block diamond-star badge with 1-2-3-2-1 crescent lens cutout.
+    * **`loop`:** 36-block widescreen loop track with opposing 3-block arrowheads.
+    * **`forward_10` & `replay_10`:** 39-block circular seek track with embedded pixel-rendered `"10"`.
+    * **`rotate`:** 40-block grid-aligned pixel screen rotation indicator.
+* **Unified Edge Telemetry Pillar for Video Player:**
+  * Replaced the intrusive center hero HUD card with an edge-aligned telemetry pillar (Icon $\rightarrow$ 5×80 Pixel Capsule Bar $\rightarrow$ Percentage Readout) for vertical slide gestures (left for Brightness, right for Volume).
+  * Center 90%+ of the video canvas remains completely unobstructed during adjustments.
+  * Added deep ambient radial halos and directional dark silhouette drop shadows for all elements to ensure high contrast against pure white, bright, and saturated footage.
+* **Double-Tap to Seek with Animated Ripple Feedback:**
+  * Double-tap left 35% seeks -10s with animated Crimson glow ripple and pixel `-10s` indicator.
+  * Double-tap right 35% seeks +10s with animated Crimson glow ripple and pixel `+10s` indicator.
+  * Double-tap center 30% toggles Play / Pause.
+* **Frosted Glassmorphic Playback Speed Menu:**
+  * Added speed control pill `[ 1.0X ▾ ]` opening a frosted glassmorphic card with crimson icon header, speed selection (0.25x to 2.0x), and active checkmarks.
+* **System Bar Auto-Hide with Idle Timeout:**
+  * Synchronized 3.0-second auto-hide using `WindowInsetsControllerCompat` to hide system status/navigation bars in tandem with player controls.
+* **Configuration Profile Import & Export:**
+  * Added `ConfigSerializer` supporting full JSON serialization and deserialization of recording configurations.
+  * Added `ImportConfigDialog` allowing users to preview and import configuration profiles from external storage.
+* **Version Update Modal (`WhatsNewModal`):**
+  * Added "What's New" modal highlighting newly released features and improvements on app update.
+
+### ⚡ Changed
+* **Hyper Crimson Aesthetic Realignment in Player:**
+  * Player controls, buttons, toggles, indicators, and speed selection unified to REC's signature `HyperCrimson` (`#FF2A4D`) palette.
+
+### 🐛 Fixed
+* **Brightness Slider Exit-Transition Ghosting:**
+  * Resolved race condition where dismissing the brightness slider briefly flashed the audio volume slider during the 300ms `fadeOut` exit animation by decoupling active visibility (`activeGestureHud`) from displayed mode (`displayedGestureHud`).
+
+---
+
 ## [0.5.0] - 2026-09-06
 
 ### 🚀 Added
@@ -265,6 +303,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.6.0]: https://github.com/pixlofficial/rec/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/pixlofficial/rec/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/pixlofficial/rec/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/pixlofficial/rec/compare/v0.4.1...v0.4.2

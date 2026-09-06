@@ -2,8 +2,11 @@
 
 package pixl.rec.ui.settings
 
+import android.content.Intent
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -81,14 +84,24 @@ import androidx.compose.ui.window.Dialog
 import pixl.rec.R
 import pixl.rec.core.engine.CodecProbe
 import pixl.rec.core.engine.ResolutionCalculator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.QuickPreset
 import pixl.rec.core.model.RecorderState
+import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.storage.ConfigPreferences
+import pixl.rec.core.storage.ConfigSerializer
 import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.ui.settings.components.ImportConfigDialog
 import pixl.rec.ui.components.SectionCard
 import pixl.rec.ui.components.SlidingPillSelector
 import pixl.rec.ui.components.SteppedVuMeter
@@ -1089,9 +1102,52 @@ private fun StorageSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
     viewModel: DashboardViewModel
 ) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val freeStorageFormatted = StorageCalculator.formatBytes(uiState.availableStorageBytes)
     val estimatedMb = uiState.config.estimatedMbPerMinute
 
+    var pendingImportConfig by remember { mutableStateOf<RecordingConfig?>(null) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    // SAF Create Document for Export
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(viewModel.exportConfigJson().toByteArray(Charsets.UTF_8))
+                }
+                Toast.makeText(context, "Config exported successfully", Toast.LENGTH_SHORT).show()
+            }.onFailure { e ->
+                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // SAF Open Document for Import
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                val jsonStr = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader().readText()
+                } ?: throw IllegalArgumentException("Could not read file from storage")
+
+                val result = ConfigSerializer.importFromJson(jsonStr, uiState.capabilities)
+                val config = result.getOrThrow()
+                pendingImportConfig = config
+                showImportDialog = true
+            }.onFailure { e ->
+                Toast.makeText(context, "Invalid config: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // 1. Storage Pipeline Card
     SectionCard(title = "STORAGE PIPELINE", titleTag = "SCOPED") {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1136,6 +1192,269 @@ private fun StorageSettingsSection(
                 fontFamily = BitcountPropSingle,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Profile Backup & Restore Card
+    SectionCard(title = "PROFILE BACKUP & RESTORE", titleTag = "JSON") {
+        Text(
+            text = "Export your complete recording parameters, bitrates, audio gains, and HUD customization as a portable JSON file, or restore a profile.",
+            color = TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 16.sp
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Primary Export & Import Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Export Config Button
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(ToxicLime.copy(alpha = 0.12f))
+                    .border(1.5.dp, ToxicLime, RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val defaultFilename = viewModel.generateDefaultExportFilename()
+                        exportLauncher.launch(defaultFilename)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = null,
+                        tint = ToxicLime,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "EXPORT CONFIG",
+                        color = ToxicLime,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            // Import Config Button
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HyperCyan.copy(alpha = 0.12f))
+                    .border(1.5.dp, HyperCyan, RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.FileUpload,
+                        contentDescription = null,
+                        tint = HyperCyan,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "IMPORT CONFIG",
+                        color = HyperCyan,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Secondary Quick Actions: Share via and Reset to Defaults
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Share Config
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, viewModel.exportConfigJson())
+                            putExtra(Intent.EXTRA_TITLE, "REC Configuration Profile")
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, "Share REC Config JSON"))
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "SHARE CONFIG",
+                        color = TextSecondary,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Reset to Defaults
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showResetConfirmDialog = true
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.RestartAlt,
+                        contentDescription = null,
+                        tint = HyperCrimson.copy(alpha = 0.85f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "RESET DEFAULTS",
+                        color = HyperCrimson.copy(alpha = 0.85f),
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+
+    // Import Preview Dialog
+    if (showImportDialog && pendingImportConfig != null) {
+        ImportConfigDialog(
+            config = pendingImportConfig!!,
+            onConfirm = {
+                viewModel.applyFullConfig(pendingImportConfig!!)
+                showImportDialog = false
+                pendingImportConfig = null
+                Toast.makeText(context, "Profile applied successfully", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = {
+                showImportDialog = false
+                pendingImportConfig = null
+            }
+        )
+    }
+
+    // Reset Confirmation Dialog
+    if (showResetConfirmDialog) {
+        Dialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = true)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(ObsidianCanvas)
+                    .border(1.dp, BorderStark, RoundedCornerShape(14.dp))
+                    .padding(20.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "RESET ALL SETTINGS?",
+                        color = HyperCrimson,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This will restore all video, audio, controls, and HUD parameters to factory default values.",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceElevated)
+                                .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                                .clickable { showResetConfirmDialog = false },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "CANCEL",
+                                color = TextSecondary,
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(HyperCrimson.copy(alpha = 0.2f))
+                                .border(1.5.dp, HyperCrimson, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    viewModel.resetConfigToDefaults()
+                                    showResetConfirmDialog = false
+                                    Toast.makeText(context, "Settings restored to defaults", Toast.LENGTH_SHORT).show()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "RESET DEFAULTS",
+                                color = HyperCrimson,
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

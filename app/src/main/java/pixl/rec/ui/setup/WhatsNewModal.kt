@@ -1,0 +1,332 @@
+package pixl.rec.ui.setup
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import pixl.rec.R
+import pixl.rec.ui.theme.BitcountPropSingle
+import pixl.rec.ui.theme.BorderStark
+import pixl.rec.ui.theme.CyberYellow
+import pixl.rec.ui.theme.HyperCrimson
+import pixl.rec.ui.theme.HyperCyan
+import pixl.rec.ui.theme.ObsidianCanvas
+import pixl.rec.ui.theme.SurfaceCard
+import pixl.rec.ui.theme.SurfaceElevated
+import pixl.rec.ui.theme.TextMuted
+import pixl.rec.ui.theme.TextPrimary
+import pixl.rec.ui.theme.TextSecondary
+import pixl.rec.ui.theme.ToxicLime
+
+/**
+ * Patch category badge types for release highlights.
+ */
+enum class PatchCategory(val label: String, val color: Color) {
+    ADDED("ADDED", ToxicLime),
+    CHANGED("CHANGED", HyperCyan),
+    FIXED("FIXED", CyberYellow)
+}
+
+data class PatchNote(
+    val title: String,
+    val description: String,
+    val category: PatchCategory
+)
+
+/**
+ * Cyberpunk-themed modal presenting release highlights and changelog updates
+ * following an application version bump.
+ */
+@Composable
+fun WhatsNewModal(
+    versionName: String,
+    onDismiss: () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+
+    val patchNotes = remember {
+        listOf(
+            PatchNote(
+                title = "Custom REC Pixel Player Icons",
+                description = "Six bespoke, high-density pixel vector icons (Aspect Ratio, Brightness, Loop, Forward/Replay 10s, Screen Rotate) designed from scratch on REC's signature ~5px voxel grid.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Unified Edge Telemetry Pillar",
+                description = "Replaced intrusive center HUD cards with an edge-aligned gauge stack (Icon → 5×80 Capsule Bar → Percentage Readout), keeping the center video canvas 100% unobstructed.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Double-Tap Seek & Speed Dropdown",
+                description = "Double-tap left/right edges to seek ±10 seconds with animated crimson ripple feedback, plus a frosted glassmorphic playback speed menu (0.25× to 2.0×).",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Configuration Import & Export",
+                description = "Export and import your entire recording configuration profiles as portable JSON files directly in Settings, with instant profile verification.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "High-Contrast HUD Drop Shadows",
+                description = "Deep ambient radial halos and directional dark silhouette drop shadows ensure all player gauges and readouts are razor sharp against any background.",
+                category = PatchCategory.FIXED
+            )
+        )
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.85f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(ObsidianCanvas)
+                .border(1.dp, BorderStark, RoundedCornerShape(16.dp))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // 1. Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(HyperCyan.copy(alpha = 0.15f))
+                                .border(1.dp, HyperCyan, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_pixel_rocket),
+                                contentDescription = null,
+                                tint = HyperCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "SYSTEM // PATCH NOTES",
+                                    color = HyperCyan,
+                                    fontFamily = BitcountPropSingle,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .background(ToxicLime.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                        .border(0.5.dp, ToxicLime.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "v$versionName",
+                                        color = ToxicLime,
+                                        fontFamily = BitcountPropSingle,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "WHAT'S NEW",
+                                color = TextPrimary,
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Close icon button
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceElevated)
+                            .border(1.dp, BorderStark, CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(bounded = false, radius = 16.dp, color = TextPrimary),
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onDismiss()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = TextSecondary,
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Summary of major enhancements, engine upgrades, and stability fixes in this release.",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 2. Scrollable Patch Notes Items
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    patchNotes.forEach { note ->
+                        PatchNoteCard(note = note)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 3. Bottom Action Bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ToxicLime.copy(alpha = 0.15f))
+                        .border(1.5.dp, ToxicLime, RoundedCornerShape(8.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(color = ToxicLime),
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDismiss()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "ACKNOWLEDGE // CONTINUE",
+                        color = ToxicLime,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PatchNoteCard(note: PatchNote) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(SurfaceCard)
+            .border(1.dp, BorderStark, RoundedCornerShape(10.dp))
+            .padding(14.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = note.title,
+                    color = TextPrimary,
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(note.category.color.copy(alpha = 0.15f))
+                        .border(1.dp, note.category.color, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = note.category.label,
+                        color = note.category.color,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = note.description,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}

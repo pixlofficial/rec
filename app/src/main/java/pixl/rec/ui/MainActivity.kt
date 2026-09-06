@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import pixl.rec.BuildConfig
 import pixl.rec.R
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.storage.ConfigPreferences
@@ -31,6 +32,7 @@ import pixl.rec.ui.main.MainScreen
 import pixl.rec.ui.navigation.NavigationTab
 import pixl.rec.ui.setup.SetupModal
 import pixl.rec.ui.setup.SetupModalMode
+import pixl.rec.ui.setup.WhatsNewModal
 import pixl.rec.ui.theme.RECTheme
 
 /**
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: DashboardViewModel by viewModels()
     private var currentNavTab by mutableStateOf(NavigationTab.DASHBOARD)
     private var activeSetupModalMode by mutableStateOf<SetupModalMode?>(null)
+    private var showWhatsNewModal by mutableStateOf(false)
 
     // 1. MediaProjection Screen Capture Permission Contract
     private val projectionLauncher = registerForActivityResult(
@@ -114,9 +117,14 @@ class MainActivity : ComponentActivity() {
 
         handleIntent(intent)
 
-        // Check if user should see first-launch welcome modal
-        if (!ConfigPreferences.hasSeenWelcome(this)) {
+        // Check if user should see first-launch welcome modal or what's new changelog modal
+        val lastSeenVersion = ConfigPreferences.getLastSeenVersionCode(this)
+        val hasSeenWelcome = ConfigPreferences.hasSeenWelcome(this)
+
+        if (!hasSeenWelcome && lastSeenVersion == 0) {
             activeSetupModalMode = SetupModalMode.WELCOME
+        } else if (lastSeenVersion < BuildConfig.VERSION_CODE) {
+            showWhatsNewModal = true
         }
 
         setContent {
@@ -152,6 +160,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onGetStarted = {
                             ConfigPreferences.setHasSeenWelcome(this@MainActivity, true)
+                            ConfigPreferences.setLastSeenVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
                             val wasFirstRecord = mode == SetupModalMode.FIRST_RECORD
                             activeSetupModalMode = null
                             if (wasFirstRecord) {
@@ -160,13 +169,25 @@ class MainActivity : ComponentActivity() {
                         },
                         onSkip = {
                             ConfigPreferences.setHasSeenWelcome(this@MainActivity, true)
+                            ConfigPreferences.setLastSeenVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
                             activeSetupModalMode = null
                         },
                         onDismiss = {
                             if (mode == SetupModalMode.WELCOME) {
                                 ConfigPreferences.setHasSeenWelcome(this@MainActivity, true)
+                                ConfigPreferences.setLastSeenVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
                             }
                             activeSetupModalMode = null
+                        }
+                    )
+                }
+
+                if (showWhatsNewModal) {
+                    WhatsNewModal(
+                        versionName = BuildConfig.VERSION_NAME,
+                        onDismiss = {
+                            ConfigPreferences.setLastSeenVersionCode(this@MainActivity, BuildConfig.VERSION_CODE)
+                            showWhatsNewModal = false
                         }
                     )
                 }

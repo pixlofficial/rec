@@ -138,15 +138,16 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     }
 
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
-        recordingConfig = config
+        val reconciledConfig = ConfigPreferences.loadConfig(this, config)
+        recordingConfig = reconciledConfig
 
         // 0. Cancel Standby Notification while recording session is active
         StandbyNotificationManager.cancel(this)
 
         // 1. Enter foreground immediately with required Android 14/15/16 FGS types
-        val initialNotification = if (config.recordingNotification) {
+        val initialNotification = if (reconciledConfig.recordingNotification) {
             buildNotification(
-                if (config.countdownSeconds > 0) "Starting in ${config.countdownSeconds}s..." else "Initializing recording...",
+                if (reconciledConfig.countdownSeconds > 0) "Starting in ${reconciledConfig.countdownSeconds}s..." else "Initializing recording...",
                 isPaused = false
             )
         } else {
@@ -159,7 +160,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                     this,
                     android.Manifest.permission.RECORD_AUDIO
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                if (config.audioSource.hasMic && hasMicPermission) {
+                if (reconciledConfig.audioSource.hasMic && hasMicPermission) {
                     types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 }
                 types
@@ -192,23 +193,23 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         }, null)
 
         // 3. Countdown delay & HUD integration
-        if (config.countdownSeconds > 0) {
+        if (reconciledConfig.countdownSeconds > 0) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this)) {
-                showCountdownOverlay(config.countdownSeconds) {
-                    startEngineAndWatchers(projection, config)
+                showCountdownOverlay(reconciledConfig.countdownSeconds) {
+                    startEngineAndWatchers(projection, reconciledConfig)
                 }
             } else {
                 // Fallback to notification timer countdown when overlay permission is unavailable
                 countdownJob = serviceScope.launch {
-                    for (sec in config.countdownSeconds downTo 1) {
+                    for (sec in reconciledConfig.countdownSeconds downTo 1) {
                         updateNotification("Starting in ${sec}s...", isPaused = false)
                         delay(1000L)
                     }
-                    startEngineAndWatchers(projection, config)
+                    startEngineAndWatchers(projection, reconciledConfig)
                 }
             }
         } else {
-            startEngineAndWatchers(projection, config)
+            startEngineAndWatchers(projection, reconciledConfig)
         }
     }
 

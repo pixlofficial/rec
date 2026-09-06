@@ -471,50 +471,38 @@ class ScreenRecorderEngine(
 
         if (isVideoReady && isAudioReady && !isMuxerStarted.get()) {
             val muxer = mediaMuxer ?: return
-            muxer.start()
-            isMuxerStarted.set(true)
-            Log.i(tag, "MediaMuxer started with all configured tracks (Video: $videoTrackIndex, Audio: $audioTrackIndex)")
+            try {
+                muxer.start()
+                isMuxerStarted.set(true)
+                Log.i(tag, "MediaMuxer started with all configured tracks (Video: $videoTrackIndex, Audio: $audioTrackIndex)")
 
-            // Drain queued pending samples
-            for (sample in pendingSamples) {
-                val realTrack = if (sample.trackIndex == 0) videoTrackIndex else audioTrackIndex
-                if (realTrack >= 0) {
-                    try {
-                        val byteBuf = ByteBuffer.wrap(sample.data, sample.offset, sample.size)
-                        val info = MediaCodec.BufferInfo().apply {
-                            set(sample.offset, sample.size, sample.presentationTimeUs, sample.flags)
+                // Drain queued pending samples
+                for (sample in pendingSamples) {
+                    val realTrack = if (sample.trackIndex == 0) videoTrackIndex else audioTrackIndex
+                    if (realTrack >= 0) {
+                        try {
+                            val byteBuf = ByteBuffer.wrap(sample.data, sample.offset, sample.size)
+                            val info = MediaCodec.BufferInfo().apply {
+                                set(sample.offset, sample.size, sample.presentationTimeUs, sample.flags)
+                            }
+                            muxer.writeSampleData(realTrack, byteBuf, info)
+                            totalBytesWritten.addAndGet(sample.size.toLong())
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error draining pending sample", e)
                         }
-                        muxer.writeSampleData(realTrack, byteBuf, info)
-                        totalBytesWritten.addAndGet(sample.size.toLong())
-                    } catch (e: Exception) {
-                        Log.e(tag, "Error draining pending sample", e)
                     }
+                    recyclePendingBuffer(sample.data)
                 }
-                recyclePendingBuffer(sample.data)
+                pendingSamples.clear()
+            } catch (e: Exception) {
+                Log.e(tag, "Failed to start MediaMuxer", e)
             }
-            pendingSamples.clear()
         }
     }
 
     private fun writeSample(logicalTrack: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         if (!isRecording.get()) return
 
-        // Fast path: MediaMuxer is already active and tracks are configured.
-        // MediaMuxer.writeSampleData() is internally thread-safe across different tracks.
-        if (isMuxerStarted.get()) {
-            val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
-            if (realTrack >= 0) {
-                try {
-                    mediaMuxer?.writeSampleData(realTrack, buffer, bufferInfo)
-                    totalBytesWritten.addAndGet(bufferInfo.size.toLong())
-                } catch (e: Exception) {
-                    Log.e(tag, "Error writing sample data to track $realTrack", e)
-                }
-            }
-            return
-        }
-
-        // Slow path: Muxer not yet started, queue under lock
         muxerLock.withLock {
             if (isMuxerStarted.get()) {
                 val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
@@ -527,8 +515,8 @@ class ScreenRecorderEngine(
                     }
                 }
             } else {
-                // Queue until muxer starts (max 100 frames)
-                if (pendingSamples.size < 100) {
+                // Queue until muxer starts (max 120 frames)
+                if (pendingSamples.size < 120) {
                     val bytes = getOrCreatePendingBuffer(bufferInfo.size)
                     val oldPos = buffer.position()
                     buffer.position(bufferInfo.offset)

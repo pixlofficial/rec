@@ -56,6 +56,10 @@ object ConfigPreferences {
     private const val KEY_DISMISS_GAMING_PRESET_PROMPT = "dismiss_gaming_preset_prompt"
     private const val KEY_DISMISS_AUTOTUNE_BITRATE = "dismiss_autotune_bitrate"
     private const val KEY_HAS_SEEN_WELCOME = "has_seen_welcome"
+    private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
+    private const val KEY_PILL_DOCKED_ON_LEFT = "pill_docked_on_left"
+    private const val KEY_PILL_DOCKED_ON_RIGHT = "pill_docked_on_right"
+    private const val KEY_PILL_DOCK_Y_RATIO = "pill_dock_y_ratio"
 
     // Standby HUD Keys
     private const val KEY_STANDBY_ICON_SIZE_DP = "standby_hud_icon_size_dp"
@@ -268,5 +272,29 @@ object ConfigPreferences {
 
     fun setHasSeenWelcome(context: Context, seen: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_HAS_SEEN_WELCOME, seen).apply()
+    }
+
+    fun getLastSeenVersionCode(context: Context): Int {
+        return getPrefs(context).getInt(KEY_LAST_SEEN_VERSION_CODE, 0)
+    }
+
+    fun setLastSeenVersionCode(context: Context, versionCode: Int) {
+        getPrefs(context).edit().putInt(KEY_LAST_SEEN_VERSION_CODE, versionCode).apply()
+    }
+
+    fun savePillDockState(context: Context, isLeft: Boolean, isRight: Boolean, yRatio: Float) {
+        getPrefs(context).edit()
+            .putBoolean(KEY_PILL_DOCKED_ON_LEFT, isLeft)
+            .putBoolean(KEY_PILL_DOCKED_ON_RIGHT, isRight)
+            .putFloat(KEY_PILL_DOCK_Y_RATIO, yRatio)
+            .apply()
+    }
+
+    fun loadPillDockState(context: Context): Triple<Boolean, Boolean, Float> {
+        val prefs = getPrefs(context)
+        val isLeft = prefs.getBoolean(KEY_PILL_DOCKED_ON_LEFT, true)
+        val isRight = prefs.getBoolean(KEY_PILL_DOCKED_ON_RIGHT, false)
+        val yRatio = prefs.getFloat(KEY_PILL_DOCK_Y_RATIO, 0.35f)
+        return Triple(isLeft, isRight, yRatio)
     }
 }

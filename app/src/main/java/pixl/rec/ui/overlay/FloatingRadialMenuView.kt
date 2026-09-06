@@ -71,7 +71,10 @@ import kotlin.math.sin
 /**
  * 5-Faceted Cyberpunk Angular Polygon Canopy Shape for Edge Docking (180° Fan).
  */
-class FiveFacetPolygonCanopyShape(private val isDockedOnLeft: Boolean) : Shape {
+class FiveFacetPolygonCanopyShape(
+    private val isDockedOnLeft: Boolean,
+    private val extraOrbitDp: Float = 0f
+) : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
@@ -90,15 +93,15 @@ class FiveFacetPolygonCanopyShape(private val isDockedOnLeft: Boolean) : Shape {
             }
 
             val cornerDistances = listOf(
-                with(density) { 82.dp.toPx() },
-                with(density) { 88.dp.toPx() },
-                with(density) { 92.dp.toPx() },
-                with(density) { 92.dp.toPx() },
-                with(density) { 88.dp.toPx() },
-                with(density) { 82.dp.toPx() }
+                with(density) { (82f + extraOrbitDp).dp.toPx() },
+                with(density) { (88f + extraOrbitDp).dp.toPx() },
+                with(density) { (92f + extraOrbitDp).dp.toPx() },
+                with(density) { (92f + extraOrbitDp).dp.toPx() },
+                with(density) { (88f + extraOrbitDp).dp.toPx() },
+                with(density) { (82f + extraOrbitDp).dp.toPx() }
             )
 
-            val wallY = with(density) { 81.dp.toPx() }
+            val wallY = with(density) { (81f + extraOrbitDp * 0.9f).dp.toPx() }
 
             if (isDockedOnLeft) {
                 moveTo(0f, hubY - wallY)
@@ -231,6 +234,7 @@ fun FloatingRadialMenuView(
                     expansionProgress = expansionProgress,
                     isRecordingActive = isRecordingActive,
                     isPaused = isPaused,
+                    hudConfig = hudConfig,
                     onToggleExpand = onToggleExpand,
                     onRecordClick = onRecordClick,
                     onReplayClick = onReplayClick,
@@ -248,6 +252,7 @@ fun FloatingRadialMenuView(
                     isRecordingActive = isRecordingActive,
                     isPaused = isPaused,
                     durationMs = durationMs,
+                    hudConfig = hudConfig,
                     onToggleExpand = onToggleExpand,
                     onRecordClick = onRecordClick,
                     onReplayClick = onReplayClick,
@@ -342,6 +347,7 @@ private fun FreeSpaceHexPodCanopy(
     isRecordingActive: Boolean,
     isPaused: Boolean,
     durationMs: Long,
+    hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
     onRecordClick: () -> Unit,
     onReplayClick: () -> Unit = {},
@@ -352,11 +358,15 @@ private fun FreeSpaceHexPodCanopy(
     onSettingsClick: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
-    val hexPodShape = remember { IsometricHexPodShape() }
+    val extraSize = if (hudConfig.hasBackground && hudConfig.sizeDp > 44) (hudConfig.sizeDp - 44) else 0
+    val freeExtra = extraSize * 1.2f
+    val podWidth = (156f + freeExtra).dp
+    val podHeight = (176f + freeExtra).dp
+    val hexPodShape = remember(freeExtra) { IsometricHexPodShape() }
 
     Box(
         modifier = Modifier
-            .size(width = 156.dp, height = 176.dp)
+            .size(width = podWidth, height = podHeight)
             .scale(expansionProgress)
             .alpha(expansionProgress)
             .clip(hexPodShape)
@@ -367,7 +377,7 @@ private fun FreeSpaceHexPodCanopy(
     // Dotted Cyber Spoke Dividers (5 Radial Dividers separating the chambers; NO line through top text)
     Canvas(
         modifier = Modifier
-            .size(width = 156.dp, height = 176.dp)
+            .size(width = podWidth, height = podHeight)
             .alpha(expansionProgress)
     ) {
         val w = size.width
@@ -392,7 +402,7 @@ private fun FreeSpaceHexPodCanopy(
     // 1. TOP FACET: Live Digital Timer (REC) or STANDBY (Standby) - Centered in Top Chamber
     Box(
         modifier = Modifier
-            .offset(y = (-45).dp)
+            .offset(y = (-45 - freeExtra * 0.45f).dp)
             .scale(expansionProgress)
             .alpha(expansionProgress)
     ) {
@@ -409,7 +419,7 @@ private fun FreeSpaceHexPodCanopy(
     // 2. LEFT CHAMBER: Invisible Ghost Mode (slashed eye) - Centered in Left Chamber
     Box(
         modifier = Modifier
-            .offset(x = (-46).dp)
+            .offset(x = (-46 - freeExtra * 0.5f).dp)
             .scale(expansionProgress)
             .alpha(expansionProgress)
             .clickable(
@@ -433,7 +443,7 @@ private fun FreeSpaceHexPodCanopy(
     // 3. RIGHT CHAMBER: Pause/Resume (REC) or Start Record (Standby) - Centered in Right Chamber
     Box(
         modifier = Modifier
-            .offset(x = 46.dp)
+            .offset(x = (46 + freeExtra * 0.5f).dp)
             .scale(expansionProgress)
             .alpha(expansionProgress)
             .clickable(
@@ -467,7 +477,7 @@ private fun FreeSpaceHexPodCanopy(
     // 4. BOTTOM-LEFT CHAMBER: Instant Replay (REC) or Config Settings (Standby)
     Box(
         modifier = Modifier
-            .offset(x = (-26).dp, y = 42.dp)
+            .offset(x = (-26 - freeExtra * 0.4f).dp, y = (42 + freeExtra * 0.45f).dp)
             .scale(expansionProgress)
             .alpha(expansionProgress)
             .clickable(
@@ -491,7 +501,7 @@ private fun FreeSpaceHexPodCanopy(
     // 5. BOTTOM-RIGHT CHAMBER: Screenshot / Camera - Centered in Bottom-Right Chamber
     Box(
         modifier = Modifier
-            .offset(x = 26.dp, y = 42.dp)
+            .offset(x = (26 + freeExtra * 0.4f).dp, y = (42 + freeExtra * 0.45f).dp)
             .scale(expansionProgress)
             .alpha(expansionProgress)
             .clickable(
@@ -522,6 +532,7 @@ private fun EdgeFanCanopy(
     expansionProgress: Float,
     isRecordingActive: Boolean,
     isPaused: Boolean,
+    hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
     onRecordClick: () -> Unit,
     onReplayClick: () -> Unit = {},
@@ -535,8 +546,15 @@ private fun EdgeFanCanopy(
 ) {
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
-    val canopyShape = remember(isDockedOnLeft) { FiveFacetPolygonCanopyShape(isDockedOnLeft) }
-    val canopyWidthPx = with(density) { 118.dp.toPx() }
+
+    val extraSize = if (hudConfig.hasBackground && hudConfig.sizeDp > 44) (hudConfig.sizeDp - 44) else 0
+    val extraOrbitDp = extraSize * 1.75f
+
+    val canopyWidthDp = (118f + extraOrbitDp).dp
+    val canopyHeightDp = (210f + extraOrbitDp * 1.8f).dp
+
+    val canopyShape = remember(isDockedOnLeft, extraOrbitDp) { FiveFacetPolygonCanopyShape(isDockedOnLeft, extraOrbitDp) }
+    val canopyWidthPx = with(density) { canopyWidthDp.toPx() }
     val slideOffsetPx = if (isDockedOnLeft) {
         -(1f - expansionProgress) * canopyWidthPx
     } else {
@@ -549,7 +567,7 @@ private fun EdgeFanCanopy(
                 start = if (isDockedOnLeft) 46.dp else 0.dp,
                 end = if (!isDockedOnLeft) 46.dp else 0.dp
             )
-            .size(width = 118.dp, height = 210.dp)
+            .size(width = canopyWidthDp, height = canopyHeightDp)
             .graphicsLayer {
                 translationX = slideOffsetPx
                 alpha = expansionProgress.coerceIn(0f, 1f)
@@ -574,10 +592,10 @@ private fun EdgeFanCanopy(
             val hubCenterY = h / 2f
             val dividerAngles = if (isDockedOnLeft) listOf(-52.5f, -17.5f, 17.5f, 52.5f) else listOf(232.5f, 197.5f, 162.5f, 127.5f)
             val dividerDistances = listOf(
-                88.dp.toPx(),
-                92.dp.toPx(),
-                92.dp.toPx(),
-                88.dp.toPx()
+                (88f + extraOrbitDp).dp.toPx(),
+                (92f + extraOrbitDp).dp.toPx(),
+                (92f + extraOrbitDp).dp.toPx(),
+                (88f + extraOrbitDp).dp.toPx()
             )
 
             dividerAngles.forEachIndexed { i, deg ->
@@ -595,7 +613,7 @@ private fun EdgeFanCanopy(
             }
         }
 
-        val nodeOrbitRadius = with(density) { 58.dp.toPx() }
+        val nodeOrbitRadius = with(density) { (58f + extraOrbitDp).dp.toPx() }
 
         // Node 1: Config in Standby, Instant Replay in Active Recording (Top Chamber)
         FanNodeItem(

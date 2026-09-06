@@ -81,17 +81,19 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
+        val baseConfig = if (intent != null) {
             val passedConfig = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(EXTRA_CONFIG, RecordingConfig::class.java)
             } else {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(EXTRA_CONFIG) as? RecordingConfig
             }
-            if (passedConfig != null) {
-                configState.value = passedConfig
-            }
+            passedConfig ?: configState.value
+        } else {
+            configState.value
         }
+        val currentCfg = ConfigPreferences.loadConfig(this, baseConfig)
+        configState.value = currentCfg
         _isTemporarilyHidden.value = false
         removeMenuOverlay()
         if (overlayView == null) {
@@ -100,7 +102,6 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             overlayView?.visibility = View.VISIBLE
         }
         _isRunning.value = true
-        val currentCfg = ConfigPreferences.loadConfig(this, configState.value)
         StandbyNotificationManager.show(this, currentCfg)
         return START_STICKY
     }
@@ -218,19 +219,38 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         serviceScope.launch {
             isTemporarilyHidden.collect { hidden ->
-                val view = overlayView ?: return@collect
                 val wm = windowManager ?: return@collect
-                val params = layoutParams ?: return@collect
                 try {
                     if (hidden) {
-                        if (view.isAttachedToWindow) {
-                            wm.removeView(view)
+                        val view = overlayView
+                        if (view != null) {
+                            if (view.isAttachedToWindow) {
+                                wm.removeView(view)
+                            }
+                            overlayView = null
                         }
                     } else {
-                        if (!view.isAttachedToWindow) {
-                            wm.addView(view, params)
+                        val bounds = getDockBounds()
+                        cachedDockBounds = bounds
+                        if (isDockedOnRightState.value) {
+                            layoutParams.x = bounds.maxX
+                        } else if (isDockedOnLeftState.value) {
+                            layoutParams.x = bounds.minX
+                        } else {
+                            layoutParams.x = layoutParams.x.coerceIn(bounds.minX, bounds.maxX)
                         }
-                        view.visibility = android.view.View.VISIBLE
+                        layoutParams.y = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
+
+                        if (overlayView == null) {
+                            createOverlayView()
+                        } else {
+                            if (!overlayView!!.isAttachedToWindow) {
+                                wm.addView(overlayView, layoutParams)
+                            } else {
+                                wm.updateViewLayout(overlayView, layoutParams)
+                            }
+                            overlayView?.visibility = android.view.View.VISIBLE
+                        }
                     }
                 } catch (e: Exception) {
                     android.util.Log.w("FloatingOverlayService", "Error toggling overlay window attachment", e)
@@ -253,10 +273,18 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        standbyDockY = dpToPx(300f)
+        val (savedLeft, savedRight, savedYRatio) = ConfigPreferences.loadPillDockState(this)
+        val bounds = getDockBounds()
+        standbyDockY = (bounds.screenHeight * savedYRatio).roundToInt().coerceIn(bounds.minY, bounds.maxY)
 
-        isDockedOnLeftState.value = true
-        isDockedOnRightState.value = false
+        isDockedOnLeftState.value = savedLeft
+        isDockedOnRightState.value = savedRight
+
+        val initialX = when {
+            savedRight -> bounds.maxX
+            savedLeft -> bounds.minX
+            else -> bounds.minX
+        }
 
         layoutParams = WindowManager.LayoutParams(
             dpToPx(PILL_WIDTH_DP),
@@ -268,8 +296,15 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = -dpToPx(PILL_BEZEL_OFFSET_DP)
+            x = initialX
             y = standbyDockY
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                setFitInsetsTypes(0)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                @Suppress("DEPRECATION")
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
         createOverlayView()
     }
@@ -278,8 +313,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
     private var isActivelyDragging: Boolean = false
 
     private fun createOverlayView() {
+        isActivelyDragging = false
         val composeView = ComposeView(this).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(this@FloatingOverlayService))
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool)
             setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
             setViewTreeLifecycleOwner(this@FloatingOverlayService)
 
@@ -327,7 +363,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                         },
                         onCollapseComplete = {},
                         onRecordClick = {
-                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
+                            val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                            configState.value = activeConfig
+                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
                         },
                         onReplayClick = {
                             android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
@@ -375,7 +413,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         cachedDockBounds = null // Invalidate cached screen bounds on rotation
         // Screen orientation changed (Portrait <-> Landscape)
         overlayView?.post {
-            snapToNearestEdge()
+            snapToNearestEdge(preserveDockSide = true)
         }
     }
 
@@ -425,7 +463,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
     }
 
-    private fun snapToNearestEdge() {
+    private fun snapToNearestEdge(preserveDockSide: Boolean = false) {
         val bounds = getDockBoundsCached()
         val currentX = layoutParams.x
         val viewWidth = dpToPx(PILL_WIDTH_DP)
@@ -434,8 +472,12 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         when (snapBehavior) {
             pixl.rec.core.model.HudSnapBehavior.ALWAYS_SNAP_EDGE -> {
-                val midX = bounds.screenWidth / 2
-                val isLeft = (currentX + viewWidth / 2 < midX)
+                val isLeft = if (preserveDockSide && (isDockedOnLeftState.value || isDockedOnRightState.value)) {
+                    isDockedOnLeftState.value
+                } else {
+                    val midX = bounds.screenWidth / 2
+                    (currentX + viewWidth / 2 < midX)
+                }
                 val targetX = if (isLeft) bounds.minX else bounds.maxX
                 val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
                 animateWindowTo(targetX, targetY) {
@@ -443,19 +485,20 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                 }
             }
             pixl.rec.core.model.HudSnapBehavior.PROXIMITY_SNAP -> {
-                val edgeThresholdPx = dpToPx(24f)
-                val isNearLeft = (currentX - bounds.minX) <= edgeThresholdPx
-                val isNearRight = (bounds.maxX - currentX) <= edgeThresholdPx
+                val isLeft: Boolean? = if (preserveDockSide && (isDockedOnLeftState.value || isDockedOnRightState.value)) {
+                    isDockedOnLeftState.value
+                } else {
+                    val edgeThresholdPx = dpToPx(24f)
+                    val isNearLeft = (currentX - bounds.minX) <= edgeThresholdPx
+                    val isNearRight = (bounds.maxX - currentX) <= edgeThresholdPx
+                    if (isNearLeft) true else if (isNearRight) false else null
+                }
 
-                if (isNearLeft) {
+                if (isLeft != null) {
+                    val targetX = if (isLeft) bounds.minX else bounds.maxX
                     val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
-                    animateWindowTo(bounds.minX, targetY) {
-                        finishDocking(true, bounds, targetY)
-                    }
-                } else if (isNearRight) {
-                    val targetY = standbyDockY.coerceIn(bounds.minY, bounds.maxY)
-                    animateWindowTo(bounds.maxX, targetY) {
-                        finishDocking(false, bounds, targetY)
+                    animateWindowTo(targetX, targetY) {
+                        finishDocking(isLeft, bounds, targetY)
                     }
                 } else {
                     finishFreeFloat(bounds)
@@ -478,6 +521,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         } catch (e: Exception) {
             // ignore
         }
+        val yRatio = if (bounds.screenHeight > 0) (targetY.toFloat() / bounds.screenHeight.toFloat()).coerceIn(0.05f, 0.95f) else 0.35f
+        ConfigPreferences.savePillDockState(this, isLeft = isLeft, isRight = !isLeft, yRatio = yRatio)
     }
 
     private fun finishFreeFloat(bounds: DockBounds) {
@@ -489,6 +534,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         } catch (e: Exception) {
             // ignore
         }
+        val yRatio = if (bounds.screenHeight > 0) (layoutParams.y.toFloat() / bounds.screenHeight.toFloat()).coerceIn(0.05f, 0.95f) else 0.35f
+        ConfigPreferences.savePillDockState(this, isLeft = false, isRight = false, yRatio = yRatio)
     }
 
     private var menuOverlayView: View? = null
@@ -506,6 +553,15 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val bounds = getDockBoundsCached()
         val isLeft = isDockedOnLeftState.value
         val isRight = isDockedOnRightState.value
+        val currentConfig = ConfigPreferences.loadConfig(this, configState.value)
+        configState.value = currentConfig
+        val isRec = RecordingService.serviceState.value is RecorderState.Recording || RecordingService.serviceState.value is RecorderState.Paused
+        val hudConfig = if (isRec) currentConfig.recordingHudConfig else currentConfig.standbyHudConfig
+        val extraExpandDp = if (hudConfig.hasBackground && hudConfig.sizeDp > 44) (hudConfig.sizeDp - 44) else 0
+        val extraOrbitDp = extraExpandDp * 1.75f
+
+        val pillCenterX = layoutParams.x + dpToPx(PILL_WIDTH_DP) / 2
+        val pillCenterY = layoutParams.y + dpToPx(PILL_HEIGHT_DP) / 2
 
         val menuW: Int
         val menuH: Int
@@ -513,22 +569,21 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         val menuY: Int
 
         if (isLeft) {
-            menuW = dpToPx(186f)
-            menuH = dpToPx(240f)
-            menuX = -dpToPx(46f)
-            menuY = (layoutParams.y - dpToPx(84f)).coerceIn(bounds.minY, bounds.maxY)
+            menuW = dpToPx(186f + extraOrbitDp)
+            menuH = dpToPx(240f + extraOrbitDp * 1.8f)
+            menuX = layoutParams.x
+            menuY = pillCenterY - menuH / 2
         } else if (isRight) {
-            menuW = dpToPx(186f)
-            menuH = dpToPx(240f)
-            menuX = (bounds.screenWidth - dpToPx(140f)).coerceAtLeast(0)
-            menuY = (layoutParams.y - dpToPx(84f)).coerceIn(bounds.minY, bounds.maxY)
+            menuW = dpToPx(186f + extraOrbitDp)
+            menuH = dpToPx(240f + extraOrbitDp * 1.8f)
+            menuX = (layoutParams.x + dpToPx(PILL_WIDTH_DP)) - menuW
+            menuY = pillCenterY - menuH / 2
         } else {
-            val pillCenterX = layoutParams.x + dpToPx(PILL_WIDTH_DP / 2f)
-            val pillCenterY = layoutParams.y + dpToPx(PILL_HEIGHT_DP / 2f)
-            menuW = dpToPx(164f)
-            menuH = dpToPx(188f)
-            menuX = pillCenterX - dpToPx(82f)
-            menuY = pillCenterY - dpToPx(94f)
+            val freeExtra = extraExpandDp * 1.2f
+            menuW = dpToPx(164f + freeExtra)
+            menuH = dpToPx(188f + freeExtra)
+            menuX = pillCenterX - menuW / 2
+            menuY = pillCenterY - menuH / 2
         }
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -550,6 +605,13 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
             gravity = Gravity.TOP or Gravity.START
             x = 0
             y = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                setFitInsetsTypes(0)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                @Suppress("DEPRECATION")
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
 
         val isMenuExpandedState = mutableStateOf(false)
@@ -614,7 +676,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                                 onDragEnd = {},
                                 onRecordClick = {
                                     removeMenuOverlay()
-                                    startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, this@FloatingOverlayService.config))
+                                    val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                                    configState.value = activeConfig
+                                    startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
                                 },
                                 onPauseClick = {
                                     RecordingService.pauseService(this@FloatingOverlayService)
@@ -765,7 +829,11 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
 
         fun toggle(context: Context, config: RecordingConfig = RecordingConfig()) {
             if (isPillVisible) {
-                stop(context)
+                if (config.alwaysOnFloatingPill && isServiceRunning) {
+                    setTemporarilyHidden(true, context)
+                } else {
+                    stop(context)
+                }
             } else {
                 if (isServiceRunning) {
                     setTemporarilyHidden(false, context)
