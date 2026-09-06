@@ -9,7 +9,7 @@
 
   <br />
 
-  [![Latest Release](https://img.shields.io/badge/Release-v0.2.0-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
+  [![Latest Release](https://img.shields.io/badge/Release-v0.7.0-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
   [![Android Minimum SDK](https://img.shields.io/badge/Android-10%20to%2016%20Ready-00FF66?style=for-the-badge&logo=android&logoColor=black)](https://developer.android.com)
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-E50914?style=for-the-badge&logo=gnu&logoColor=white)](./LICENSE)
   [![Build Status](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-7928CA?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/pixlofficial/rec/actions)
@@ -38,7 +38,9 @@ With REC, you capture pristine **1080p / 1440p / 4K footage up to 120+ FPS** whi
 * 🎚️ **Padé [3/3] Soft-Knee Limiter:** High-speed rational polynomial limiter (`x * (27 + x²) / (27 + 9x²)`) preventing digital audio clipping and distortion without native JNI math overhead.
 * ⏱️ **Frame-0 Monotonic Synchronization:** Audio PCM and video presentation timestamps (`PTS`) are aligned to a single monotonic baseline (`sessionBaseTimeNs`), completely eliminating startup lip-sync drift.
 * 🔄 **Dynamic Canvas & Live Resizing:** Dynamically adapts to device orientation changes mid-recording without stopping or distorting video, with support for **Canvas Orientation Locking** (`AUTO`, `LANDSCAPE`, `PORTRAIT`).
-* 🪟 **Cyberpunk Radial Floating HUD:** Magnetized floating glass overlay with 4-node radial action fan, ghost auto-hide standby, and edge-gesture recall.
+* 🎬 **Zero-Latency In-App Vault Player:** Integrated hardware-accelerated video player featuring 0ms `CLOSEST_SYNC` keyframe seeking, dynamic multi-tap seek accumulation ($5\text{s} \to 10\text{s} \to 20\text{s}\dots$), custom pixel double-chevron vector suites with internal laser ripple sweeps, and vertical volume/brightness slide gestures.
+* 🪟 **Cyberpunk Floating HUD & Studio:** Magnetized floating glass overlay with 4-node radial action fan, ghost auto-hide standby, edge-gesture recall, and a full HUD Studio customization suite (Standby vs. Recording styling).
+* 💾 **Configuration Deck & Profile Portability:** Complete configurations management suite with 1-click JSON export and import for portable recording setups.
 * 📦 **Instant Media Vault (<15ms):** Asynchronous background thumbnail decoding backed by an in-memory 64-item `LruCache`.
 * 🛡️ **100% Offline & Private:** Zero ads, zero tracking SDKs, zero cloud dependencies, and zero accounts. Saves locally to Scoped Storage.
 * 🪶 **20 MB Lightweight Binary:** Full R8 ProGuard bytecode optimization and resource shrinking for minimal storage footprint.
@@ -125,9 +127,9 @@ flowchart TD
 ### Standalone Release (GitHub)
 Download the latest signed standalone binaries from our **[Releases Page](https://github.com/pixlofficial/rec/releases)**:
 
-* **`REC-v0.2.0.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
-* **`REC-v0.2.0-debug.apk`** — Debug build with logging and development inspection tools.
-* **`REC-v0.2.0.aab`** — Google Play App Bundle with full split-APK optimization.
+* **`REC-v0.7.0.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
+* **`REC-v0.7.0-debug.apk`** — Debug build with logging and development inspection tools.
+* **`REC-v0.7.0.aab`** — Google Play App Bundle with full split-APK optimization.
 * **`SHA256SUMS.txt`** — Cryptographic SHA-256 verification checksums for all release binaries.
 
 ---
@@ -151,11 +153,11 @@ cd rec
 
 # 3. Assemble Standalone Debug APK
 ./gradlew assembleDebug
-# Output: app/build/outputs/apk/debug/REC-v0.2.0-debug.apk
+# Output: app/build/outputs/apk/debug/REC-v0.7.0-debug.apk
 
 # 4. Assemble Optimized Release APK (R8 Minified + Resource Shrunk)
 ./gradlew assembleRelease
-# Output: app/build/outputs/apk/release/REC-v0.2.0.apk
+# Output: app/build/outputs/apk/release/REC-v0.7.0.apk
 
 # 5. Assemble Google Play Store App Bundle (AAB)
 ./gradlew bundleRelease
@@ -179,7 +181,7 @@ REC/
 │       │   │   ├── engine/      # Master ScreenRecorderEngine, VideoEncoder, AudioEncoder, CodecProbe
 │       │   │   ├── audio/       # AudioCaptureManager & 16-bit PCM software audio mixer
 │       │   │   ├── sensor/      # Accelerometer ShakeDetector (~5Hz power-optimized)
-│       │   │   ├── storage/     # MediaStoreWriter, StorageCalculator & ConfigPreferences
+│       │   │   ├── storage/     # MediaStoreWriter, StorageCalculator, ConfigPreferences & RecPreferences
 │       │   │   └── model/       # Parcelable RecordingConfig, RecorderState & DeviceCapabilities
 │       │   ├── service/
 │       │   │   ├── RecordingService.kt       # MediaProjection Foreground Service
@@ -188,20 +190,24 @@ REC/
 │       │       ├── dashboard/   # Live Telemetry Dashboard & Hero Recording Card
 │       │       ├── overlay/     # Floating Pill View & Radial Fan Menu
 │       │       ├── vault/       # In-App Media Vault with Async LruCache
-│       │       ├── settings/    # Recording Configurations Deck
-│       │       ├── more/        # App info, open-source licenses & diagnostics
+│       │       │   └── player/  # VaultVideoPlayer (0ms keyframe seek & gesture HUD)
+│       │       ├── settings/    # Recording Configurations Deck & JSON Import/Export
+│       │       ├── setup/       # Onboarding flow & What's New release highlights modal
+│       │       ├── more/        # App info, open-source licenses & Floating HUD Studio
 │       │       ├── navigation/  # Bottom navigation bar & floating record shutter
+│       │       ├── components/  # Audio visualizer, neon buttons, pixel vector suite
 │       │       └── theme/       # Cyberpunk dark theme, neon tokens & typography
-│       └── res/                 # Vector drawables, fonts, and strings
+│       └── res/                 # Vector drawables, pixel suite, fonts, and strings
 │
 ├── assets/
 │   ├── branding/                # High-res logos and launcher icons
 │   ├── icons/                   # Pixel-art style vector SVG assets
 │   └── screenshots/             # Application showcase captures
 │
+├── dev/                         # Developer roadmaps, improvements & audits
 ├── .github/workflows/
 │   └── build-apk.yml            # CI/CD: Automated Gradle test, AAB & APK releases
-├── version.properties           # Single source of truth for versioning (0.2.0)
+├── version.properties           # Single source of truth for versioning (0.7.0)
 ├── CHANGELOG.md                 # Keep a Changelog release history
 ├── AGENTS.md                    # Coding standards & development guidelines
 ├── CONTRIBUTING.md              # Open-source contribution guidelines

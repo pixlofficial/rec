@@ -39,9 +39,13 @@ All AI agents, contributors, and automated tooling working in this codebase MUST
 ## 3. Repository Architecture & Directory Layout
 
 ```
-PixL-Recorder/
+REC/
 ├── PROJECT_BLUEPRINT.md               # Product Requirements & Technical Spec
 ├── AGENTS.md                          # Agent instructions & coding standards
+├── CHANGELOG.md                       # Release changelog & version history
+├── README.md                          # Public repository showcase & architecture
+├── version.properties                 # Single source of truth for versioning
+├── dev/                               # Developer roadmaps, improvements & audits
 ├── .github/workflows/
 │   └── build-apk.yml                  # CI/CD: Automated Gradle APK build & release
 ├── build.gradle.kts                   # Root build script
@@ -63,7 +67,7 @@ PixL-Recorder/
 │       │   │   │   └── PcmAudioMixer.kt
 │       │   │   ├── sensor/            # Accelerometer shake detection
 │       │   │   │   └── ShakeDetector.kt
-│       │   │   ├── storage/           # Scoped storage & file estimation
+│       │   │   ├── storage/           # Scoped storage, ConfigPreferences & RecPreferences
 │       │   │   │   ├── MediaStoreWriter.kt
 │       │   │   │   └── StorageCalculator.kt
 │       │   │   └── model/             # StateFlow models & configurations
@@ -76,9 +80,15 @@ PixL-Recorder/
 │       │   └── ui/
 │       │       ├── theme/             # Cyberpunk dark theme, Lexend Tera & glassmorphism
 │       │       ├── dashboard/         # Main telemetry dashboard & controls
-│       │       ├── overlay/           # Floating pill composable views
-│       │       └── components/        # Audio visualizer, neon buttons, telemetry cards
-│       └── res/                       # Drawables, layout, strings, font
+│       │       ├── overlay/           # Floating pill composable views & radial fan
+│       │       ├── vault/             # In-App Media Vault with Async LruCache
+│       │       │   └── player/        # VaultVideoPlayer (0ms keyframe seek & gesture HUD)
+│       │       ├── settings/          # Modular configurations deck & JSON import/export
+│       │       ├── setup/             # Onboarding flow & What's New release highlights modal
+│       │       ├── more/              # App diagnostics, licenses & Floating HUD Studio
+│       │       ├── navigation/        # Bottom navigation bar & floating shutter button
+│       │       └── components/        # Audio visualizer, neon buttons, pixel vector suite
+│       └── res/                       # Drawables, pixel vectors, layout, strings, font
 ```
 
 ---
@@ -157,15 +167,24 @@ All AI agents must strictly follow this protocol whenever bumping the version or
      * `### 🔒 Security` — for security patches.
    * Update the release diff link at the bottom of `CHANGELOG.md`.
 
-3. **Verify Local Build & Test Suite:**
+3. **Update `README.md`:**
+   * Update the `Release-vX.Y.Z` shield badge near the top of [README.md](./README.md).
+   * Update all standalone download artifact links (`REC-vX.Y.Z.apk`, `REC-vX.Y.Z-debug.apk`, `REC-vX.Y.Z.aab`) and build output sample paths.
+   * Update key highlights, benchmark tables, or repository architecture diagrams if new architectural components were added in the release.
+
+4. **Update `WhatsNewModal.kt`:**
+   * Update `RECENT_HIGHLIGHTS` in [`WhatsNewModal.kt`](./app/src/main/java/pixl/rec/ui/setup/WhatsNewModal.kt) with concise bullet points highlighting the new user-facing features of the release.
+   * This guarantees existing users are presented with a sleek changelog modal on their first app launch immediately after updating.
+
+5. **Verify Local Build & Test Suite:**
    * Always validate the build before committing:
      ```bash
      ./gradlew assembleDebug assembleRelease test
      ```
 
-4. **Commit & Tag Convention:**
+6. **Commit & Tag Convention:**
    * Commit format: `chore(release): bump version to X.Y.Z`
-   * Release Tag format: `vX.Y.Z` (e.g. `git tag v0.1.0`)
+   * Release Tag format: `vX.Y.Z` (e.g. `git tag v0.7.0`)
    * Pushing the tag (`git push origin vX.Y.Z`) triggers `.github/workflows/build-apk.yml`, automatically building:
      * `REC-vX.Y.Z.aab` (Google Play App Bundle)
      * `REC-vX.Y.Z.apk` (Universal standalone release APK)
