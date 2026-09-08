@@ -16,6 +16,7 @@ import pixl.rec.core.model.StrokeStyle
 import pixl.rec.core.model.HudSnapBehavior
 import pixl.rec.core.model.HudStyleConfig
 import pixl.rec.core.model.StreamConfig
+import pixl.rec.core.model.StreamDestination
 import pixl.rec.core.model.StreamPlatform
 
 /**
@@ -341,12 +342,27 @@ object ConfigPreferences {
         val prefs = getPrefs(context)
         val platformStr = prefs.getString(KEY_STREAM_PLATFORM, StreamPlatform.YOUTUBE.name) ?: StreamPlatform.YOUTUBE.name
         val platform = runCatching { StreamPlatform.valueOf(platformStr) }.getOrDefault(StreamPlatform.YOUTUBE)
-        val streamKey = SecureStreamPreferences.getStreamKey(context)
+        val legacyStreamKey = SecureStreamPreferences.getStreamKey(context)
+        val customUrl = prefs.getString(KEY_STREAM_CUSTOM_ENDPOINT, "") ?: ""
+
+        val destinations = StreamPlatform.entries.map { p ->
+            val isEnabled = prefs.getBoolean("stream_dest_enabled_${p.name.lowercase()}", p == platform)
+            val key = SecureStreamPreferences.getPlatformStreamKey(context, p).ifBlank {
+                if (p == platform) legacyStreamKey else ""
+            }
+            StreamDestination(
+                platform = p,
+                customEndpointUrl = if (p == StreamPlatform.CUSTOM) customUrl else "",
+                streamKey = key,
+                enabled = isEnabled
+            )
+        }
 
         return StreamConfig(
             platform = platform,
-            customEndpointUrl = prefs.getString(KEY_STREAM_CUSTOM_ENDPOINT, "") ?: "",
-            streamKey = streamKey,
+            customEndpointUrl = customUrl,
+            streamKey = legacyStreamKey,
+            destinations = destinations,
             videoBitrate = prefs.getInt(KEY_STREAM_VIDEO_BITRATE, platform.defaultVideoBitrate),
             enableAbr = prefs.getBoolean(KEY_STREAM_ENABLE_ABR, true),
             minBitrate = prefs.getInt(KEY_STREAM_MIN_BITRATE, 2_000_000),
@@ -357,11 +373,16 @@ object ConfigPreferences {
     }
 
     fun saveStreamConfig(context: Context, config: StreamConfig) {
-        // Save secret key in hardware-backed Keystore
-        SecureStreamPreferences.saveStreamKey(context, config.streamKey)
+        // Save secret keys per destination in hardware-backed Keystore
+        config.destinations.forEach { dest ->
+            SecureStreamPreferences.savePlatformStreamKey(context, dest.platform, dest.streamKey)
+        }
+        if (config.streamKey.isNotBlank()) {
+            SecureStreamPreferences.saveStreamKey(context, config.streamKey)
+        }
 
         // Save non-sensitive parameters
-        getPrefs(context).edit()
+        val editor = getPrefs(context).edit()
             .putString(KEY_STREAM_PLATFORM, config.platform.name)
             .putString(KEY_STREAM_CUSTOM_ENDPOINT, config.customEndpointUrl)
             .putInt(KEY_STREAM_VIDEO_BITRATE, config.videoBitrate)
@@ -370,6 +391,14 @@ object ConfigPreferences {
             .putInt(KEY_STREAM_MAX_BITRATE, config.maxBitrate)
             .putBoolean(KEY_STREAM_SAVE_LOCAL_ARCHIVE, config.saveLocalMasterArchive)
             .putBoolean(KEY_STREAM_USE_ENHANCED_HEVC, config.useEnhancedHevc)
-            .apply()
+
+        config.destinations.forEach { dest ->
+            editor.putBoolean("stream_dest_enabled_${dest.platform.name.lowercase()}", dest.enabled)
+            if (dest.platform == StreamPlatform.CUSTOM && dest.customEndpointUrl.isNotBlank()) {
+                editor.putString(KEY_STREAM_CUSTOM_ENDPOINT, dest.customEndpointUrl)
+            }
+        }
+
+        editor.apply()
     }
 }

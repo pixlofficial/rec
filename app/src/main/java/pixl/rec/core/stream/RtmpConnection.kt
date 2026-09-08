@@ -120,7 +120,7 @@ class RtmpConnection(
             val setChunkPacket = chunkStream.createSetChunkSizePacket(RtmpChunkStream.TARGET_CHUNK_SIZE)
             chunkStream.writePacket(setChunkPacket, bufOut)
             bufOut.flush()
-            chunkStream.chunkSize = RtmpChunkStream.TARGET_CHUNK_SIZE
+            chunkStream.outChunkSize = RtmpChunkStream.TARGET_CHUNK_SIZE
 
             // 4. Send Connect Command
             _state.value = State.Publishing
@@ -206,6 +206,9 @@ class RtmpConnection(
             )
             bufOut.flush()
 
+            // Once publishing is negotiated, disable socket read timeout so idle server incoming socket never disconnects
+            newSocket.soTimeout = 0
+
             // Start dedicated asynchronous streaming writer loop
             val channel = Channel<RtmpPacket>(
                 capacity = 64,
@@ -280,8 +283,8 @@ class RtmpConnection(
      * Background reader loop to handle incoming server pings, acks, and status messages.
      */
     private suspend fun runReaderLoop(inputStream: InputStream) {
-        try {
-            while (isRunning.get()) {
+        while (isRunning.get()) {
+            try {
                 val packet = chunkStream.readPacket(inputStream)
                 when (packet.messageType) {
                     RtmpPacket.TYPE_USER_CONTROL -> {
@@ -299,11 +302,15 @@ class RtmpConnection(
                         }
                     }
                 }
-            }
-        } catch (e: Throwable) {
-            if (isRunning.get() && e !is EOFException) {
-                _state.value = State.Error("Stream read loop error: ${e.message}", e)
-                closeInternal()
+            } catch (_: java.net.SocketTimeoutException) {
+                // Heartbeat/idle timeout on incoming socket; normal when server has no incoming packets to send
+                continue
+            } catch (e: Throwable) {
+                if (isRunning.get() && e !is EOFException) {
+                    _state.value = State.Error("Stream read loop error: ${e.message}", e)
+                    closeInternal()
+                }
+                break
             }
         }
     }
@@ -395,7 +402,7 @@ class RtmpConnection(
                 val setChunkPacket = probeChunkStream.createSetChunkSizePacket(RtmpChunkStream.TARGET_CHUNK_SIZE)
                 probeChunkStream.writePacket(setChunkPacket, bufOut)
                 bufOut.flush()
-                probeChunkStream.chunkSize = RtmpChunkStream.TARGET_CHUNK_SIZE
+                probeChunkStream.outChunkSize = RtmpChunkStream.TARGET_CHUNK_SIZE
 
                 // 3. Connect Command
                 val connectPayload = Amf0.encodeConnect(1.0, app, tcUrl)

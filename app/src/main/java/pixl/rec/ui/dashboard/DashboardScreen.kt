@@ -442,13 +442,23 @@ private fun HeroRecordingCard(
                     )
                     TelemetryBadge(
                         label = if (isStreaming) "INGEST" else "DATA",
-                        value = if (isStreaming) "${streamConfig.videoBitrate / 1_000_000} MBPS" else StorageCalculator.formatBytes(bytes),
+                        value = if (isStreaming) {
+                            val activeCount = streamConfig.activeDestinations.size.coerceAtLeast(1)
+                            val totalBitrate = (streamConfig.videoBitrate.toLong() * activeCount) / 1_000_000L
+                            "$totalBitrate MBPS"
+                        } else StorageCalculator.formatBytes(bytes),
                         accentColor = HyperCyan,
                         modifier = Modifier.weight(1f)
                     )
                     TelemetryBadge(
                         label = if (isStreaming) "TARGET" else "CODEC",
-                        value = if (isStreaming) streamConfig.platform.displayName else uiState.config.videoCodec.name,
+                        value = if (isStreaming) {
+                            if (streamConfig.activeDestinations.size > 1) {
+                                "MULTI (${streamConfig.activeDestinations.size})"
+                            } else {
+                                streamConfig.activeDestinations.firstOrNull()?.platform?.displayName ?: streamConfig.platform.displayName
+                            }
+                        } else uiState.config.videoCodec.name,
                         accentColor = CyberYellow,
                         modifier = Modifier.weight(1f)
                     )

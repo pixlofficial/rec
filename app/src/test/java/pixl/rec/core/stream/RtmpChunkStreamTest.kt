@@ -94,4 +94,25 @@ class RtmpChunkStreamTest {
         val size = java.io.DataInputStream(bais).readInt()
         assertEquals(8192, size)
     }
+
+    @Test
+    fun testDecoupledChunkSizes_serverSetChunkSizeDoesNotOverwriteOutChunkSize() {
+        val clientStream = RtmpChunkStream(outChunkSize = 4096, inChunkSize = 128)
+        assertEquals(4096, clientStream.outChunkSize)
+        assertEquals(128, clientStream.inChunkSize)
+
+        // Server sends SetChunkSize = 512
+        val serverStream = RtmpChunkStream(outChunkSize = 128)
+        val setChunkPacket = serverStream.createSetChunkSizePacket(512)
+        val baos = ByteArrayOutputStream()
+        serverStream.writePacket(setChunkPacket, baos)
+
+        // Client reads the server packet
+        val bais = ByteArrayInputStream(baos.toByteArray())
+        val decoded = clientStream.readPacket(bais)
+
+        assertEquals(RtmpPacket.TYPE_SET_CHUNK_SIZE, decoded.messageType)
+        assertEquals(512, clientStream.inChunkSize) // Updated from server
+        assertEquals(4096, clientStream.outChunkSize) // Preserved client outgoing chunk size!
+    }
 }

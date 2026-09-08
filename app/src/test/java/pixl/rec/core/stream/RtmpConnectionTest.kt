@@ -96,7 +96,7 @@ class RtmpConnectionTest {
                 val packet = serverChunkStream.readPacket(bufIn)
                 if (packet.messageType == RtmpPacket.TYPE_SET_CHUNK_SIZE) {
                     val newSize = java.nio.ByteBuffer.wrap(packet.payload).int
-                    serverChunkStream.chunkSize = newSize
+                    serverChunkStream.inChunkSize = newSize
                 } else if (packet.messageType == RtmpPacket.TYPE_COMMAND_AMF0) {
                     val cmd = Amf0.parseCommand(packet.payload)
                     if (cmd?.commandName == "connect") {
@@ -167,7 +167,7 @@ class RtmpConnectionTest {
                     when (packet.messageType) {
                         RtmpPacket.TYPE_SET_CHUNK_SIZE -> {
                             val newSize = java.nio.ByteBuffer.wrap(packet.payload).int
-                            serverChunkStream.chunkSize = newSize
+                            serverChunkStream.inChunkSize = newSize
                         }
                         RtmpPacket.TYPE_COMMAND_AMF0 -> {
                             val cmd = Amf0.parseCommand(packet.payload)

@@ -80,9 +80,19 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
-                title = "Zero-Copy RTMP Live Streaming",
-                description = "Stream directly to YouTube Live, Twitch, Kick, or custom RTMP endpoints with zero cloud proxies and ultra-low ~3% CPU overhead.",
+                title = "Multi-Destination Multistreaming",
+                description = "Broadcast live simultaneously to multiple RTMP destinations (YouTube Live, Twitch, Kick, and custom ingest servers) with zero-copy buffer slicing.",
                 category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Decoupled RTMP Chunk Framing",
+                description = "Engineered independent upstream and downstream chunk framing in RtmpChunkStream, guaranteeing bulletproof stability with MediaMTX, NGINX, and major CDNs.",
+                category = PatchCategory.FIXED
+            ),
+            PatchNote(
+                title = "Non-Blocking Broadcast Keepalive",
+                description = "Eliminated TCP socket read timeouts during low-bandwidth or silent broadcast intervals for uninterrupted 60 FPS live streaming.",
+                category = PatchCategory.CHANGED
             ),
             PatchNote(
                 title = "Simultaneous Dual Output Dispatch",
@@ -90,18 +100,8 @@ fun WhatsNewModal(
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Adaptive Bitrate (ABR) Controller",
-                description = "Real-time TCP backpressure detection dynamically tunes video bitrate (2.5–10 Mbps) to eliminate dropped frames and buffering on cellular/Wi-Fi.",
-                category = PatchCategory.ADDED
-            ),
-            PatchNote(
                 title = "Hardware-Backed KeyStore Security",
                 description = "Stream keys and ingest credentials are secured with hardware-backed AES-GCM-256 AndroidKeyStore encryption.",
-                category = PatchCategory.ADDED
-            ),
-            PatchNote(
-                title = "Floating Privacy Shield & Uplink HUD",
-                description = "Live glowing uplink health indicator on the radial overlay, plus a one-tap privacy blackout shield that mutes audio and video during sensitive moments.",
                 category = PatchCategory.ADDED
             )
         )

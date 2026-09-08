@@ -14,8 +14,20 @@ import java.nio.ByteOrder
  * Handles Chunk Formats (0, 1, 2, 3), extended timestamps, and chunk multiplexing.
  */
 class RtmpChunkStream(
-    var chunkSize: Int = DEFAULT_CHUNK_SIZE
+    var outChunkSize: Int = DEFAULT_CHUNK_SIZE,
+    var inChunkSize: Int = DEFAULT_CHUNK_SIZE
 ) {
+    constructor(chunkSize: Int) : this(outChunkSize = chunkSize, inChunkSize = chunkSize)
+
+    /**
+     * Backward-compatible property alias for chunkSize.
+     */
+    var chunkSize: Int
+        get() = outChunkSize
+        set(value) {
+            outChunkSize = value
+            inChunkSize = value
+        }
     companion object {
         const val DEFAULT_CHUNK_SIZE = 128
         const val TARGET_CHUNK_SIZE = 4096 // Optimal balance between header overhead & multiplex latency
@@ -62,7 +74,7 @@ class RtmpChunkStream(
         var isFirstChunk = true
 
         while (offset < totalLength || (totalLength == 0 && isFirstChunk)) {
-            val bytesInChunk = (totalLength - offset).coerceAtMost(chunkSize)
+            val bytesInChunk = (totalLength - offset).coerceAtMost(outChunkSize)
 
             if (isFirstChunk) {
                 // Write Format 0 (Full 11-byte header)
@@ -223,7 +235,7 @@ class RtmpChunkStream(
             // 3. Read Chunk Data
             val incompleteBaos = readIncompletePayloads.getOrPut(csid) { ByteArrayOutputStream() }
             val bytesRemaining = state.messageLength - incompleteBaos.size()
-            val bytesToRead = bytesRemaining.coerceAtMost(chunkSize)
+            val bytesToRead = bytesRemaining.coerceAtMost(inChunkSize)
 
             if (bytesToRead > 0) {
                 val chunkBuffer = ByteArray(bytesToRead)
@@ -248,7 +260,7 @@ class RtmpChunkStream(
                 if (packet.messageType == RtmpPacket.TYPE_SET_CHUNK_SIZE && completePayload.size >= 4) {
                     val newChunkSize = ByteBuffer.wrap(completePayload).int and 0x7FFFFFFF
                     if (newChunkSize > 0) {
-                        this.chunkSize = newChunkSize
+                        this.inChunkSize = newChunkSize
                     }
                 }
 

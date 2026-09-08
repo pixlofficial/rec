@@ -8,6 +8,7 @@ import java.util.Base64
 import android.util.Log
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import pixl.rec.core.model.StreamPlatform
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -23,6 +24,7 @@ object SecureStreamPreferences {
     private const val TAG = "SecureStreamPrefs"
     private const val PREFS_NAME = "rec_secure_stream_prefs"
     private const val KEY_ENCRYPTED_STREAM_KEY = "encrypted_stream_key"
+    private const val KEY_PREFIX_PLATFORM = "encrypted_stream_key_"
 
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     private const val KEY_ALIAS = "PixL_REC_StreamMasterKey"
@@ -66,12 +68,9 @@ object SecureStreamPreferences {
         }
     }
 
-    /**
-     * Encrypts and persists the secret stream key.
-     */
-    fun saveStreamKey(context: Context, streamKey: String) {
-        if (streamKey.isBlank()) {
-            clearStreamKey(context)
+    private fun encryptAndSave(context: Context, prefKey: String, secretText: String) {
+        if (secretText.isBlank()) {
+            getPrefs(context).edit().remove(prefKey).apply()
             return
         }
 
@@ -81,7 +80,7 @@ object SecureStreamPreferences {
                 val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, secretKey)
                 val iv = cipher.iv
-                val ciphertext = cipher.doFinal(streamKey.toByteArray(StandardCharsets.UTF_8))
+                val ciphertext = cipher.doFinal(secretText.toByteArray(StandardCharsets.UTF_8))
 
                 val combined = ByteBuffer.allocate(iv.size + ciphertext.size)
                     .put(iv)
@@ -89,22 +88,19 @@ object SecureStreamPreferences {
                     .array()
 
                 val encoded = Base64.getEncoder().encodeToString(combined)
-                getPrefs(context).edit().putString(KEY_ENCRYPTED_STREAM_KEY, encoded).apply()
+                getPrefs(context).edit().putString(prefKey, encoded).apply()
             } else {
                 // Fallback for environments lacking AndroidKeyStore
-                val fallbackEncoded = Base64.getEncoder().encodeToString(streamKey.toByteArray(StandardCharsets.UTF_8))
-                getPrefs(context).edit().putString(KEY_ENCRYPTED_STREAM_KEY, fallbackEncoded).apply()
+                val fallbackEncoded = Base64.getEncoder().encodeToString(secretText.toByteArray(StandardCharsets.UTF_8))
+                getPrefs(context).edit().putString(prefKey, fallbackEncoded).apply()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to encrypt stream key", e)
+            Log.e(TAG, "Failed to encrypt secret text for $prefKey", e)
         }
     }
 
-    /**
-     * Decrypts and returns the stored stream key, or empty string if unset.
-     */
-    fun getStreamKey(context: Context): String {
-        val stored = getPrefs(context).getString(KEY_ENCRYPTED_STREAM_KEY, null) ?: return ""
+    private fun decryptAndRetrieve(context: Context, prefKey: String): String {
+        val stored = getPrefs(context).getString(prefKey, null) ?: return ""
 
         return try {
             val secretKey = getOrCreateSecretKey()
@@ -130,9 +126,63 @@ object SecureStreamPreferences {
                 String(decodedBytes, StandardCharsets.UTF_8)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to decrypt stream key", e)
+            Log.e(TAG, "Failed to decrypt secret text for $prefKey", e)
             ""
         }
+    }
+
+    /**
+     * Encrypts and persists the stream key for a specific broadcasting platform.
+     */
+    fun savePlatformStreamKey(context: Context, platform: StreamPlatform, streamKey: String) {
+        val prefKey = "$KEY_PREFIX_PLATFORM${platform.name.lowercase()}"
+        encryptAndSave(context, prefKey, streamKey)
+        if (platform == StreamPlatform.YOUTUBE) {
+            // Keep legacy single key synced for backward compatibility
+            encryptAndSave(context, KEY_ENCRYPTED_STREAM_KEY, streamKey)
+        }
+    }
+
+    /**
+     * Decrypts and returns the stored stream key for a specific platform.
+     * Falls back to legacy key if platform is YouTube and dedicated key is unset.
+     */
+    fun getPlatformStreamKey(context: Context, platform: StreamPlatform): String {
+        val prefKey = "$KEY_PREFIX_PLATFORM${platform.name.lowercase()}"
+        val stored = decryptAndRetrieve(context, prefKey)
+        if (stored.isNotBlank()) return stored
+
+        // Check legacy single key fallback
+        if (platform == StreamPlatform.YOUTUBE) {
+            return decryptAndRetrieve(context, KEY_ENCRYPTED_STREAM_KEY)
+        }
+        return ""
+    }
+
+    fun hasPlatformStreamKey(context: Context, platform: StreamPlatform): Boolean {
+        return getPlatformStreamKey(context, platform).isNotBlank()
+    }
+
+    fun clearPlatformStreamKey(context: Context, platform: StreamPlatform) {
+        val prefKey = "$KEY_PREFIX_PLATFORM${platform.name.lowercase()}"
+        getPrefs(context).edit().remove(prefKey).apply()
+        if (platform == StreamPlatform.YOUTUBE) {
+            getPrefs(context).edit().remove(KEY_ENCRYPTED_STREAM_KEY).apply()
+        }
+    }
+
+    /**
+     * Encrypts and persists the primary stream key (backward compatible).
+     */
+    fun saveStreamKey(context: Context, streamKey: String) {
+        savePlatformStreamKey(context, StreamPlatform.YOUTUBE, streamKey)
+    }
+
+    /**
+     * Decrypts and returns the stored primary stream key, or empty string if unset.
+     */
+    fun getStreamKey(context: Context): String {
+        return getPlatformStreamKey(context, StreamPlatform.YOUTUBE)
     }
 
     /**
@@ -146,6 +196,6 @@ object SecureStreamPreferences {
      * Removes the stored stream key.
      */
     fun clearStreamKey(context: Context) {
-        getPrefs(context).edit().remove(KEY_ENCRYPTED_STREAM_KEY).apply()
+        clearPlatformStreamKey(context, StreamPlatform.YOUTUBE)
     }
 }

@@ -174,9 +174,7 @@ class ScreenRecorderEngine(
             })
             vEncoder.prepare()
             videoEncoder = vEncoder
-            if (streamTarget is RtmpStreamOutputTarget) {
-                streamTarget.videoEncoder = vEncoder
-            }
+            streamTarget?.attachVideoEncoder(vEncoder)
 
             val finalConfig = activeConfig.copy(
                 width = vEncoder.configuredWidth,

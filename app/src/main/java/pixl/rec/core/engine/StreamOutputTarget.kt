@@ -24,6 +24,7 @@ interface StreamOutputTarget {
     fun onAudioFormat(format: MediaFormat)
     fun onAudioSample(buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo)
     fun release()
+    fun attachVideoEncoder(videoEncoder: VideoEncoder) {}
 }
 
 /**
@@ -38,6 +39,10 @@ class RtmpStreamOutputTarget(
     private val onStateChanged: ((RtmpConnection.State) -> Unit)? = null,
     private val onUplinkHealthChanged: ((UplinkHealth) -> Unit)? = null
 ) : StreamOutputTarget {
+
+    override fun attachVideoEncoder(videoEncoder: VideoEncoder) {
+        this.videoEncoder = videoEncoder
+    }
 
     private val tag = "RtmpStreamTarget"
     val connection = RtmpConnection(scope)

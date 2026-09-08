@@ -31,10 +31,12 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import pixl.rec.RecApp
 import pixl.rec.R
 import pixl.rec.core.engine.UplinkHealth
+import pixl.rec.core.engine.MultiStreamOutputTarget
 import pixl.rec.core.engine.RtmpStreamOutputTarget
 import pixl.rec.core.engine.ScreenRecorderEngine
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.sensor.ShakeDetector
 import pixl.rec.core.storage.ConfigPreferences
@@ -333,8 +335,16 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         // 4. Low Storage Safety Tripwire (<200MB)
         val studioMode = ConfigPreferences.getStudioMode(this)
         val streamConfig = ConfigPreferences.loadStreamConfig(this)
-        val isStreaming = studioMode == StudioMode.STREAM && streamConfig.streamKey.isNotBlank()
+        val isStreaming = studioMode == StudioMode.STREAM && streamConfig.isConfigured
         val shouldSaveLocalArchive = !isStreaming || streamConfig.saveLocalMasterArchive
+
+        // If broadcasting to platforms that require AVC (such as Twitch or Kick), lock codec to AVC
+        val effectiveConfig = if (isStreaming && !streamConfig.effectiveSupportsHevc && config.videoCodec != VideoCodec.AVC) {
+            Log.i(TAG, "Multistream includes platforms requiring AVC (Twitch/Kick). Adapting encoder codec from ${config.videoCodec.name} to AVC.")
+            config.copy(videoCodec = VideoCodec.AVC)
+        } else {
+            config
+        }
 
         // 4. Storage Safety Monitor - Emergency save if free storage dips below 200MB (only if writing to local storage)
         storageSafetyJob?.cancel()
@@ -353,26 +363,37 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         }
 
         // 5. Manage Floating Overlay Pill visibility ONLY if permission is granted
-        if (config.showFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this))) {
-            FloatingOverlayService.start(this, config)
+        if (effectiveConfig.showFloatingPill && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(this))) {
+            FloatingOverlayService.start(this, effectiveConfig)
         }
 
         // 6. Initialize and start master recording engine (with zero-copy dual output if in STREAM mode)
         val streamTarget = if (isStreaming) {
-            RtmpStreamOutputTarget(
-                streamConfig = streamConfig,
-                scope = serviceScope,
-                onUplinkHealthChanged = { health ->
-                    _uplinkHealth.value = health
-                }
-            )
+            if (streamConfig.activeDestinations.size > 1) {
+                MultiStreamOutputTarget(
+                    destinations = streamConfig.activeDestinations,
+                    streamConfig = streamConfig,
+                    scope = serviceScope,
+                    onUplinkHealthChanged = { health ->
+                        _uplinkHealth.value = health
+                    }
+                )
+            } else {
+                RtmpStreamOutputTarget(
+                    streamConfig = streamConfig,
+                    scope = serviceScope,
+                    onUplinkHealthChanged = { health ->
+                        _uplinkHealth.value = health
+                    }
+                )
+            }
         } else {
             null
         }
 
         val recEngine = ScreenRecorderEngine(
             context = applicationContext,
-            config = config,
+            config = effectiveConfig,
             mediaProjection = projection,
             streamTarget = streamTarget,
             saveLocalArchive = shouldSaveLocalArchive

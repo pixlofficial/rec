@@ -49,13 +49,37 @@ enum class StreamPlatform(
 }
 
 /**
- * Configuration profile for Live Streaming sessions.
+ * Individual live streaming broadcast destination.
+ */
+@Parcelize
+data class StreamDestination(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val platform: StreamPlatform = StreamPlatform.YOUTUBE,
+    val customEndpointUrl: String = "",
+    val streamKey: String = "",
+    val enabled: Boolean = true
+) : Parcelable {
+
+    val activeEndpointUrl: String
+        get() = if (platform == StreamPlatform.CUSTOM && customEndpointUrl.isNotBlank()) {
+            customEndpointUrl.trim()
+        } else {
+            platform.defaultEndpoint
+        }
+
+    val isConfigured: Boolean
+        get() = enabled && streamKey.isNotBlank() && activeEndpointUrl.isNotBlank()
+}
+
+/**
+ * Configuration profile for Live Streaming sessions with single or multi-destination broadcasting.
  */
 @Parcelize
 data class StreamConfig(
     val platform: StreamPlatform = StreamPlatform.YOUTUBE,
     val customEndpointUrl: String = "",
     val streamKey: String = "",
+    val destinations: List<StreamDestination> = emptyList(),
     val videoBitrate: Int = 9_000_000,
     val enableAbr: Boolean = true,
     val minBitrate: Int = 2_000_000,
@@ -71,6 +95,45 @@ data class StreamConfig(
             platform.defaultEndpoint
         }
 
+    /**
+     * Active configured broadcast destinations.
+     * Falls back cleanly to single primary destination if [destinations] is empty.
+     */
+    val activeDestinations: List<StreamDestination>
+        get() = if (destinations.isNotEmpty()) {
+            destinations.filter { it.isConfigured }
+        } else if (streamKey.isNotBlank() && activeEndpointUrl.isNotBlank()) {
+            listOf(
+                StreamDestination(
+                    platform = platform,
+                    customEndpointUrl = customEndpointUrl,
+                    streamKey = streamKey,
+                    enabled = true
+                )
+            )
+        } else {
+            emptyList()
+        }
+
     val isConfigured: Boolean
-        get() = streamKey.isNotBlank() && activeEndpointUrl.isNotBlank()
+        get() = activeDestinations.isNotEmpty()
+
+    /**
+     * True if all active destinations support HEVC (e.g. YouTube or Custom) AND Enhanced HEVC is enabled.
+     * If ANY destination (such as Twitch or Kick) mandates AVC, this evaluates to false so the
+     * hardware encoder produces universally ingestible H.264 video.
+     */
+    val effectiveSupportsHevc: Boolean
+        get() = activeDestinations.isNotEmpty() &&
+            activeDestinations.all { it.platform.supportsHevc } &&
+            useEnhancedHevc
+
+    /**
+     * Combined required uplink bandwidth (video + 256kbps AAC audio per active stream).
+     */
+    val totalRequiredBitrateBps: Long
+        get() = activeDestinations.sumOf { dest ->
+            videoBitrate.toLong() + 256_000L
+        }.coerceAtLeast(videoBitrate.toLong() + 256_000L)
 }
+

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] - 2026-09-08
+
+### 🚀 Added
+* **Multi-Destination Multistreaming Engine:**
+  * Added `MultiStreamOutputTarget` allowing simultaneous live broadcasting to multiple RTMP endpoints (YouTube Live, Twitch, Kick, custom RTMP) concurrently with zero-copy buffer slicing and independent per-endpoint backpressure protection.
+* **Network & Cleartext Permissions Hardening:**
+  * Configured `android.permission.INTERNET`, `android.permission.ACCESS_NETWORK_STATE`, and `usesCleartextTraffic="true"` in Android Manifest to guarantee seamless local LAN (e.g. MediaMTX) and standard RTMP connectivity.
+* **QA & Live Broadcasting Test Suite:**
+  * Added comprehensive multistreaming, adaptive bitrate (ABR) stress-testing, and local lab verification suite (`dev/tests/test_stream.md`).
+
+### ⚡ Changed
+* **Non-Blocking RTMP Reader Keepalive:**
+  * Disabled blocking TCP read timeouts on the reader socket once broadcasting is active, eliminating 15-second idle disconnect cycles during silent intervals while maintaining resilient ping/ack handling.
+
+### 🐛 Fixed
+* **RTMP Chunk Stream Desynchronization:**
+  * Decoupled incoming and outgoing chunk stream states (`inChunkSize` vs `outChunkSize`) in `RtmpChunkStream`. Server control packets (`Set Chunk Size`) no longer mutate client outgoing 4096-byte chunk boundaries, resolving MediaMTX chunk framing errors.
+* **Socket Read Timeout Graceful Handling:**
+  * Catch and safely absorb `SocketTimeoutException` in `RtmpConnection` reader loop to prevent unexpected connection teardown when servers do not emit downstream packets.
+
+---
+
 ## [0.8.0] - 2026-09-08
 
 ### 🚀 Added
@@ -363,6 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.8.1]: https://github.com/pixlofficial/rec/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/pixlofficial/rec/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/pixlofficial/rec/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pixlofficial/rec/compare/v0.5.0...v0.6.0
