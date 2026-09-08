@@ -514,12 +514,12 @@ private fun HeroRecordingCard(
             val isPureStream = studioMode == StudioMode.STREAM && state.uri == null
             SectionCard(
                 title = when {
-                    isPureStream -> "BROADCAST COMPLETED"
-                    studioMode == StudioMode.STREAM -> "BROADCAST ARCHIVED"
+                    isPureStream -> "STREAM ENDED"
+                    studioMode == StudioMode.STREAM -> "STREAM ARCHIVED"
                     else -> "RECORDING SAVED"
                 },
                 titleTag = when {
-                    isPureStream -> "LIVE ENDED"
+                    isPureStream -> "OFFLINE"
                     studioMode == StudioMode.STREAM -> "VAULT READY"
                     else -> "GALLERY READY"
                 },
@@ -527,7 +527,7 @@ private fun HeroRecordingCard(
                 borderColor = if (isPureStream) HyperCyan else ToxicLime
             ) {
                 Text(
-                    text = if (isPureStream) "Live broadcast completed. Zero disk space used:" else "MP4 committed directly to Movies/PixL-REC:",
+                    text = if (isPureStream) "Live stream ended. Zero disk space used:" else "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     fontFamily = BitcountPropSingle
