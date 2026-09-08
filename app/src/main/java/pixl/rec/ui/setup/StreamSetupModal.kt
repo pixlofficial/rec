@@ -72,6 +72,7 @@ import kotlinx.coroutines.launch
 import pixl.rec.R
 import pixl.rec.core.model.StreamConfig
 import pixl.rec.core.model.StreamPlatform
+import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.core.stream.RtmpConnection
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
@@ -125,6 +126,14 @@ fun StreamSetupModal(
         customEndpoint.trim()
     } else {
         activePlatform.defaultEndpoint
+    }
+
+    val estimatedBytesPerHour = remember(activePlatform) {
+        val totalBps = activePlatform.defaultVideoBitrate.toLong() + 256_000L
+        (totalBps / 8L) * 3600L
+    }
+    val estimatedRateText = remember(estimatedBytesPerHour) {
+        StorageCalculator.formatBytes(estimatedBytesPerHour)
     }
 
     Dialog(
@@ -569,10 +578,16 @@ fun StreamSetupModal(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Simultaneously saves uncompressed MP4 to Vault",
-                                    color = TextSecondary,
-                                    fontSize = 10.sp
+                                    text = if (saveMasterArchive) {
+                                        "Saves local master copy (~$estimatedRateText/hr)"
+                                    } else {
+                                        "Pure Stream Mode • Zero disk space used"
+                                    },
+                                    color = if (saveMasterArchive) ToxicLime else HyperCyan,
+                                    fontSize = 10.sp,
+                                    fontFamily = BitcountPropSingle
                                 )
                             }
                             Switch(

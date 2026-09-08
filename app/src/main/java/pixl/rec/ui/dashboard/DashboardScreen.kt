@@ -511,14 +511,23 @@ private fun HeroRecordingCard(
             }
         }
         is RecorderState.Finished -> {
+            val isPureStream = studioMode == StudioMode.STREAM && state.uri == null
             SectionCard(
-                title = if (studioMode == StudioMode.STREAM) "BROADCAST ARCHIVED" else "RECORDING SAVED",
-                titleTag = if (studioMode == StudioMode.STREAM) "VAULT READY" else "GALLERY READY",
-                tagColor = ToxicLime,
-                borderColor = ToxicLime
+                title = when {
+                    isPureStream -> "BROADCAST COMPLETED"
+                    studioMode == StudioMode.STREAM -> "BROADCAST ARCHIVED"
+                    else -> "RECORDING SAVED"
+                },
+                titleTag = when {
+                    isPureStream -> "LIVE ENDED"
+                    studioMode == StudioMode.STREAM -> "VAULT READY"
+                    else -> "GALLERY READY"
+                },
+                tagColor = if (isPureStream) HyperCyan else ToxicLime,
+                borderColor = if (isPureStream) HyperCyan else ToxicLime
             ) {
                 Text(
-                    text = "MP4 committed directly to Movies/PixL-REC:",
+                    text = if (isPureStream) "Live broadcast completed. Zero disk space used:" else "MP4 committed directly to Movies/PixL-REC:",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     fontFamily = BitcountPropSingle
@@ -526,7 +535,7 @@ private fun HeroRecordingCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${state.formattedSize} • ${StorageCalculator.formatDuration(state.durationMs)}",
-                    color = ToxicLime,
+                    color = if (isPureStream) HyperCyan else ToxicLime,
                     fontFamily = BitcountPropSingle,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp

@@ -43,7 +43,8 @@ class ScreenRecorderEngine(
     private val context: Context,
     private val config: RecordingConfig,
     private val mediaProjection: MediaProjection,
-    private val streamTarget: StreamOutputTarget? = null
+    private val streamTarget: StreamOutputTarget? = null,
+    private val saveLocalArchive: Boolean = true
 ) {
     private val tag = "ScreenRecorderEngine"
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -183,10 +184,17 @@ class ScreenRecorderEngine(
                 framerate = vEncoder.configuredFramerate
             )
 
-            // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas
-            val writer = MediaStoreWriter(context, finalConfig, isStreamSession = (streamTarget != null))
-            mediaStoreWriter = writer
-            mediaMuxer = writer.open()
+            // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas (if local archive enabled)
+            val shouldSaveLocal = saveLocalArchive || streamTarget == null
+            if (shouldSaveLocal) {
+                val writer = MediaStoreWriter(context, finalConfig, isStreamSession = (streamTarget != null))
+                mediaStoreWriter = writer
+                mediaMuxer = writer.open()
+            } else {
+                mediaStoreWriter = null
+                mediaMuxer = null
+                Log.i(tag, "Pure Stream Mode: Local Vault master archive disabled. Zero disk bytes written.")
+            }
 
             // 3. Initialize Audio Pipeline if enabled
             if (finalConfig.audioSource.hasAudio) {
@@ -368,7 +376,7 @@ class ScreenRecorderEngine(
                     }
                 }
 
-                // 4. Finalize MediaStore record with accurate duration
+                // 4. Finalize MediaStore record with accurate duration (if local archive was enabled)
                 val uri = mediaStoreWriter?.currentUri
                 mediaStoreWriter?.finish(finalDurationMs, finalBytes)
 
@@ -386,14 +394,18 @@ class ScreenRecorderEngine(
                 audioCaptureManager = null
                 mediaStoreWriter = null
 
-                val formattedSize = StorageCalculator.formatBytes(finalBytes)
+                val formattedSize = if (uri != null) {
+                    StorageCalculator.formatBytes(finalBytes)
+                } else {
+                    "Pure Stream • ${StorageCalculator.formatBytes(finalBytes)}"
+                }
                 _state.value = RecorderState.Finished(
                     uri = uri,
                     durationMs = finalDurationMs,
                     totalBytes = finalBytes,
                     formattedSize = formattedSize
                 )
-                Log.i(tag, "ScreenRecorderEngine successfully finished: $uri ($formattedSize, ${finalDurationMs / 1000}s)")
+                Log.i(tag, "ScreenRecorderEngine successfully finished: uri=$uri ($formattedSize, ${finalDurationMs / 1000}s)")
             } catch (e: Exception) {
                 Log.e(tag, "Error stopping ScreenRecorderEngine", e)
                 handleError("Failed to finalize recording: ${e.message}", e)
@@ -536,6 +548,12 @@ class ScreenRecorderEngine(
             } catch (e: Exception) {
                 Log.e(tag, "Error routing sample to streamTarget", e)
             }
+        }
+
+        if (mediaMuxer == null) {
+            // Pure Stream Mode: skip local disk multiplexer entirely
+            totalBytesWritten.addAndGet(bufferInfo.size.toLong())
+            return
         }
 
         muxerLock.withLock {

@@ -331,15 +331,23 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         )
 
         // 4. Low Storage Safety Tripwire (<200MB)
+        val studioMode = ConfigPreferences.getStudioMode(this)
+        val streamConfig = ConfigPreferences.loadStreamConfig(this)
+        val isStreaming = studioMode == StudioMode.STREAM && streamConfig.streamKey.isNotBlank()
+        val shouldSaveLocalArchive = !isStreaming || streamConfig.saveLocalMasterArchive
+
+        // 4. Storage Safety Monitor - Emergency save if free storage dips below 200MB (only if writing to local storage)
         storageSafetyJob?.cancel()
-        storageSafetyJob = serviceScope.launch {
-            while (isActive) {
-                delay(3000L) // 3-second interval check
-                val available = StorageCalculator.getAvailableStorageBytes()
-                if (StorageCalculator.isStorageCriticallyLow(available)) {
-                    Log.w(TAG, "Storage critically low (<200MB free) -> Auto-saving recording to prevent corruption")
-                    stopRecordingSession()
-                    break
+        if (shouldSaveLocalArchive) {
+            storageSafetyJob = serviceScope.launch {
+                while (isActive) {
+                    delay(3000L) // 3-second interval check
+                    val available = StorageCalculator.getAvailableStorageBytes()
+                    if (StorageCalculator.isStorageCriticallyLow(available)) {
+                        Log.w(TAG, "Storage critically low (<200MB free) -> Auto-saving recording to prevent corruption")
+                        stopRecordingSession()
+                        break
+                    }
                 }
             }
         }
@@ -350,10 +358,6 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         }
 
         // 6. Initialize and start master recording engine (with zero-copy dual output if in STREAM mode)
-        val studioMode = ConfigPreferences.getStudioMode(this)
-        val streamConfig = ConfigPreferences.loadStreamConfig(this)
-        val isStreaming = studioMode == StudioMode.STREAM && streamConfig.streamKey.isNotBlank()
-
         val streamTarget = if (isStreaming) {
             RtmpStreamOutputTarget(
                 streamConfig = streamConfig,
@@ -366,7 +370,13 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             null
         }
 
-        val recEngine = ScreenRecorderEngine(applicationContext, config, projection, streamTarget)
+        val recEngine = ScreenRecorderEngine(
+            context = applicationContext,
+            config = config,
+            mediaProjection = projection,
+            streamTarget = streamTarget,
+            saveLocalArchive = shouldSaveLocalArchive
+        )
         engine = recEngine
 
         stateCollectionJob?.cancel()
