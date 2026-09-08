@@ -42,7 +42,8 @@ import kotlin.concurrent.withLock
 class ScreenRecorderEngine(
     private val context: Context,
     private val config: RecordingConfig,
-    private val mediaProjection: MediaProjection
+    private val mediaProjection: MediaProjection,
+    private val streamTarget: StreamOutputTarget? = null
 ) {
     private val tag = "ScreenRecorderEngine"
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -172,6 +173,9 @@ class ScreenRecorderEngine(
             })
             vEncoder.prepare()
             videoEncoder = vEncoder
+            if (streamTarget is RtmpStreamOutputTarget) {
+                streamTarget.videoEncoder = vEncoder
+            }
 
             val finalConfig = activeConfig.copy(
                 width = vEncoder.configuredWidth,
@@ -180,7 +184,7 @@ class ScreenRecorderEngine(
             )
 
             // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas
-            val writer = MediaStoreWriter(context, finalConfig)
+            val writer = MediaStoreWriter(context, finalConfig, isStreamSession = (streamTarget != null))
             mediaStoreWriter = writer
             mediaMuxer = writer.open()
 
@@ -272,6 +276,7 @@ class ScreenRecorderEngine(
             displayManager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
 
             startTelemetryTicker()
+            streamTarget?.start()
             Log.i(tag, "ScreenRecorderEngine started successfully")
         } catch (e: Exception) {
             Log.e(tag, "Failed to start ScreenRecorderEngine", e)
@@ -367,7 +372,12 @@ class ScreenRecorderEngine(
                 val uri = mediaStoreWriter?.currentUri
                 mediaStoreWriter?.finish(finalDurationMs, finalBytes)
 
-                // 5. Release Encoders
+                // 5. Release Encoders & Output Sinks
+                try {
+                    streamTarget?.release()
+                } catch (e: Exception) {
+                    Log.w(tag, "Error releasing streamTarget on stop", e)
+                }
                 videoEncoder?.release()
                 audioEncoder?.release()
                 audioCaptureManager?.release()
@@ -416,6 +426,12 @@ class ScreenRecorderEngine(
         }
 
         try {
+            streamTarget?.release()
+        } catch (e: Exception) {
+            Log.w(tag, "Error releasing streamTarget on release", e)
+        }
+
+        try {
             videoEncoder?.release()
             audioEncoder?.release()
             audioCaptureManager?.release()
@@ -443,6 +459,7 @@ class ScreenRecorderEngine(
     }
 
     private fun handleVideoFormat(format: MediaFormat) {
+        streamTarget?.onVideoFormat(format)
         muxerLock.withLock {
             val muxer = mediaMuxer ?: return
             if (videoTrackIndex < 0) {
@@ -454,6 +471,7 @@ class ScreenRecorderEngine(
     }
 
     private fun handleAudioFormat(format: MediaFormat) {
+        streamTarget?.onAudioFormat(format)
         muxerLock.withLock {
             val muxer = mediaMuxer ?: return
             if (audioTrackIndex < 0) {
@@ -503,6 +521,23 @@ class ScreenRecorderEngine(
     private fun writeSample(logicalTrack: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         if (!isRecording.get()) return
 
+        // Dispatch zero-copy slice to live stream sink if active
+        if (streamTarget != null) {
+            try {
+                val streamBuf = buffer.duplicate()
+                val streamInfo = MediaCodec.BufferInfo().apply {
+                    set(bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
+                }
+                if (logicalTrack == 0) {
+                    streamTarget.onVideoSample(streamBuf, streamInfo)
+                } else {
+                    streamTarget.onAudioSample(streamBuf, streamInfo)
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error routing sample to streamTarget", e)
+            }
+        }
+
         muxerLock.withLock {
             if (isMuxerStarted.get()) {
                 val realTrack = if (logicalTrack == 0) videoTrackIndex else audioTrackIndex
@@ -550,7 +585,8 @@ class ScreenRecorderEngine(
                         currentFps = currentFps,
                         gameAudioDb = gameAudioDb,
                         micAudioDb = micAudioDb,
-                        isPaused = false
+                        isPaused = false,
+                        isStreaming = streamTarget != null
                     )
                 }
                 delay(100) // Smooth 10Hz ticker

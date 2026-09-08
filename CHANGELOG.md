@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2026-09-08
+
+### 🚀 Added
+* **Zero-Copy RTMP/RTMPS Live Streaming & Broadcast Studio:**
+  * Implemented a native, direct client-to-server RTMP/RTMPS streaming engine (`pixl.rec.core.stream`) connecting directly to YouTube Live, Twitch, Kick, and custom ingest endpoints without third-party proxies, cloud relays, or subscriptions.
+  * Full RTMP 1.0 protocol suite: Handshake (C0/C1/C2), AMF0 command and metadata packetization, chunk stream multiplexing, and low-overhead FLV tag generation.
+  * Enhanced RTMP support for both AVC (H.264) and HEVC (H.265) streaming, enabling pristine 2K/1440p broadcasts at half the uplink bandwidth.
+* **Simultaneous Dual Dispatch Pipeline:**
+  * Engineered zero-copy multi-target stream dispatch in `ScreenRecorderEngine`: dynamically pipes encoded video/audio frames simultaneously to the local `MediaStoreWriter` (Media Vault archive) and `StreamOutputTarget` (RTMP socket) without duplicate encoder overhead or CPU buffer copying.
+* **Adaptive Bitrate (ABR) Controller:**
+  * Real-time network telemetry engine measuring socket write latency and TCP buffer backpressure.
+  * Dynamic 1Hz bitrate adaptation adjusting `MediaCodec` video bitrates (2.5 Mbps to 10 Mbps) to eliminate dropped frames and stream buffering on congested Wi-Fi or fluctuating cellular networks.
+* **Broadcast Studio Dashboard & Stream Setup Modal:**
+  * Top header symmetric 6-letter mode switcher (`[ RECORD ]` crimson vs `[ STREAM ]` cyber-cyan) across the dashboard.
+  * Stream Setup Modal with one-tap platform presets (YouTube Live, Twitch, Kick, Custom RTMP).
+  * Hardware-backed encryption for all stream keys and credentials via `AndroidKeyStore` (`AES/GCM/NoPadding`) in `SecureStreamPreferences`.
+* **Floating Radial Menu Telemetry & Privacy Shield:**
+  * Live glowing uplink health indicator dot (`UplinkHealth`: Green for Excellent, Amber for Degraded, Red for Critical) embedded directly into the floating radial menu pill.
+  * One-tap Privacy Shield button on the radial fan: instantly blanks out the video output and mutes audio during sensitive on-screen activities while maintaining RTMP connection keepalive.
+* **Master Disarm Toggle ("Pure Recorder Mode"):**
+  * Added `enableLiveStreaming` toggle in Config Settings to completely hide all streaming UI and shrink the navigation deck for users who want an exclusively offline screen recorder.
+* **Local Developer RTMP Server & Diagnostics:**
+  * Added `dev/rtmp-test-server.sh` script powered by MediaMTX for Pop!_OS / Linux with low-latency `ffplay`, VLC, browser WebRTC preview, and `adb reverse` USB tunneling.
+
+### ⚡ Changed
+* Extended `RecordingService` foreground service lifecycle to manage simultaneous local recording and RTMP broadcast sessions with real-time uplink health notifications.
+* Extended `ConfigPreferences` with comprehensive broadcast settings, target platforms, custom ingest URLs, and resolution presets.
+
+---
+
 ## [0.7.0] - 2026-09-06
 
 ### 🚀 Added
@@ -333,6 +363,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.8.0]: https://github.com/pixlofficial/rec/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/pixlofficial/rec/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pixlofficial/rec/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/pixlofficial/rec/compare/v0.4.3...v0.5.0

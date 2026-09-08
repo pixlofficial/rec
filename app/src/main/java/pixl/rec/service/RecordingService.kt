@@ -30,6 +30,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import pixl.rec.RecApp
 import pixl.rec.R
+import pixl.rec.core.engine.UplinkHealth
+import pixl.rec.core.engine.RtmpStreamOutputTarget
 import pixl.rec.core.engine.ScreenRecorderEngine
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
@@ -37,6 +39,7 @@ import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.sensor.ShakeDetector
 import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.ui.overlay.CountdownOverlayView
 import pixl.rec.ui.theme.RECTheme
 import kotlinx.coroutines.CoroutineScope
@@ -346,8 +349,24 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             FloatingOverlayService.start(this, config)
         }
 
-        // 6. Initialize and start master recording engine
-        val recEngine = ScreenRecorderEngine(applicationContext, config, projection)
+        // 6. Initialize and start master recording engine (with zero-copy dual output if in STREAM mode)
+        val studioMode = ConfigPreferences.getStudioMode(this)
+        val streamConfig = ConfigPreferences.loadStreamConfig(this)
+        val isStreaming = studioMode == StudioMode.STREAM && streamConfig.streamKey.isNotBlank()
+
+        val streamTarget = if (isStreaming) {
+            RtmpStreamOutputTarget(
+                streamConfig = streamConfig,
+                scope = serviceScope,
+                onUplinkHealthChanged = { health ->
+                    _uplinkHealth.value = health
+                }
+            )
+        } else {
+            null
+        }
+
+        val recEngine = ScreenRecorderEngine(applicationContext, config, projection, streamTarget)
         engine = recEngine
 
         stateCollectionJob?.cancel()
@@ -356,14 +375,18 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                 _serviceState.value = state
                 when (state) {
                     is RecorderState.Recording -> {
+                        val durationText = StorageCalculator.formatDuration(state.durationMs)
+                        val notifTitle = if (state.isStreaming) "LIVE • $durationText" else durationText
                         updateNotification(
-                            StorageCalculator.formatDuration(state.durationMs),
+                            notifTitle,
                             isPaused = false
                         )
                     }
                     is RecorderState.Paused -> {
+                        val durationText = StorageCalculator.formatDuration(state.durationMs)
+                        val notifTitle = if (isStreaming) "LIVE PAUSED • $durationText" else durationText
                         updateNotification(
-                            StorageCalculator.formatDuration(state.durationMs),
+                            notifTitle,
                             isPaused = true
                         )
                     }
@@ -413,6 +436,9 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         storageSafetyJob?.cancel()
         storageSafetyJob = null
+
+        _uplinkHealth.value = UplinkHealth.CLEAN
+        _isPrivacySlateActive.value = false
 
         handleOverlayOnRecordingFinished()
 
@@ -558,6 +584,16 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         private val _serviceState = MutableStateFlow<RecorderState>(RecorderState.Idle)
         val serviceState: StateFlow<RecorderState> = _serviceState.asStateFlow()
+
+        private val _uplinkHealth = MutableStateFlow(UplinkHealth.CLEAN)
+        val uplinkHealth: StateFlow<UplinkHealth> = _uplinkHealth.asStateFlow()
+
+        private val _isPrivacySlateActive = MutableStateFlow(false)
+        val isPrivacySlateActive: StateFlow<Boolean> = _isPrivacySlateActive.asStateFlow()
+
+        fun togglePrivacySlate() {
+            _isPrivacySlateActive.value = !_isPrivacySlateActive.value
+        }
 
         fun startService(context: Context, resultCode: Int, resultData: Intent, config: RecordingConfig) {
             val intent = Intent(context, RecordingService::class.java).apply {

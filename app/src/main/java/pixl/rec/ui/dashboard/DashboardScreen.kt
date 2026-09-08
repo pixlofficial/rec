@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,10 +44,18 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import pixl.rec.core.model.StreamConfig
+import pixl.rec.core.storage.StudioMode
+import pixl.rec.ui.setup.StreamSetupModal
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -102,6 +111,10 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val telemetry by viewModel.telemetry.collectAsState()
     val isRecording by viewModel.isRecordingActive.collectAsState()
+    val studioMode by viewModel.studioMode.collectAsState()
+    val isLiveStreamingEnabled by viewModel.isLiveStreamingEnabled.collectAsState()
+    val streamConfig by viewModel.streamConfig.collectAsState()
+    var isStreamSetupModalOpen by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -149,6 +162,15 @@ fun DashboardScreen(
         // 1. Top Bar Header
         HeaderBar(uiState = uiState)
 
+        // 6-Letter Symmetric Mode Switcher: [ RECORD ] / [ STREAM ]
+        if (isLiveStreamingEnabled) {
+            Spacer(modifier = Modifier.height(10.dp))
+            StudioModeSwitcher(
+                currentMode = studioMode,
+                onModeSelected = { viewModel.setStudioMode(it) }
+            )
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
         // 2. Hardware Capabilities & SoC Status
@@ -160,10 +182,13 @@ fun DashboardScreen(
         HeroRecordingCard(
             viewModel = viewModel,
             uiState = uiState,
+            studioMode = studioMode,
+            streamConfig = streamConfig,
             onStartClick = onRequestRecordPermission,
             onStopClick = { viewModel.stopRecording() },
             onPauseClick = { viewModel.pauseRecording() },
-            onResumeClick = { viewModel.resumeRecording() }
+            onResumeClick = { viewModel.resumeRecording() },
+            onOpenStreamSetup = { isStreamSetupModalOpen = true }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -190,6 +215,16 @@ fun DashboardScreen(
         )
 
         Spacer(modifier = Modifier.height(116.dp))
+    }
+
+    if (isStreamSetupModalOpen) {
+        StreamSetupModal(
+            streamConfig = streamConfig,
+            onSaveConfig = { updated ->
+                viewModel.updateStreamConfig(updated)
+            },
+            onDismiss = { isStreamSetupModalOpen = false }
+        )
     }
 }
 
@@ -325,10 +360,13 @@ private fun HardwareSpecsCard(uiState: DashboardUiState, telemetry: TelemetryDat
 private fun HeroRecordingCard(
     viewModel: DashboardViewModel,
     uiState: DashboardUiState,
+    studioMode: StudioMode,
+    streamConfig: StreamConfig,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onPauseClick: () -> Unit,
-    onResumeClick: () -> Unit
+    onResumeClick: () -> Unit,
+    onOpenStreamSetup: () -> Unit
 ) {
     val recorderState by viewModel.recorderState.collectAsState()
 
@@ -338,6 +376,7 @@ private fun HeroRecordingCard(
             val durationMs = if (state is RecorderState.Recording) state.durationMs else (state as RecorderState.Paused).durationMs
             val bytes = if (state is RecorderState.Recording) state.bytesWritten else (state as RecorderState.Paused).bytesWritten
             val currentFps = if (state is RecorderState.Recording) state.currentFps else 0f
+            val isStreaming = (state as? RecorderState.Recording)?.isStreaming == true || studioMode == StudioMode.STREAM
 
             val pulseTransition = rememberInfiniteTransition(label = "Pulse")
             val pulseAlpha by pulseTransition.animateFloat(
@@ -350,12 +389,18 @@ private fun HeroRecordingCard(
                 label = "RecordDotAlpha"
             )
 
+            val activeAccent = if (isPaused) CyberYellow else if (isStreaming) HyperCyan else HyperCrimson
+
             SectionCard(
-                title = if (isPaused) "RECORDING PAUSED" else "STREAMING TO STORAGE",
-                titleTag = "LIVE",
-                tagColor = if (isPaused) CyberYellow else HyperCrimson,
-                tagTextColor = TextPrimary,
-                borderColor = if (isPaused) CyberYellow else HyperCrimson
+                title = if (isPaused) {
+                    if (isStreaming) "BROADCAST PAUSED" else "RECORDING PAUSED"
+                } else {
+                    if (isStreaming) "LIVE BROADCAST ACTIVE" else "STREAMING TO STORAGE"
+                },
+                titleTag = if (isStreaming) "ON AIR" else "LIVE",
+                tagColor = activeAccent,
+                tagTextColor = if (isStreaming) ObsidianCanvas else TextPrimary,
+                borderColor = activeAccent
             ) {
                 // Giant Digital High-Precision Timecode (HH:MM:SS.X)
                 Row(
@@ -366,7 +411,7 @@ private fun HeroRecordingCard(
                         modifier = Modifier
                             .size(14.dp)
                             .alpha(if (isPaused) 1f else pulseAlpha)
-                            .background(if (isPaused) CyberYellow else HyperCrimson, CircleShape)
+                            .background(activeAccent, CircleShape)
                             .border(2.dp, BorderHighlight, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -375,7 +420,7 @@ private fun HeroRecordingCard(
                         fontSize = 32.sp,
                         fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold,
-                        color = if (isPaused) CyberYellow else HyperCrimson,
+                        color = activeAccent,
                         letterSpacing = 0.5.sp,
                         maxLines = 1,
                         softWrap = false
@@ -396,14 +441,14 @@ private fun HeroRecordingCard(
                         modifier = Modifier.weight(1f)
                     )
                     TelemetryBadge(
-                        label = "DATA",
-                        value = StorageCalculator.formatBytes(bytes),
+                        label = if (isStreaming) "INGEST" else "DATA",
+                        value = if (isStreaming) "${streamConfig.videoBitrate / 1_000_000} MBPS" else StorageCalculator.formatBytes(bytes),
                         accentColor = HyperCyan,
                         modifier = Modifier.weight(1f)
                     )
                     TelemetryBadge(
-                        label = "CODEC",
-                        value = uiState.config.videoCodec.name,
+                        label = if (isStreaming) "TARGET" else "CODEC",
+                        value = if (isStreaming) streamConfig.platform.displayName else uiState.config.videoCodec.name,
                         accentColor = CyberYellow,
                         modifier = Modifier.weight(1f)
                     )
@@ -432,7 +477,7 @@ private fun HeroRecordingCard(
                         }
                     )
                     ActionButton(
-                        text = "Stop",
+                        text = if (isStreaming) "End Stream" else "Stop",
                         onClick = onStopClick,
                         variant = ActionButtonVariant.DANGER,
                         modifier = Modifier.weight(1f),
@@ -467,8 +512,8 @@ private fun HeroRecordingCard(
         }
         is RecorderState.Finished -> {
             SectionCard(
-                title = "RECORDING SAVED",
-                titleTag = "GALLERY READY",
+                title = if (studioMode == StudioMode.STREAM) "BROADCAST ARCHIVED" else "RECORDING SAVED",
+                titleTag = if (studioMode == StudioMode.STREAM) "VAULT READY" else "GALLERY READY",
                 tagColor = ToxicLime,
                 borderColor = ToxicLime
             ) {
@@ -488,14 +533,16 @@ private fun HeroRecordingCard(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 ActionButton(
-                    text = "RECORD AGAIN",
+                    text = if (studioMode == StudioMode.STREAM) "STREAM AGAIN" else "RECORD AGAIN",
                     onClick = onStartClick,
                     variant = ActionButtonVariant.PRIMARY,
+                    containerColor = if (studioMode == StudioMode.STREAM) HyperCyan else null,
+                    contentColor = if (studioMode == StudioMode.STREAM) ObsidianCanvas else null,
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.FiberManualRecord,
+                            painter = painterResource(id = if (studioMode == StudioMode.STREAM) R.drawable.ic_pixel_stream else R.drawable.ic_pixel_record),
                             contentDescription = null,
-                            tint = TextInverse,
+                            tint = if (studioMode == StudioMode.STREAM) ObsidianCanvas else HyperCrimson,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -504,80 +551,289 @@ private fun HeroRecordingCard(
         }
         else -> {
             // Idle Standby Hero Card
-            SectionCard(
-                title = "ZERO-COPY RECORDER",
-                titleTag = "STANDBY",
-                tagColor = ToxicLime,
-                borderColor = BorderStark
-            ) {
-                val inlineContent = mapOf(
-                    "arrow" to InlineTextContent(
-                        Placeholder(
-                            width = 16.sp,
-                            height = 12.sp,
-                            placeholderVerticalAlign = PlaceholderVerticalAlign.Center
-                        )
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_pixel_arrow_right),
-                            contentDescription = "to",
-                            tint = TextSecondary,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                )
-
-                Text(
-                    text = buildAnnotatedString {
-                        append("Direct GPU ")
-                        appendInlineContent("arrow", "──►")
-                        append(" MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.")
-                    },
-                    inlineContent = inlineContent,
-                    color = TextSecondary,
-                    fontFamily = BitcountPropSingle,
-                    fontSize = 13.sp,
-                    lineHeight = 17.sp
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Storage estimation bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+            if (studioMode == StudioMode.STREAM) {
+                // Live Broadcast Studio Deck
+                SectionCard(
+                    title = "LIVE BROADCAST STUDIO",
+                    titleTag = streamConfig.platform.displayName,
+                    tagColor = HyperCyan,
+                    tagTextColor = ObsidianCanvas,
+                    borderColor = HyperCyan.copy(alpha = 0.65f)
                 ) {
                     Text(
-                        text = "ESTIMATED RATE:",
+                        text = "Zero-copy hardware RTMP broadcast pipeline. Direct GPU stream to ${streamConfig.platform.displayName} with nanosecond audio sync.",
                         color = TextSecondary,
-                        fontSize = 12.sp,
                         fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
-                        color = CyberYellow,
                         fontSize = 13.sp,
-                        fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Bold
+                        lineHeight = 17.sp
                     )
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                ActionButton(
-                    text = "START RECORDING",
-                    onClick = onStartClick,
-                    variant = ActionButtonVariant.PRIMARY,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.FiberManualRecord,
-                            contentDescription = null,
-                            tint = TextInverse,
-                            modifier = Modifier.size(16.dp)
+                    // Stream Key Status Banner
+                    val hasKey = streamConfig.streamKey.isNotBlank()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceElevated)
+                            .border(1.dp, if (hasKey) ToxicLime.copy(alpha = 0.4f) else HyperCrimson.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(if (hasKey) ToxicLime else HyperCrimson, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (hasKey) "KEY CONFIGURED (AES-256)" else "MISSING STREAM KEY",
+                                color = if (hasKey) ToxicLime else HyperCrimson,
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Text(
+                            text = if (hasKey) "[ EDIT / TEST ]" else "[ SET KEY ]",
+                            color = if (hasKey) HyperCyan else ToxicLime,
+                            fontFamily = BitcountPropSingle,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { onOpenStreamSetup() }
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Quick Broadcast Settings Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        TelemetryBadge(
+                            label = "INGEST",
+                            value = "${streamConfig.videoBitrate / 1_000_000} MBPS",
+                            accentColor = CyberYellow,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TelemetryBadge(
+                            label = "ABR",
+                            value = if (streamConfig.enableAbr) "ON" else "OFF",
+                            accentColor = ToxicLime,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TelemetryBadge(
+                            label = "VAULT",
+                            value = if (streamConfig.saveLocalMasterArchive) "DUAL" else "OFF",
+                            accentColor = HyperCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ActionButton(
+                        text = "GO LIVE",
+                        onClick = {
+                            if (streamConfig.streamKey.isBlank()) {
+                                onOpenStreamSetup()
+                            } else {
+                                onStartClick()
+                            }
+                        },
+                        variant = ActionButtonVariant.PRIMARY,
+                        containerColor = HyperCyan,
+                        contentColor = ObsidianCanvas,
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_pixel_stream),
+                                contentDescription = null,
+                                tint = ObsidianCanvas,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+            } else {
+                // Standard Local Zero-Copy Recorder Card
+                SectionCard(
+                    title = "ZERO-COPY RECORDER",
+                    titleTag = "STANDBY",
+                    tagColor = ToxicLime,
+                    borderColor = BorderStark
+                ) {
+                    val inlineContent = mapOf(
+                        "arrow" to InlineTextContent(
+                            Placeholder(
+                                width = 16.sp,
+                                height = 12.sp,
+                                placeholderVerticalAlign = PlaceholderVerticalAlign.Center
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_pixel_arrow_right),
+                                contentDescription = "to",
+                                tint = TextSecondary,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    )
+
+                    Text(
+                        text = buildAnnotatedString {
+                            append("Direct GPU ")
+                            appendInlineContent("arrow", "──►")
+                            append(" MediaCodec hardware pipeline. Captures up to 120 FPS with nanosecond audio synchronization and zero CPU pixel copying.")
+                        },
+                        inlineContent = inlineContent,
+                        color = TextSecondary,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Storage estimation bar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "ESTIMATED RATE:",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = String.format(Locale.US, "%.1f MB/MIN", uiState.config.estimatedMbPerMinute),
+                            color = CyberYellow,
+                            fontSize = 13.sp,
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ActionButton(
+                        text = "START RECORDING",
+                        onClick = onStartClick,
+                        variant = ActionButtonVariant.PRIMARY,
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.FiberManualRecord,
+                                contentDescription = null,
+                                tint = TextInverse,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 6-Letter Symmetric Mode Switcher: [ RECORD ] / [ STREAM ]
+ * Provides 1-tap switching between Local Recording and Live Broadcasting.
+ */
+@Composable
+private fun StudioModeSwitcher(
+    currentMode: StudioMode,
+    onModeSelected: (StudioMode) -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(SurfaceElevated)
+            .border(1.dp, BorderStark, RoundedCornerShape(10.dp))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // [ RECORD ]
+        val isRecord = currentMode == StudioMode.RECORD
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (isRecord) HyperCrimson.copy(alpha = 0.16f) else Color.Transparent)
+                .border(
+                    width = if (isRecord) 1.5.dp else 0.dp,
+                    color = if (isRecord) HyperCrimson else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .clickable {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onModeSelected(StudioMode.RECORD)
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(if (isRecord) HyperCrimson else TextMuted, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(7.dp))
+                Text(
+                    text = "RECORD",
+                    color = if (isRecord) HyperCrimson else TextMuted,
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+            }
+        }
+
+        // [ STREAM ]
+        val isStream = currentMode == StudioMode.STREAM
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (isStream) HyperCyan.copy(alpha = 0.16f) else Color.Transparent)
+                .border(
+                    width = if (isStream) 1.5.dp else 0.dp,
+                    color = if (isStream) HyperCyan else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .clickable {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onModeSelected(StudioMode.STREAM)
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_pixel_stream),
+                    contentDescription = null,
+                    tint = if (isStream) HyperCyan else TextMuted,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "STREAM",
+                    color = if (isStream) HyperCyan else TextMuted,
+                    fontFamily = BitcountPropSingle,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
                 )
             }
         }

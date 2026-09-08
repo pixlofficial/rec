@@ -26,7 +26,8 @@ sealed interface RecorderState {
         val currentFps: Float = 0f,
         val gameAudioDb: Float = -60f,
         val micAudioDb: Float = -60f,
-        val isPaused: Boolean = false
+        val isPaused: Boolean = false,
+        val isStreaming: Boolean = false
     ) : RecorderState
 
     /**

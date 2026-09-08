@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +50,9 @@ fun MainScreen(
     var currentTab by rememberSaveable { mutableStateOf(initialTab) }
     var isHudStudioOpen by rememberSaveable { mutableStateOf(false) }
     val isRecording by dashboardViewModel.isRecordingActive.collectAsState()
+    val studioMode by dashboardViewModel.studioMode.collectAsState()
+    val streamConfig by dashboardViewModel.streamConfig.collectAsState()
+    var isStreamSetupModalOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialTab) {
         currentTab = initialTab
@@ -101,14 +105,28 @@ fun MainScreen(
                 currentTab = currentTab,
                 onTabSelected = { currentTab = it },
                 isRecording = isRecording,
+                studioMode = studioMode,
                 onRecordAction = {
                     if (isRecording) {
                         dashboardViewModel.stopRecording()
+                    } else if (studioMode == pixl.rec.core.storage.StudioMode.STREAM && streamConfig.streamKey.isBlank()) {
+                        isStreamSetupModalOpen = true
                     } else {
                         onRequestRecordPermission()
                     }
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+
+        // Live Stream Pre-Flight Setup Modal
+        if (isStreamSetupModalOpen) {
+            pixl.rec.ui.setup.StreamSetupModal(
+                streamConfig = streamConfig,
+                onSaveConfig = { updated ->
+                    dashboardViewModel.updateStreamConfig(updated)
+                },
+                onDismiss = { isStreamSetupModalOpen = false }
             )
         }
 

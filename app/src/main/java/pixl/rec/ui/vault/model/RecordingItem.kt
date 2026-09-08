@@ -28,6 +28,9 @@ data class RecordingItem(
     val formattedDate: String
         get() = dateFormatter.format(Instant.ofEpochSecond(dateAddedSec))
 
+    val isStream: Boolean
+        get() = displayName.startsWith("STREAM_") || displayName.contains("STREAM", ignoreCase = true)
+
     companion object {
         private val dateFormatter = DateTimeFormatter
             .ofPattern("MMM dd, yyyy • HH:mm", Locale.US)

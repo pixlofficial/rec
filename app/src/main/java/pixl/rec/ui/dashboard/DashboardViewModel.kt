@@ -24,8 +24,10 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.model.StreamConfig
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.storage.ConfigPreferences
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
 import pixl.rec.service.RecordingService
@@ -89,6 +91,39 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         .map { it is RecorderState.Recording || it is RecorderState.Paused }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _studioMode = MutableStateFlow(ConfigPreferences.getStudioMode(application))
+    val studioMode: StateFlow<StudioMode> = _studioMode.asStateFlow()
+
+    private val _isLiveStreamingEnabled = MutableStateFlow(ConfigPreferences.isLiveStreamingEnabled(application))
+    val isLiveStreamingEnabled: StateFlow<Boolean> = _isLiveStreamingEnabled.asStateFlow()
+
+    private val _streamConfig = MutableStateFlow(ConfigPreferences.loadStreamConfig(application))
+    val streamConfig: StateFlow<StreamConfig> = _streamConfig.asStateFlow()
+
+    fun setStudioMode(mode: StudioMode) {
+        _studioMode.value = mode
+        ConfigPreferences.setStudioMode(getApplication(), mode)
+    }
+
+    fun toggleLiveStreaming(enabled: Boolean) {
+        _isLiveStreamingEnabled.value = enabled
+        ConfigPreferences.setLiveStreamingEnabled(getApplication(), enabled)
+        if (!enabled && _studioMode.value == StudioMode.STREAM) {
+            setStudioMode(StudioMode.RECORD)
+        }
+    }
+
+    fun updateStreamConfig(config: StreamConfig) {
+        _streamConfig.value = config
+        ConfigPreferences.saveStreamConfig(getApplication(), config)
+    }
+
+    fun saveStreamKey(key: String) {
+        val updated = _streamConfig.value.copy(streamKey = key)
+        _streamConfig.value = updated
+        ConfigPreferences.saveStreamConfig(getApplication(), updated)
+    }
 
     private var standbyMicJob: Job? = null
     private val _standbyMicDb = MutableStateFlow(-60f)

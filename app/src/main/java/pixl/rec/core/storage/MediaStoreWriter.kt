@@ -22,7 +22,8 @@ import java.util.Locale
  */
 class MediaStoreWriter(
     private val context: Context,
-    private val config: RecordingConfig
+    private val config: RecordingConfig,
+    private val isStreamSession: Boolean = false
 ) {
     private val tag = "MediaStoreWriter"
     var currentUri: Uri? = null
@@ -39,7 +40,8 @@ class MediaStoreWriter(
      */
     fun open(): MediaMuxer {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        filename = "REC_$timestamp.mp4"
+        val prefix = if (isStreamSession) "STREAM_" else "REC_"
+        filename = "$prefix$timestamp.mp4"
 
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, filename)

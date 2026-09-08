@@ -80,29 +80,29 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
-                title = "Multi-Tap Dynamic Seeking Engine",
-                description = "Double-tap seeks ±5s, triple-tap seeks ±10s, and every add-on tap rapidly accumulates an extra ±10s (±20s, ±30s...) within a responsive 650ms latch window.",
+                title = "Zero-Copy RTMP Live Streaming",
+                description = "Stream directly to YouTube Live, Twitch, Kick, or custom RTMP endpoints with zero cloud proxies and ultra-low ~3% CPU overhead.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Custom Pixel Double Chevron Vector Suite",
-                description = "Handcrafted 15×15 42-block double-chevron pixel icons with internal laser wavefront energy sweep that travels inside the icon in the seek direction.",
+                title = "Simultaneous Dual Output Dispatch",
+                description = "Broadcast live to your audience while simultaneously capturing a master-grade uncompressed recording locally into your in-app Media Vault.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Faint Waving Edge Glow Aura",
-                description = "A subtle, breathing ambient crimson glow anchored along the active screen edge that gently waves and pulses with touch feedback.",
+                title = "Adaptive Bitrate (ABR) Controller",
+                description = "Real-time TCP backpressure detection dynamically tunes video bitrate (2.5–10 Mbps) to eliminate dropped frames and buffering on cellular/Wi-Fi.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Instant Keyframe Sync Seeking",
-                description = "Replaced exact timestamp decoding with instant keyframe sync seek across player controls and slider, eliminating seek stutter.",
-                category = PatchCategory.CHANGED
+                title = "Hardware-Backed KeyStore Security",
+                description = "Stream keys and ingest credentials are secured with hardware-backed AES-GCM-256 AndroidKeyStore encryption.",
+                category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Seek Buffering Card Suppression",
-                description = "Suppressed the intrusive buffering card during all seeking and scrubbing interactions, backed by a 500ms debounce grace period.",
-                category = PatchCategory.FIXED
+                title = "Floating Privacy Shield & Uplink HUD",
+                description = "Live glowing uplink health indicator on the radial overlay, plus a one-tap privacy blackout shield that mutes audio and video during sensitive moments.",
+                category = PatchCategory.ADDED
             )
         )
     }

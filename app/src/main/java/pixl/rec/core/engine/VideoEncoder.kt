@@ -428,4 +428,37 @@ class VideoEncoder(
             }
         }
     }
+
+    /**
+     * Dynamically adjusts video encoder bitrate at runtime via MediaCodec parameters.
+     */
+    fun adjustBitrate(newBitrateBps: Int) {
+        val codec = mediaCodec ?: return
+        try {
+            val bundle = Bundle().apply {
+                putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, newBitrateBps)
+            }
+            codec.setParameters(bundle)
+            Log.i(tag, "Adjusted dynamic video bitrate to ${newBitrateBps / 1000} kbps")
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to dynamically adjust video bitrate: ${e.message}")
+        }
+    }
+
+    /**
+     * Requests immediate generation of an IDR sync keyframe.
+     */
+    fun requestSyncFrame() {
+        val codec = mediaCodec ?: return
+        try {
+            val bundle = Bundle().apply {
+                putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0)
+            }
+            codec.setParameters(bundle)
+            Log.i(tag, "Requested dynamic IDR sync keyframe")
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to request dynamic sync keyframe: ${e.message}")
+        }
+    }
 }
+

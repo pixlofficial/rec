@@ -15,6 +15,16 @@ import pixl.rec.core.model.HudShape
 import pixl.rec.core.model.StrokeStyle
 import pixl.rec.core.model.HudSnapBehavior
 import pixl.rec.core.model.HudStyleConfig
+import pixl.rec.core.model.StreamConfig
+import pixl.rec.core.model.StreamPlatform
+
+/**
+ * Operating mode of the PixL REC Studio (Offline recording vs. live broadcasting).
+ */
+enum class StudioMode(val displayName: String) {
+    RECORD("RECORD"),
+    STREAM("STREAM")
+}
 
 /**
  * SharedPreferences persistence manager for user configuration profiles.
@@ -60,6 +70,18 @@ object ConfigPreferences {
     private const val KEY_PILL_DOCKED_ON_LEFT = "pill_docked_on_left"
     private const val KEY_PILL_DOCKED_ON_RIGHT = "pill_docked_on_right"
     private const val KEY_PILL_DOCK_Y_RATIO = "pill_dock_y_ratio"
+
+    // Live Streaming & Studio Mode Keys
+    private const val KEY_STUDIO_MODE = "studio_mode"
+    private const val KEY_ENABLE_LIVE_STREAMING = "enable_live_streaming"
+    private const val KEY_STREAM_PLATFORM = "stream_platform"
+    private const val KEY_STREAM_CUSTOM_ENDPOINT = "stream_custom_endpoint"
+    private const val KEY_STREAM_VIDEO_BITRATE = "stream_video_bitrate"
+    private const val KEY_STREAM_ENABLE_ABR = "stream_enable_abr"
+    private const val KEY_STREAM_MIN_BITRATE = "stream_min_bitrate"
+    private const val KEY_STREAM_MAX_BITRATE = "stream_max_bitrate"
+    private const val KEY_STREAM_SAVE_LOCAL_ARCHIVE = "stream_save_local_archive"
+    private const val KEY_STREAM_USE_ENHANCED_HEVC = "stream_use_enhanced_hevc"
 
     // Standby HUD Keys
     private const val KEY_STANDBY_ICON_SIZE_DP = "standby_hud_icon_size_dp"
@@ -296,5 +318,58 @@ object ConfigPreferences {
         val isRight = prefs.getBoolean(KEY_PILL_DOCKED_ON_RIGHT, false)
         val yRatio = prefs.getFloat(KEY_PILL_DOCK_Y_RATIO, 0.35f)
         return Triple(isLeft, isRight, yRatio)
+    }
+
+    fun getStudioMode(context: Context): StudioMode {
+        val name = getPrefs(context).getString(KEY_STUDIO_MODE, StudioMode.RECORD.name) ?: StudioMode.RECORD.name
+        return runCatching { StudioMode.valueOf(name) }.getOrDefault(StudioMode.RECORD)
+    }
+
+    fun setStudioMode(context: Context, mode: StudioMode) {
+        getPrefs(context).edit().putString(KEY_STUDIO_MODE, mode.name).apply()
+    }
+
+    fun isLiveStreamingEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_ENABLE_LIVE_STREAMING, true)
+    }
+
+    fun setLiveStreamingEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_ENABLE_LIVE_STREAMING, enabled).apply()
+    }
+
+    fun loadStreamConfig(context: Context): StreamConfig {
+        val prefs = getPrefs(context)
+        val platformStr = prefs.getString(KEY_STREAM_PLATFORM, StreamPlatform.YOUTUBE.name) ?: StreamPlatform.YOUTUBE.name
+        val platform = runCatching { StreamPlatform.valueOf(platformStr) }.getOrDefault(StreamPlatform.YOUTUBE)
+        val streamKey = SecureStreamPreferences.getStreamKey(context)
+
+        return StreamConfig(
+            platform = platform,
+            customEndpointUrl = prefs.getString(KEY_STREAM_CUSTOM_ENDPOINT, "") ?: "",
+            streamKey = streamKey,
+            videoBitrate = prefs.getInt(KEY_STREAM_VIDEO_BITRATE, platform.defaultVideoBitrate),
+            enableAbr = prefs.getBoolean(KEY_STREAM_ENABLE_ABR, true),
+            minBitrate = prefs.getInt(KEY_STREAM_MIN_BITRATE, 2_000_000),
+            maxBitrate = prefs.getInt(KEY_STREAM_MAX_BITRATE, 14_000_000),
+            saveLocalMasterArchive = prefs.getBoolean(KEY_STREAM_SAVE_LOCAL_ARCHIVE, true),
+            useEnhancedHevc = prefs.getBoolean(KEY_STREAM_USE_ENHANCED_HEVC, true)
+        )
+    }
+
+    fun saveStreamConfig(context: Context, config: StreamConfig) {
+        // Save secret key in hardware-backed Keystore
+        SecureStreamPreferences.saveStreamKey(context, config.streamKey)
+
+        // Save non-sensitive parameters
+        getPrefs(context).edit()
+            .putString(KEY_STREAM_PLATFORM, config.platform.name)
+            .putString(KEY_STREAM_CUSTOM_ENDPOINT, config.customEndpointUrl)
+            .putInt(KEY_STREAM_VIDEO_BITRATE, config.videoBitrate)
+            .putBoolean(KEY_STREAM_ENABLE_ABR, config.enableAbr)
+            .putInt(KEY_STREAM_MIN_BITRATE, config.minBitrate)
+            .putInt(KEY_STREAM_MAX_BITRATE, config.maxBitrate)
+            .putBoolean(KEY_STREAM_SAVE_LOCAL_ARCHIVE, config.saveLocalMasterArchive)
+            .putBoolean(KEY_STREAM_USE_ENHANCED_HEVC, config.useEnhancedHevc)
+            .apply()
     }
 }

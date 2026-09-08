@@ -15,16 +15,24 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import pixl.rec.core.engine.UplinkHealth
+import pixl.rec.core.model.RecorderState
+import pixl.rec.service.RecordingService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -172,6 +180,10 @@ fun FloatingRadialMenuView(
         label = "RadialMenuExpansion"
     )
 
+    val serviceState by RecordingService.serviceState.collectAsState()
+    val isStreaming = serviceState is RecorderState.Recording && (serviceState as RecorderState.Recording).isStreaming
+    val uplinkHealth by RecordingService.uplinkHealth.collectAsState()
+    val isPrivacySlateActive by RecordingService.isPrivacySlateActive.collectAsState()
 
     val iconAnim = rememberHudIconAnimation(
         animation = hudConfig.animation,
@@ -226,7 +238,7 @@ fun FloatingRadialMenuView(
             ),
         contentAlignment = boxAlignment
     ) {
-        // --- EXPANDED CANOPY OVERLAY ---
+        // --- EXPANDABLE SATELLITE CANOPY ---
         if (expansionProgress > 0.01f) {
             if (isDockedOnEdge) {
                 EdgeFanCanopy(
@@ -234,6 +246,10 @@ fun FloatingRadialMenuView(
                     expansionProgress = expansionProgress,
                     isRecordingActive = isRecordingActive,
                     isPaused = isPaused,
+                    isStreaming = isStreaming,
+                    uplinkHealth = uplinkHealth,
+                    isPrivacySlateActive = isPrivacySlateActive,
+                    onPrivacySlateToggle = { RecordingService.togglePrivacySlate() },
                     hudConfig = hudConfig,
                     onToggleExpand = onToggleExpand,
                     onRecordClick = onRecordClick,
@@ -252,6 +268,10 @@ fun FloatingRadialMenuView(
                     isRecordingActive = isRecordingActive,
                     isPaused = isPaused,
                     durationMs = durationMs,
+                    isStreaming = isStreaming,
+                    uplinkHealth = uplinkHealth,
+                    isPrivacySlateActive = isPrivacySlateActive,
+                    onPrivacySlateToggle = { RecordingService.togglePrivacySlate() },
                     hudConfig = hudConfig,
                     onToggleExpand = onToggleExpand,
                     onRecordClick = onRecordClick,
@@ -315,9 +335,9 @@ fun FloatingRadialMenuView(
                 ) {
                     val rawAlpha: Float = if (!isExpanded) iconAnim.alpha else ((1f - expansionProgress) * hudConfig.iconOpacity)
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_pixel_record),
-                        contentDescription = "PixL Floating Menu",
-                        tint = if (isPaused) CyberYellow else strokeColor,
+                        painter = painterResource(id = if (isStreaming) R.drawable.ic_pixel_stream else R.drawable.ic_pixel_record),
+                        contentDescription = if (isStreaming) "PixL Live Stream" else "PixL Floating Menu",
+                        tint = if (isPaused) CyberYellow else if (isStreaming) HyperCyan else strokeColor,
                         modifier = Modifier
                             .matchParentSize()
                             .scale(if (!isExpanded) iconAnim.scale else 1.0f)
@@ -325,8 +345,8 @@ fun FloatingRadialMenuView(
                     )
                     Icon(
                         painter = painterResource(id = if (isRecordingActive && !isDockedOnEdge) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_hud_node),
-                        contentDescription = if (isRecordingActive && !isDockedOnEdge) "Stop Recording" else "PixL HUD Node",
-                        tint = if (isRecordingActive && !isDockedOnEdge) HyperCrimson else strokeColor,
+                        contentDescription = if (isRecordingActive && !isDockedOnEdge) (if (isStreaming) "End Stream" else "Stop Recording") else "PixL HUD Node",
+                        tint = if (isRecordingActive && !isDockedOnEdge) (if (isStreaming) HyperCyan else HyperCrimson) else strokeColor,
                         modifier = Modifier
                             .matchParentSize()
                             .scale(if (isRecordingActive && !isDockedOnEdge) 1.0f else 1.45f)
@@ -347,6 +367,10 @@ private fun FreeSpaceHexPodCanopy(
     isRecordingActive: Boolean,
     isPaused: Boolean,
     durationMs: Long,
+    isStreaming: Boolean = false,
+    uplinkHealth: UplinkHealth = UplinkHealth.CLEAN,
+    isPrivacySlateActive: Boolean = false,
+    onPrivacySlateToggle: () -> Unit = {},
     hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
     onRecordClick: () -> Unit,
@@ -363,6 +387,12 @@ private fun FreeSpaceHexPodCanopy(
     val podWidth = (156f + freeExtra).dp
     val podHeight = (176f + freeExtra).dp
     val hexPodShape = remember(freeExtra) { IsometricHexPodShape() }
+
+    val uplinkColor = when (uplinkHealth) {
+        UplinkHealth.CLEAN -> ToxicLime
+        UplinkHealth.ADAPTING -> CyberYellow
+        UplinkHealth.CONGESTED -> HyperCrimson
+    }
 
     Box(
         modifier = Modifier
@@ -399,24 +429,46 @@ private fun FreeSpaceHexPodCanopy(
     }
 
     // --- 5 Radial Facets ---
-    // 1. TOP FACET: Live Digital Timer (REC) or STANDBY (Standby) - Centered in Top Chamber
+    // 1. TOP FACET: Live Digital Timer or Uplink Health Dot & Duration
     Box(
         modifier = Modifier
             .offset(y = (-45 - freeExtra * 0.45f).dp)
             .scale(expansionProgress)
-            .alpha(expansionProgress)
+            .alpha(expansionProgress),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (isRecordingActive) StorageCalculator.formatDuration(durationMs) else "STANDBY",
-            color = if (isRecordingActive) (if (isPaused) CyberYellow else HyperCrimson) else HyperCyan,
-            fontSize = 11.sp,
-            fontFamily = BitcountPropSingle,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
-        )
+        if (isStreaming) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(uplinkColor, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = "LIVE ${StorageCalculator.formatDuration(durationMs)}",
+                    color = HyperCyan,
+                    fontSize = 10.5.sp,
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        } else {
+            Text(
+                text = if (isRecordingActive) StorageCalculator.formatDuration(durationMs) else "STANDBY",
+                color = if (isRecordingActive) (if (isPaused) CyberYellow else HyperCrimson) else HyperCyan,
+                fontSize = 11.sp,
+                fontFamily = BitcountPropSingle,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
     }
 
-    // 2. LEFT CHAMBER: Invisible Ghost Mode (slashed eye) - Centered in Left Chamber
+    // 2. LEFT CHAMBER: Invisible Ghost Mode or Privacy Slate in Stream Mode
     Box(
         modifier = Modifier
             .offset(x = (-46 - freeExtra * 0.5f).dp)
@@ -424,23 +476,27 @@ private fun FreeSpaceHexPodCanopy(
             .alpha(expansionProgress)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 20.dp, color = HyperCyan),
+                indication = ripple(bounded = false, radius = 20.dp, color = if (isStreaming) (if (isPrivacySlateActive) HyperCrimson else HyperCyan) else HyperCyan),
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleExpand(false)
-                    onGhostClick()
+                    if (isStreaming) {
+                        onPrivacySlateToggle()
+                    } else {
+                        onToggleExpand(false)
+                        onGhostClick()
+                    }
                 }
             )
     ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_pixel_eye_off),
-            contentDescription = "Ghost Stealth Mode",
-            tint = HyperCyan,
+            contentDescription = if (isStreaming) (if (isPrivacySlateActive) "Resume Feed" else "Privacy Slate") else "Ghost Stealth Mode",
+            tint = if (isStreaming) (if (isPrivacySlateActive) HyperCrimson else HyperCyan) else HyperCyan,
             modifier = Modifier.size(24.dp)
         )
     }
 
-    // 3. RIGHT CHAMBER: Pause/Resume (REC) or Start Record (Standby) - Centered in Right Chamber
+    // 3. RIGHT CHAMBER: Pause/Resume (REC/STREAM) or Start Record (Standby)
     Box(
         modifier = Modifier
             .offset(x = (46 + freeExtra * 0.5f).dp)
@@ -448,7 +504,7 @@ private fun FreeSpaceHexPodCanopy(
             .alpha(expansionProgress)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 20.dp, color = if (isRecordingActive) CyberYellow else HyperCrimson),
+                indication = ripple(bounded = false, radius = 20.dp, color = if (isStreaming) HyperCyan else if (isRecordingActive) CyberYellow else HyperCrimson),
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     onToggleExpand(false)
@@ -469,7 +525,7 @@ private fun FreeSpaceHexPodCanopy(
                 }
             ),
             contentDescription = if (isRecordingActive) "Pause/Resume" else "Start Record",
-            tint = if (isRecordingActive) (if (isPaused) ToxicLime else TextPrimary) else HyperCrimson,
+            tint = if (isStreaming) (if (isPaused) ToxicLime else HyperCyan) else if (isRecordingActive) (if (isPaused) ToxicLime else TextPrimary) else HyperCrimson,
             modifier = Modifier.size(24.dp)
         )
     }
@@ -532,6 +588,10 @@ private fun EdgeFanCanopy(
     expansionProgress: Float,
     isRecordingActive: Boolean,
     isPaused: Boolean,
+    isStreaming: Boolean = false,
+    uplinkHealth: UplinkHealth = UplinkHealth.CLEAN,
+    isPrivacySlateActive: Boolean = false,
+    onPrivacySlateToggle: () -> Unit = {},
     hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
     onRecordClick: () -> Unit,
@@ -630,29 +690,33 @@ private fun EdgeFanCanopy(
             }
         )
 
-        // Node 2: Pause/Resume or Ghost (Upper-Right Chamber)
+        // Node 2: Privacy Slate (Stream) or Pause/Resume (REC) or Ghost (Standby)
         FanNodeItem(
-            iconResId = if (isRecordingActive) (if (isPaused) R.drawable.ic_pixel_play else R.drawable.ic_pixel_pause) else R.drawable.ic_pixel_eye_off,
-            tint = if (isRecordingActive) (if (isPaused) ToxicLime else HyperCyan) else HyperCyan,
+            iconResId = if (isStreaming) R.drawable.ic_pixel_eye_off else if (isRecordingActive) (if (isPaused) R.drawable.ic_pixel_play else R.drawable.ic_pixel_pause) else R.drawable.ic_pixel_eye_off,
+            tint = if (isStreaming) (if (isPrivacySlateActive) HyperCrimson else HyperCyan) else if (isRecordingActive) (if (isPaused) ToxicLime else HyperCyan) else HyperCyan,
             angleDeg = if (isDockedOnLeft) -35f else 215f,
             orbitRadius = nodeOrbitRadius,
             isDockedOnLeft = isDockedOnLeft,
             iconSize = 26.dp,
             onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                onToggleExpand(false)
-                if (isRecordingActive) {
-                    if (isPaused) onResumeClick() else onPauseClick()
+                if (isStreaming) {
+                    onPrivacySlateToggle()
                 } else {
-                    onGhostClick()
+                    onToggleExpand(false)
+                    if (isRecordingActive) {
+                        if (isPaused) onResumeClick() else onPauseClick()
+                    } else {
+                        onGhostClick()
+                    }
                 }
             }
         )
 
-        // Node 3: Start Record / Stop (Center Apex Chamber)
+        // Node 3: Start Record / End Stream / Stop Recording (Center Apex Chamber)
         FanNodeItem(
             iconResId = if (isRecordingActive) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_record,
-            tint = HyperCrimson,
+            tint = if (isStreaming) HyperCyan else HyperCrimson,
             angleDeg = if (isDockedOnLeft) 0f else 180f,
             orbitRadius = nodeOrbitRadius,
             isDockedOnLeft = isDockedOnLeft,

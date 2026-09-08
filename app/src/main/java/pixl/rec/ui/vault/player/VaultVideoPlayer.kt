@@ -1068,7 +1068,7 @@ private fun TopHudBar(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${item.width}x${item.height} • ${item.formattedSize}",
+                    text = if (item.isStream) "Stream Archive • ${item.width}x${item.height} • ${item.formattedSize}" else "${item.width}x${item.height} • ${item.formattedSize}",
                     color = HyperCyan,
                     fontSize = 11.sp,
                     fontFamily = BitcountPropSingle,

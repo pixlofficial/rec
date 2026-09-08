@@ -54,9 +54,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pixl.rec.core.model.RecorderState
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
 import pixl.rec.ui.theme.HyperCrimson
+import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.TextMuted
 import pixl.rec.ui.theme.TextPrimary
@@ -126,6 +128,7 @@ fun BottomNavBar(
     onTabSelected: (NavigationTab) -> Unit,
     isRecording: Boolean,
     onRecordAction: () -> Unit,
+    studioMode: StudioMode = StudioMode.RECORD,
     modifier: Modifier = Modifier
 ) {
     val navShape = remember { CrestedDockShape() }
@@ -198,6 +201,7 @@ fun BottomNavBar(
             FloatingRecordShutter(
                 isRecording = isRecording,
                 onRecordAction = onRecordAction,
+                studioMode = studioMode,
                 modifier = Modifier.align(Alignment.Center)
             )
         }
@@ -219,6 +223,7 @@ fun BottomNavBar(
 fun FloatingRecordShutter(
     isRecording: Boolean,
     onRecordAction: () -> Unit,
+    studioMode: StudioMode = StudioMode.RECORD,
     modifier: Modifier = Modifier
 ) {
     // Gentle, subtle breathing pulse for center shutter when live recording (idle = static 1f)
@@ -238,6 +243,19 @@ fun FloatingRecordShutter(
         1f
     }
 
+    val isStream = studioMode == StudioMode.STREAM
+    val shutterTint = if (isStream) HyperCyan else HyperCrimson
+    val shutterIcon = if (isRecording) {
+        pixl.rec.R.drawable.ic_pixel_stop
+    } else {
+        if (isStream) pixl.rec.R.drawable.ic_pixel_stream else pixl.rec.R.drawable.ic_pixel_record
+    }
+    val contentDescription = if (isRecording) {
+        if (isStream) "Stop Live Stream" else "Stop Recording"
+    } else {
+        if (isStream) "Start Live Stream" else "Start Recording"
+    }
+
     Box(
         modifier = modifier
             .size(64.dp)
@@ -249,11 +267,9 @@ fun FloatingRecordShutter(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            painter = painterResource(
-                id = if (isRecording) pixl.rec.R.drawable.ic_pixel_stop else pixl.rec.R.drawable.ic_pixel_record
-            ),
-            contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
-            tint = HyperCrimson,
+            painter = painterResource(id = shutterIcon),
+            contentDescription = contentDescription,
+            tint = shutterTint,
             modifier = Modifier
                 .size(if (isRecording) 56.dp else 52.dp)
                 .scale(pulseScale)

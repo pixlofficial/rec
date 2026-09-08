@@ -2,6 +2,7 @@
 
 package pixl.rec.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.widget.Toast
@@ -85,14 +86,23 @@ import pixl.rec.R
 import pixl.rec.core.engine.CodecProbe
 import pixl.rec.core.engine.ResolutionCalculator
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import pixl.rec.core.model.AudioSource
 import pixl.rec.core.model.PillRecallGesture
+import pixl.rec.core.model.StreamConfig
+import pixl.rec.core.model.StreamPlatform
 import pixl.rec.core.model.QuickPreset
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
@@ -138,7 +148,22 @@ fun SettingsScreen(
     val recorderState by viewModel.recorderState.collectAsState()
     val isRecordingActive = recorderState is RecorderState.Recording || recorderState is RecorderState.Paused
 
-    var selectedSubTab by remember { mutableStateOf(SettingsTab.VIDEO) }
+    val isStreamingEnabled by viewModel.isLiveStreamingEnabled.collectAsState()
+    var selectedSubTab by remember { mutableStateOf(SettingsTab.GENERAL) }
+    val availableTabs = remember(isStreamingEnabled) {
+        if (isStreamingEnabled) {
+            SettingsTab.entries
+        } else {
+            listOf(SettingsTab.GENERAL, SettingsTab.VIDEO, SettingsTab.AUDIO, SettingsTab.CONTROLS)
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(isStreamingEnabled) {
+        if (!isStreamingEnabled && selectedSubTab == SettingsTab.STREAM) {
+            selectedSubTab = SettingsTab.GENERAL
+        }
+    }
+
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
@@ -240,7 +265,7 @@ fun SettingsScreen(
 
         // 2. Sub-Navigation Tabs
         SlidingPillSelector(
-            items = SettingsTab.entries,
+            items = availableTabs,
             selectedItem = selectedSubTab,
             onItemSelected = { selectedSubTab = it },
             itemLabel = { it.title },
@@ -251,6 +276,11 @@ fun SettingsScreen(
 
         // 3. Sub-Tab Content
         when (selectedSubTab) {
+            SettingsTab.GENERAL -> GeneralSettingsSection(
+                uiState = uiState,
+                viewModel = viewModel,
+                isStreamingEnabled = isStreamingEnabled
+            )
             SettingsTab.VIDEO -> VideoSettingsSection(
                 uiState = uiState,
                 isRecordingActive = isRecordingActive,
@@ -281,9 +311,9 @@ fun SettingsScreen(
                 },
                 onNavigateToHudStudio = onNavigateToHudStudio
             )
-            SettingsTab.STORAGE -> StorageSettingsSection(
-                uiState = uiState,
-                viewModel = viewModel
+            SettingsTab.STREAM -> StreamSettingsSection(
+                viewModel = viewModel,
+                isRecordingActive = isRecordingActive
             )
         }
 
@@ -1098,9 +1128,10 @@ private fun ControlsSettingsSection(
 }
 
 @Composable
-private fun StorageSettingsSection(
+private fun GeneralSettingsSection(
     uiState: pixl.rec.ui.dashboard.DashboardUiState,
-    viewModel: DashboardViewModel
+    viewModel: DashboardViewModel,
+    isStreamingEnabled: Boolean
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -1146,6 +1177,44 @@ private fun StorageSettingsSection(
             }
         }
     }
+
+    // 0. Live Streaming Studio Master Disarm Switch
+    SectionCard(title = "LIVE STREAMING STUDIO", titleTag = "MASTER") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    text = "ENABLE BROADCAST DECK",
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (isStreamingEnabled) "Streaming tab and broadcast shutter are armed." else "Disabled. REC operates as a dedicated offline recorder.",
+                    color = TextSecondary,
+                    fontSize = 11.5.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            Switch(
+                checked = isStreamingEnabled,
+                onCheckedChange = { viewModel.toggleLiveStreaming(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = HyperCyan,
+                    checkedTrackColor = HyperCyan.copy(alpha = 0.25f),
+                    uncheckedThumbColor = TextMuted,
+                    uncheckedTrackColor = SurfaceElevated
+                )
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
 
     // 1. Storage Pipeline Card
     SectionCard(title = "STORAGE PIPELINE", titleTag = "SCOPED") {
@@ -1455,6 +1524,367 @@ private fun StorageSettingsSection(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StreamSettingsSection(
+    viewModel: DashboardViewModel,
+    isRecordingActive: Boolean
+) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val streamConfig by viewModel.streamConfig.collectAsState()
+    var isKeyVisible by remember { mutableStateOf(false) }
+
+    // 1. Platform Preset Card
+    SectionCard(title = "BROADCAST PLATFORM", titleTag = "PRESET") {
+        Text(
+            text = "Select your target streaming destination for pre-configured ingest server endpoints and optimized bitrate ceilings.",
+            color = TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 16.sp
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            StreamPlatform.entries.forEach { platform ->
+                val isSelected = streamConfig.platform == platform
+                val accentColor = when (platform) {
+                    StreamPlatform.YOUTUBE -> HyperCrimson
+                    StreamPlatform.TWITCH -> HyperCyan
+                    StreamPlatform.KICK -> ToxicLime
+                    StreamPlatform.CUSTOM -> CyberYellow
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) accentColor.copy(alpha = 0.15f) else SurfaceElevated)
+                        .border(
+                            width = if (isSelected) 1.5.dp else 1.dp,
+                            color = if (isSelected) accentColor else BorderStark,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.updateStreamConfig(
+                                streamConfig.copy(
+                                    platform = platform,
+                                    videoBitrate = platform.defaultVideoBitrate
+                                )
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = when (platform) {
+                            StreamPlatform.YOUTUBE -> "YOUTUBE"
+                            StreamPlatform.TWITCH -> "TWITCH"
+                            StreamPlatform.KICK -> "KICK"
+                            StreamPlatform.CUSTOM -> "CUSTOM"
+                        },
+                        color = if (isSelected) accentColor else TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 2. Ingest Endpoint & Stream Key
+    SectionCard(title = "INGEST & CREDENTIALS", titleTag = "KEYSTORE") {
+        if (streamConfig.platform == StreamPlatform.CUSTOM) {
+            Text(
+                text = "CUSTOM RTMP / RTMPS ENDPOINT:",
+                color = TextSecondary,
+                fontSize = 11.sp,
+                fontFamily = BitcountPropSingle
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedTextField(
+                value = streamConfig.customEndpointUrl,
+                onValueChange = { url ->
+                    viewModel.updateStreamConfig(streamConfig.copy(customEndpointUrl = url))
+                },
+                placeholder = { Text("rtmp://your-server.com/live", color = TextMuted, fontSize = 12.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = HyperCyan,
+                    unfocusedBorderColor = BorderStark,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SERVER ENDPOINT:",
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    fontFamily = BitcountPropSingle
+                )
+                Text(
+                    text = streamConfig.activeEndpointUrl,
+                    color = HyperCyan,
+                    fontSize = 11.sp,
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // Stream Key input row
+        Text(
+            text = "STREAM KEY:",
+            color = TextSecondary,
+            fontSize = 11.sp,
+            fontFamily = BitcountPropSingle
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+
+        OutlinedTextField(
+            value = streamConfig.streamKey,
+            onValueChange = { key ->
+                viewModel.saveStreamKey(key.trim())
+            },
+            visualTransformation = if (isKeyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            trailingIcon = {
+                Icon(
+                    imageVector = if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = "Toggle visibility",
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { isKeyVisible = !isKeyVisible }
+                )
+            },
+            placeholder = { Text("Paste secret stream key...", color = TextMuted, fontSize = 12.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = HyperCyan,
+                unfocusedBorderColor = BorderStark,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            )
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Quick Credential Actions: [ GET KEY ] and [ PASTE ]
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Get Key via Deep link
+            if (streamConfig.platform.dashboardUrl.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            try {
+                                val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(streamConfig.platform.dashboardUrl))
+                                context.startActivity(browserIntent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = HyperCyan, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "GET KEY", color = HyperCyan, fontFamily = BitcountPropSingle, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Paste from clipboard
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        val clipText = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
+                        if (!clipText.isNullOrBlank()) {
+                            viewModel.saveStreamKey(clipText)
+                            Toast.makeText(context, "Stream key pasted", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Clipboard empty", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, tint = ToxicLime, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "PASTE", color = ToxicLime, fontFamily = BitcountPropSingle, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // Clear Key
+            if (streamConfig.streamKey.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.saveStreamKey("")
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = HyperCrimson, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "CLEAR", color = HyperCrimson, fontFamily = BitcountPropSingle, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Hardware-backed encryption badge
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(ObsidianCanvas)
+                .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = ToxicLime, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "ENCRYPTED WITH ANDROID KEYSTORE (AES-256-GCM)",
+                color = TextSecondary,
+                fontSize = 10.sp,
+                fontFamily = BitcountPropSingle
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 3. Broadcast Video & Encoding Controls Card
+    SectionCard(title = "INGEST CONTROLS", titleTag = "VIDEO") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "TARGET UPLINK BITRATE:", color = TextSecondary, fontSize = 11.sp, fontFamily = BitcountPropSingle)
+            Text(
+                text = "${streamConfig.videoBitrate / 1_000_000} MBPS (${streamConfig.videoBitrate / 1_000} KBPS)",
+                color = HyperCyan,
+                fontSize = 12.sp,
+                fontFamily = BitcountPropSingle,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Slider(
+            value = streamConfig.videoBitrate.toFloat(),
+            onValueChange = { newBitrate ->
+                viewModel.updateStreamConfig(streamConfig.copy(videoBitrate = newBitrate.roundToInt()))
+            },
+            valueRange = 2_000_000f..18_000_000f,
+            steps = 31,
+            colors = SliderDefaults.colors(thumbColor = HyperCyan, activeTrackColor = HyperCyan)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Enhanced RTMP (HEVC) Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(text = "ENHANCED RTMP (HEVC / H.265)", color = TextPrimary, fontSize = 12.5.sp, fontFamily = BitcountPropSingle, fontWeight = FontWeight.Bold)
+                Text(text = "FourCC 'hvc1' encapsulation for 1440p YouTube Live streaming at 40% lower bandwidth.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+            }
+            Switch(
+                checked = streamConfig.useEnhancedHevc && streamConfig.platform.supportsHevc,
+                enabled = streamConfig.platform.supportsHevc,
+                onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(useEnhancedHevc = it)) },
+                colors = SwitchDefaults.colors(checkedThumbColor = HyperCyan, checkedTrackColor = HyperCyan.copy(alpha = 0.25f))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Dual Master Archive Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(text = "DUAL MASTER VAULT ARCHIVE", color = TextPrimary, fontSize = 12.5.sp, fontFamily = BitcountPropSingle, fontWeight = FontWeight.Bold)
+                Text(text = "Simultaneously write an uncompressed master MP4 copy to local storage while streaming.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+            }
+            Switch(
+                checked = streamConfig.saveLocalMasterArchive,
+                onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(saveLocalMasterArchive = it)) },
+                colors = SwitchDefaults.colors(checkedThumbColor = ToxicLime, checkedTrackColor = ToxicLime.copy(alpha = 0.25f))
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 4. Adaptive Bitrate Control (ABR) Card
+    SectionCard(title = "ADAPTIVE BITRATE CONTROL", titleTag = "ABR") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(text = "DYNAMIC RATE ADAPTATION", color = TextPrimary, fontSize = 12.5.sp, fontFamily = BitcountPropSingle, fontWeight = FontWeight.Bold)
+                Text(text = "Dynamically adjusts hardware MediaCodec bitrate in real-time during network backpressure to prevent stream disconnection.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+            }
+            Switch(
+                checked = streamConfig.enableAbr,
+                onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(enableAbr = it)) },
+                colors = SwitchDefaults.colors(checkedThumbColor = HyperCyan, checkedTrackColor = HyperCyan.copy(alpha = 0.25f))
+            )
         }
     }
 }

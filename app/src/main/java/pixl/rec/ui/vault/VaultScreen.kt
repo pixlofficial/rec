@@ -44,7 +44,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +67,7 @@ import pixl.rec.ui.theme.BorderHighlight
 import pixl.rec.ui.theme.BorderStark
 import pixl.rec.ui.theme.CyberYellow
 import pixl.rec.ui.theme.HyperCrimson
+import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.ObsidianCanvas
 import pixl.rec.ui.theme.SurfaceElevated
 import pixl.rec.ui.theme.SurfaceRaised
@@ -75,6 +78,15 @@ import pixl.rec.ui.theme.TextSecondary
 import pixl.rec.ui.theme.ToxicLime
 import pixl.rec.ui.vault.model.RecordingItem
 
+/**
+ * Filter categories for recordings in the Vault.
+ */
+enum class VaultFilter {
+    ALL,
+    LOCAL,
+    STREAMS
+}
+
 @Composable
 fun VaultScreen(
     vaultViewModel: VaultViewModel,
@@ -84,6 +96,15 @@ fun VaultScreen(
     val recordings by vaultViewModel.recordings.collectAsState()
     val isLoading by vaultViewModel.isLoading.collectAsState()
     val activePlayerRecording by vaultViewModel.activePlayerRecording.collectAsState()
+    var selectedFilter by remember { mutableStateOf(VaultFilter.ALL) }
+
+    val filteredRecordings = remember(recordings, selectedFilter) {
+        when (selectedFilter) {
+            VaultFilter.ALL -> recordings
+            VaultFilter.LOCAL -> recordings.filter { !it.isStream }
+            VaultFilter.STREAMS -> recordings.filter { it.isStream }
+        }
+    }
 
     // Auto-refresh when Vault screen is entered
     LaunchedEffect(Unit) {
@@ -208,7 +229,53 @@ fun VaultScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Filter Chips: ALL | LOCAL | STREAMS
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            VaultFilter.entries.forEach { filter ->
+                val isSelected = selectedFilter == filter
+                val chipAccent = when (filter) {
+                    VaultFilter.ALL -> ToxicLime
+                    VaultFilter.LOCAL -> CyberYellow
+                    VaultFilter.STREAMS -> HyperCyan
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) chipAccent.copy(alpha = 0.18f) else SurfaceElevated)
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) chipAccent else BorderStark,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = true),
+                            onClick = { selectedFilter = filter }
+                        )
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = when (filter) {
+                            VaultFilter.ALL -> "ALL (${recordings.size})"
+                            VaultFilter.LOCAL -> "LOCAL (${recordings.count { !it.isStream }})"
+                            VaultFilter.STREAMS -> "STREAMS (${recordings.count { it.isStream }})"
+                        },
+                        color = if (isSelected) chipAccent else TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 3. Vault Clips List / Empty State
         if (isLoading) {
@@ -225,7 +292,7 @@ fun VaultScreen(
                     fontFamily = BitcountPropSingle
                 )
             }
-        } else if (recordings.isEmpty()) {
+        } else if (filteredRecordings.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,7 +315,7 @@ fun VaultScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "NO RECORDINGS YET",
+                        text = if (recordings.isEmpty()) "NO RECORDINGS YET" else "NO ${selectedFilter.name} CLIPS FOUND",
                         color = TextPrimary,
                         fontSize = 16.sp,
                         fontFamily = BitcountPropSingle,
@@ -256,17 +323,19 @@ fun VaultScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Recorded game clips and videos will appear here.",
+                        text = if (recordings.isEmpty()) "Recorded game clips and videos will appear here." else "No clips match the selected ${selectedFilter.name} filter.",
                         color = TextMuted,
                         fontSize = 12.sp,
                         fontFamily = BitcountPropSingle
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ActionButton(
-                        text = "START FIRST RECORDING",
-                        variant = ActionButtonVariant.PRIMARY,
-                        onClick = onRequestRecord
-                    )
+                    if (recordings.isEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ActionButton(
+                            text = "START FIRST RECORDING",
+                            variant = ActionButtonVariant.PRIMARY,
+                            onClick = onRequestRecord
+                        )
+                    }
                 }
             }
         } else {
@@ -275,7 +344,7 @@ fun VaultScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
-                    items = recordings,
+                    items = filteredRecordings,
                     key = { it.id }
                 ) { item ->
                     RecordingCard(
@@ -354,18 +423,40 @@ private fun RecordingCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = item.displayName,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontFamily = BitcountPropSingle,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (item.isStream) {
+                            Box(
+                                modifier = Modifier
+                                    .background(HyperCyan.copy(alpha = 0.16f), RoundedCornerShape(4.dp))
+                                    .border(1.dp, HyperCyan.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "📡 STREAM",
+                                    color = HyperCyan,
+                                    fontSize = 9.sp,
+                                    fontFamily = BitcountPropSingle,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
+                        Text(
+                            text = item.displayName,
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${item.formattedSize} • ${item.formattedDuration}",
-                        color = ToxicLime,
+                        color = if (item.isStream) HyperCyan else ToxicLime,
                         fontSize = 12.sp,
                         fontFamily = BitcountPropSingle,
                         fontWeight = FontWeight.Bold
