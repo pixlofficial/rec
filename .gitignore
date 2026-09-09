@@ -21,3 +21,13 @@ test_recordings/
 PROJECT_BLUEPRINT.md
 /dev/
 create_icon.html
+
+# Keystores & Signing credentials
+*.jks
+*.keystore
+*.p12
+*.pepk
+*.b64
+signing.properties
+release-signing.properties
+keystore.properties

@@ -165,6 +165,63 @@ cd rec
 # Output: app/build/outputs/bundle/release/app-release.aab
 ```
 
+### 🔐 Release Signing & Keystore Configuration
+
+REC enforces cryptographically signed production builds for all release APKs and Google Play App Bundles (AAB). Release builds **never** fall back to the debug key and will fail fast with an actionable error if signing credentials are not configured.
+
+#### 1. One-Time Keystore Generation (Do NOT generate inside the repository)
+Generate your permanent release keystore once on your machine and store it in a secure location outside the repository (e.g. your user home directory or encrypted backup):
+
+```bash
+keytool -genkeypair -v \
+  -keystore ~/rec-release.jks \
+  -alias rec-release \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -storetype PKCS12
+```
+
+> [!CAUTION]
+> **NEVER commit keystore files (`*.jks`, `*.keystore`) or credentials to git.** Always keep your release keystore safely backed up in a secure offline location (e.g. 1Password, Bitwarden, or encrypted vault).
+
+#### 2. GitHub Actions CI/CD Secrets
+To enable automated release builds on GitHub Actions, configure the following repository secrets under **Settings $\rightarrow$ Secrets and variables $\rightarrow$ Actions**:
+
+| Secret Name | Description | Example / Format |
+|---|---|---|
+| `REC_KEYSTORE_BASE64` | Base64-encoded release keystore file | Output of `base64 -w 0 ~/rec-release.jks` |
+| `REC_KEYSTORE_PASSWORD` | Password for the keystore file | Keystore password |
+| `REC_KEY_ALIAS` | Key alias in the keystore | `rec-release` |
+| `REC_KEY_PASSWORD` | Password for the specific key | Key password |
+
+*To generate the base64 string on Linux/macOS:*
+```bash
+# Linux
+base64 -w 0 ~/rec-release.jks > ~/rec-release.jks.base64
+
+# macOS
+base64 -i ~/rec-release.jks -o ~/rec-release.jks.base64
+```
+Copy the contents of `rec-release.jks.base64` directly into the `REC_KEYSTORE_BASE64` secret.
+
+#### 3. Local Release Builds
+To build signed release artifacts locally on your workstation, export the environment variables pointing to your keystore before running Gradle:
+
+```bash
+# Export release signing credentials
+export REC_KEYSTORE_PATH="$HOME/rec-release.jks"
+export REC_KEYSTORE_PASSWORD="<your-keystore-password>"
+export REC_KEY_ALIAS="rec-release"
+export REC_KEY_PASSWORD="<your-key-password>"
+
+# Build signed release APK
+./gradlew assembleRelease
+
+# Build signed Google Play App Bundle (AAB)
+./gradlew bundleRelease
+```
+
 ---
 
 ## 📁 Repository Architecture

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_target:
-        description: "Build Target (aab / apk / both)"
+        description: "Build Target (aab / apk / both / debug-only)"
         required: true
         default: "both"
         type: choice
@@ -12,6 +12,7 @@ on:
           - aab
           - apk
           - both
+          - debug-only
   push:
     branches:
       - main
@@ -50,8 +51,38 @@ jobs:
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
 
+      - name: Setup Release Keystore
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_target != 'debug-only') }}
+        env:
+          REC_KEYSTORE_BASE64: ${{ secrets.REC_KEYSTORE_BASE64 }}
+          REC_KEYSTORE_PASSWORD: ${{ secrets.REC_KEYSTORE_PASSWORD }}
+          REC_KEY_ALIAS: ${{ secrets.REC_KEY_ALIAS }}
+          REC_KEY_PASSWORD: ${{ secrets.REC_KEY_PASSWORD }}
+        run: |
+          MISSING_SECRETS=()
+          [ -z "$REC_KEYSTORE_BASE64" ] && MISSING_SECRETS+=("REC_KEYSTORE_BASE64")
+          [ -z "$REC_KEYSTORE_PASSWORD" ] && MISSING_SECRETS+=("REC_KEYSTORE_PASSWORD")
+          [ -z "$REC_KEY_ALIAS" ] && MISSING_SECRETS+=("REC_KEY_ALIAS")
+          [ -z "$REC_KEY_PASSWORD" ] && MISSING_SECRETS+=("REC_KEY_PASSWORD")
+
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "::error::Release build failed: Missing required GitHub Actions secret(s): ${MISSING_SECRETS[*]}."
+            echo "::error::To produce signed release binaries, configure REC_KEYSTORE_BASE64, REC_KEYSTORE_PASSWORD, REC_KEY_ALIAS, and REC_KEY_PASSWORD in Repository Secrets."
+            exit 1
+          fi
+
+          KEYSTORE_PATH="$RUNNER_TEMP/rec-release.jks"
+          echo "$REC_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+          echo "REC_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
       - name: Build Google Play Android App Bundle (AAB)
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'aab' || github.event.inputs.build_target == 'both' }}
+        env:
+          REC_KEYSTORE_PATH: ${{ env.REC_KEYSTORE_PATH }}
+          REC_KEYSTORE_PASSWORD: ${{ secrets.REC_KEYSTORE_PASSWORD }}
+          REC_KEY_ALIAS: ${{ secrets.REC_KEY_ALIAS }}
+          REC_KEY_PASSWORD: ${{ secrets.REC_KEY_PASSWORD }}
         run: |
           VERSION=$(grep 'VERSION_NAME' version.properties | awk -F'=' '{print $2}' | tr -d '\r\n')
           echo "Building Google Play App Bundle (AAB) for version: $VERSION"
@@ -62,6 +93,11 @@ jobs:
 
       - name: Build Standalone Debug & Release APKs
         if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event.inputs.build_target == 'apk' || github.event.inputs.build_target == 'both' }}
+        env:
+          REC_KEYSTORE_PATH: ${{ env.REC_KEYSTORE_PATH }}
+          REC_KEYSTORE_PASSWORD: ${{ secrets.REC_KEYSTORE_PASSWORD }}
+          REC_KEY_ALIAS: ${{ secrets.REC_KEY_ALIAS }}
+          REC_KEY_PASSWORD: ${{ secrets.REC_KEY_PASSWORD }}
         run: |
           VERSION=$(grep 'VERSION_NAME' version.properties | awk -F'=' '{print $2}' | tr -d '\r\n')
           echo "Building APKs for version: $VERSION"
@@ -76,8 +112,25 @@ jobs:
           cp app/build/outputs/apk/debug/REC-v${VERSION}-debug.apk build-output/REC-v${VERSION}-debug.apk || cp app/build/outputs/apk/debug/app-debug.apk build-output/REC-v${VERSION}-debug.apk
           cp build-output/REC-v${VERSION}-debug.apk build-output/REC-debug.apk
 
+      - name: Build Standalone Debug APK (Debug Only)
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_target == 'debug-only') }}
+        run: |
+          VERSION=$(grep 'VERSION_NAME' version.properties | awk -F'=' '{print $2}' | tr -d '\r\n')
+          echo "Building Standalone Debug APK for version: $VERSION"
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          mkdir -p build-output
+          cp app/build/outputs/apk/debug/REC-v${VERSION}-debug.apk build-output/REC-v${VERSION}-debug.apk || cp app/build/outputs/apk/debug/app-debug.apk build-output/REC-v${VERSION}-debug.apk
+          cp build-output/REC-v${VERSION}-debug.apk build-output/REC-debug.apk
+
+      - name: Clean up Release Keystore
+        if: always()
+        run: |
+          if [ -n "$REC_KEYSTORE_PATH" ] && [ -f "$REC_KEYSTORE_PATH" ]; then
+            shred -u "$REC_KEYSTORE_PATH" || rm -f "$REC_KEYSTORE_PATH"
+          fi
+
       - name: Generate Checksums & Build Manifest
-        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         run: |
           cd build-output
           sha256sum *.{apk,aab} > SHA256SUMS.txt 2>/dev/null || sha256sum *.apk > SHA256SUMS.txt
@@ -102,3 +155,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+

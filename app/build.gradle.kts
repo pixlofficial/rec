@@ -31,11 +31,38 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("REC_KEYSTORE_PATH")
+                ?: (project.findProperty("REC_KEYSTORE_PATH") as? String)
+            val keystorePassword = System.getenv("REC_KEYSTORE_PASSWORD")
+                ?: (project.findProperty("REC_KEYSTORE_PASSWORD") as? String)
+            val keyAlias = System.getenv("REC_KEY_ALIAS")
+                ?: (project.findProperty("REC_KEY_ALIAS") as? String)
+            val keyPassword = System.getenv("REC_KEY_PASSWORD")
+                ?: (project.findProperty("REC_KEY_PASSWORD") as? String)
+
+            if (!keystorePath.isNullOrBlank() &&
+                !keystorePassword.isNullOrBlank() &&
+                !keyAlias.isNullOrBlank() &&
+                !keyPassword.isNullOrBlank()
+            ) {
+                val keystoreFile = File(keystorePath)
+                if (keystoreFile.exists()) {
+                    storeFile = keystoreFile
+                    storePassword = keystorePassword
+                    this.keyAlias = keyAlias
+                    this.keyPassword = keyPassword
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -83,6 +110,70 @@ android {
             val baseName = "REC-v${variant.versionName}"
             val newName = if (variantName == "release") "$baseName.apk" else "$baseName-$variantName.apk"
             output?.outputFileName = newName
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val isReleaseBuildRequested = allTasks.any { task ->
+        task.name.equals("assembleRelease", ignoreCase = true) ||
+        task.name.equals("bundleRelease", ignoreCase = true) ||
+        task.name.equals("packageRelease", ignoreCase = true) ||
+        task.name.equals("packageReleaseBundle", ignoreCase = true)
+    }
+
+    if (isReleaseBuildRequested) {
+        val releaseConfig = android.signingConfigs.getByName("release")
+        val storeFile = releaseConfig.storeFile
+
+        if (storeFile == null || !storeFile.exists()) {
+            val envKeystorePath = System.getenv("REC_KEYSTORE_PATH")
+                ?: (project.findProperty("REC_KEYSTORE_PATH") as? String)
+            val envKeystorePassword = System.getenv("REC_KEYSTORE_PASSWORD")
+                ?: (project.findProperty("REC_KEYSTORE_PASSWORD") as? String)
+            val envKeyAlias = System.getenv("REC_KEY_ALIAS")
+                ?: (project.findProperty("REC_KEY_ALIAS") as? String)
+            val envKeyPassword = System.getenv("REC_KEY_PASSWORD")
+                ?: (project.findProperty("REC_KEY_PASSWORD") as? String)
+
+            val missingVars = mutableListOf<String>().apply {
+                if (envKeystorePath.isNullOrBlank()) add("REC_KEYSTORE_PATH")
+                if (envKeystorePassword.isNullOrBlank()) add("REC_KEYSTORE_PASSWORD")
+                if (envKeyAlias.isNullOrBlank()) add("REC_KEY_ALIAS")
+                if (envKeyPassword.isNullOrBlank()) add("REC_KEY_PASSWORD")
+            }
+
+            val errorMessage = if (missingVars.isNotEmpty()) {
+                """
+                |========================================================================================
+                | REC RELEASE BUILD FAILED: Missing release signing credentials!
+                |----------------------------------------------------------------------------------------
+                | Missing variable(s): ${missingVars.joinToString(", ")}
+                |
+                | To build a signed release APK or Google Play App Bundle (AAB), define the required
+                | environment variables:
+                |   export REC_KEYSTORE_PATH="/path/to/rec-release.jks"
+                |   export REC_KEYSTORE_PASSWORD="<keystore-password>"
+                |   export REC_KEY_ALIAS="<key-alias>"
+                |   export REC_KEY_PASSWORD="<key-password>"
+                |
+                | In CI (GitHub Actions), ensure secrets REC_KEYSTORE_BASE64, REC_KEYSTORE_PASSWORD,
+                | REC_KEY_ALIAS, and REC_KEY_PASSWORD are set in Repository Secrets.
+                |
+                | For complete setup instructions, see README.md.
+                |========================================================================================
+                """.trimMargin()
+            } else {
+                """
+                |========================================================================================
+                | REC RELEASE BUILD FAILED: Keystore file not found!
+                |----------------------------------------------------------------------------------------
+                | Configured keystore path does not exist: $envKeystorePath
+                | Verify that REC_KEYSTORE_PATH points to a valid .jks or .keystore file.
+                |========================================================================================
+                """.trimMargin()
+            }
+            throw GradleException(errorMessage)
         }
     }
 }
