@@ -25,6 +25,5 @@ val TextInverse = Color(0xFF08080C)
 val ToxicLime = Color(0xFF00FF66)   // Display Refresh Rate (FPS / HZ), Hardware SoC, Safe VU Levels
 val CyberYellow = Color(0xFFFFE600) // Storage Telemetry (FREE GB), Estimated Rate, Warnings
 
-// Auxiliary Highlights
 val HyperCyan = Color(0xFF00E5FF)
-val ElectricPurple = Color(0xFF9D4EDD)
+val ElectricPurple = Color(0xFF9146FF) // Official Twitch & Cyberpunk Electric Purple

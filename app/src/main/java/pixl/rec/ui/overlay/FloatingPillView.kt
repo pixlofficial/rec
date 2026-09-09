@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.service.RecordingService
 import pixl.rec.ui.theme.CyberYellow
 
@@ -37,6 +38,7 @@ import pixl.rec.ui.theme.CyberYellow
 @Composable
 fun FloatingPillView(
     config: RecordingConfig = RecordingConfig(),
+    studioMode: StudioMode = StudioMode.RECORD,
     isExpanded: Boolean = false,
     isDockedOnLeft: Boolean = false,
     isDockedOnRight: Boolean = false,
@@ -121,6 +123,7 @@ fun FloatingPillView(
             isDockedOnRight = isDockedOnRight,
             isRecordingActive = isRecordingActive,
             isPaused = isPaused,
+            studioMode = studioMode,
             durationMs = currentDuration,
             hudConfig = if (isRecordingActive) config.recordingHudConfig else config.standbyHudConfig,
             onToggleExpand = { expanded ->

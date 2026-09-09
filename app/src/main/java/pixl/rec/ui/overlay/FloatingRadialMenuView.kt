@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import pixl.rec.R
 import pixl.rec.core.model.HudStyleConfig
 import pixl.rec.core.storage.StorageCalculator
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.ui.components.HudNodeSurface
 import pixl.rec.ui.components.rememberHudIconAnimation
 import pixl.rec.ui.theme.BitcountPropSingle
@@ -149,6 +150,7 @@ fun FloatingRadialMenuView(
     isDockedOnRight: Boolean = false,
     isRecordingActive: Boolean = false,
     isPaused: Boolean = false,
+    studioMode: StudioMode = StudioMode.RECORD,
     durationMs: Long = 0L,
     hudConfig: HudStyleConfig = HudStyleConfig(),
     onToggleExpand: (Boolean) -> Unit,
@@ -181,7 +183,9 @@ fun FloatingRadialMenuView(
     )
 
     val serviceState by RecordingService.serviceState.collectAsState()
-    val isStreaming = serviceState is RecorderState.Recording && (serviceState as RecorderState.Recording).isStreaming
+    val isStreamingActive = serviceState is RecorderState.Recording && (serviceState as RecorderState.Recording).isStreaming
+    val isStreamMode = studioMode == StudioMode.STREAM
+    val isStreaming = isStreamingActive || isStreamMode
     val uplinkHealth by RecordingService.uplinkHealth.collectAsState()
     val isPrivacySlateActive by RecordingService.isPrivacySlateActive.collectAsState()
 
@@ -337,7 +341,7 @@ fun FloatingRadialMenuView(
                     Icon(
                         painter = painterResource(id = if (isStreaming) R.drawable.ic_pixel_stream else R.drawable.ic_pixel_record),
                         contentDescription = if (isStreaming) "PixL Live Stream" else "PixL Floating Menu",
-                        tint = if (isPaused) CyberYellow else if (isStreaming) HyperCyan else strokeColor,
+                        tint = if (isPaused) CyberYellow else if (isStreaming) HyperCrimson else strokeColor,
                         modifier = Modifier
                             .matchParentSize()
                             .scale(if (!isExpanded) iconAnim.scale else 1.0f)
@@ -346,7 +350,7 @@ fun FloatingRadialMenuView(
                     Icon(
                         painter = painterResource(id = if (isRecordingActive && !isDockedOnEdge) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_hud_node),
                         contentDescription = if (isRecordingActive && !isDockedOnEdge) (if (isStreaming) "End Stream" else "Stop Recording") else "PixL HUD Node",
-                        tint = if (isRecordingActive && !isDockedOnEdge) (if (isStreaming) HyperCyan else HyperCrimson) else strokeColor,
+                        tint = if (isRecordingActive && !isDockedOnEdge) HyperCrimson else strokeColor,
                         modifier = Modifier
                             .matchParentSize()
                             .scale(if (isRecordingActive && !isDockedOnEdge) 1.0f else 1.45f)
@@ -715,8 +719,8 @@ private fun EdgeFanCanopy(
 
         // Node 3: Start Record / End Stream / Stop Recording (Center Apex Chamber)
         FanNodeItem(
-            iconResId = if (isRecordingActive) R.drawable.ic_pixel_stop else R.drawable.ic_pixel_record,
-            tint = if (isStreaming) HyperCyan else HyperCrimson,
+            iconResId = if (isRecordingActive) R.drawable.ic_pixel_stop else if (isStreaming) R.drawable.ic_pixel_stream else R.drawable.ic_pixel_record,
+            tint = HyperCrimson,
             angleDeg = if (isDockedOnLeft) 0f else 180f,
             orbitRadius = nodeOrbitRadius,
             isDockedOnLeft = isDockedOnLeft,

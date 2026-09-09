@@ -25,8 +25,10 @@ import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.model.StreamConfig
+import pixl.rec.core.model.StreamPlatform
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.storage.ConfigPreferences
+import pixl.rec.core.storage.SecureStreamPreferences
 import pixl.rec.core.storage.StudioMode
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.service.FloatingOverlayService
@@ -119,8 +121,38 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         ConfigPreferences.saveStreamConfig(getApplication(), config)
     }
 
+    fun selectStreamPlatform(platform: StreamPlatform) {
+        val current = _streamConfig.value
+        val savedKey = SecureStreamPreferences.getPlatformStreamKey(getApplication(), platform)
+        val updatedDestinations = current.destinations.map { dest ->
+            if (dest.platform == platform) dest.copy(streamKey = savedKey) else dest
+        }
+        val updated = current.copy(
+            platform = platform,
+            streamKey = savedKey,
+            destinations = updatedDestinations,
+            videoBitrate = platform.defaultVideoBitrate
+        )
+        _streamConfig.value = updated
+        ConfigPreferences.saveStreamConfig(getApplication(), updated)
+    }
+
     fun saveStreamKey(key: String) {
-        val updated = _streamConfig.value.copy(streamKey = key)
+        val current = _streamConfig.value
+        val updatedDestinations = current.destinations.map { dest ->
+            if (dest.platform == current.platform) dest.copy(streamKey = key) else dest
+        }
+        val updated = current.copy(streamKey = key, destinations = updatedDestinations)
+        _streamConfig.value = updated
+        ConfigPreferences.saveStreamConfig(getApplication(), updated)
+    }
+
+    fun saveCustomEndpoint(url: String) {
+        val current = _streamConfig.value
+        val updatedDestinations = current.destinations.map { dest ->
+            if (dest.platform == current.platform) dest.copy(customEndpointUrl = url) else dest
+        }
+        val updated = current.copy(customEndpointUrl = url, destinations = updatedDestinations)
         _streamConfig.value = updated
         ConfigPreferences.saveStreamConfig(getApplication(), updated)
     }
@@ -288,7 +320,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 alwaysOnFloatingPill = true,
                 autoHidePill = false,
                 pillRecallGesture = PillRecallGesture.EDGE_SWIPE,
-                shakeToStop = true,
+                shakeToStop = false,
                 stopOnScreenOff = true,
                 captureTarget = CaptureTarget.ENTIRE_SCREEN
             ).withMacroblockAlignment()

@@ -9,6 +9,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -124,6 +128,7 @@ import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderHighlight
 import pixl.rec.ui.theme.BorderStark
 import pixl.rec.ui.theme.CyberYellow
+import pixl.rec.ui.theme.ElectricPurple
 import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
 import pixl.rec.ui.theme.ObsidianCanvas
@@ -1179,7 +1184,7 @@ private fun GeneralSettingsSection(
     }
 
     // 0. Live Streaming Studio Master Disarm Switch
-    SectionCard(title = "LIVE STREAMING STUDIO", titleTag = "MASTER") {
+    SectionCard(title = "LIVE STREAMING", titleTag = "STUDIO") {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1187,7 +1192,7 @@ private fun GeneralSettingsSection(
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(
-                    text = "ENABLE BROADCAST DECK",
+                    text = "ENABLE LIVE STREAMING",
                     color = TextPrimary,
                     fontSize = 13.sp,
                     fontFamily = BitcountPropSingle,
@@ -1195,7 +1200,7 @@ private fun GeneralSettingsSection(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (isStreamingEnabled) "Streaming tab and broadcast shutter are armed." else "Disabled. REC operates as a dedicated offline recorder.",
+                    text = if (isStreamingEnabled) "Shows the Stream tab and unlocks live broadcasting to YouTube, Twitch, Kick, and RTMP." else "Hides all streaming features. REC operates as a clean, 100% offline screen recorder.",
                     color = TextSecondary,
                     fontSize = 11.5.sp,
                     lineHeight = 15.sp
@@ -1528,6 +1533,13 @@ private fun GeneralSettingsSection(
     }
 }
 
+private enum class PrimaryPlatformTab(val label: String) {
+    YOUTUBE("YOUTUBE"),
+    TWITCH("TWITCH"),
+    KICK("KICK"),
+    OTHER("OTHER")
+}
+
 @Composable
 private fun StreamSettingsSection(
     viewModel: DashboardViewModel,
@@ -1538,10 +1550,24 @@ private fun StreamSettingsSection(
     val streamConfig by viewModel.streamConfig.collectAsState()
     var isKeyVisible by remember { mutableStateOf(false) }
 
+    val activePrimaryTab = when (streamConfig.platform) {
+        StreamPlatform.YOUTUBE -> PrimaryPlatformTab.YOUTUBE
+        StreamPlatform.TWITCH -> PrimaryPlatformTab.TWITCH
+        StreamPlatform.KICK -> PrimaryPlatformTab.KICK
+        else -> PrimaryPlatformTab.OTHER
+    }
+
+    val platformAccentColor = when (activePrimaryTab) {
+        PrimaryPlatformTab.YOUTUBE -> HyperCrimson
+        PrimaryPlatformTab.TWITCH -> ElectricPurple
+        PrimaryPlatformTab.KICK -> ToxicLime
+        PrimaryPlatformTab.OTHER -> CyberYellow
+    }
+
     // 1. Platform Preset Card
-    SectionCard(title = "BROADCAST PLATFORM", titleTag = "PRESET") {
+    SectionCard(title = "STREAMING PLATFORMS", titleTag = "PRESET") {
         Text(
-            text = "Select your target streaming destination for pre-configured ingest server endpoints and optimized bitrate ceilings.",
+            text = "Configure credentials, server endpoints, and video bitrates for individual streaming platforms.",
             color = TextSecondary,
             fontSize = 12.sp,
             lineHeight = 16.sp
@@ -1549,53 +1575,130 @@ private fun StreamSettingsSection(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StreamPlatform.entries.forEach { platform ->
-                val isSelected = streamConfig.platform == platform
-                val accentColor = when (platform) {
-                    StreamPlatform.YOUTUBE -> HyperCrimson
-                    StreamPlatform.TWITCH -> HyperCyan
-                    StreamPlatform.KICK -> ToxicLime
-                    StreamPlatform.CUSTOM -> CyberYellow
+        SlidingPillSelector(
+            items = PrimaryPlatformTab.entries,
+            selectedItem = activePrimaryTab,
+            onItemSelected = { tab ->
+                when (tab) {
+                    PrimaryPlatformTab.YOUTUBE -> viewModel.selectStreamPlatform(StreamPlatform.YOUTUBE)
+                    PrimaryPlatformTab.TWITCH -> viewModel.selectStreamPlatform(StreamPlatform.TWITCH)
+                    PrimaryPlatformTab.KICK -> viewModel.selectStreamPlatform(StreamPlatform.KICK)
+                    PrimaryPlatformTab.OTHER -> {
+                        if (streamConfig.platform.isPrimary) {
+                            val lastOther = ConfigPreferences.getLastOtherPlatform(context)
+                            viewModel.selectStreamPlatform(lastOther)
+                        }
+                    }
                 }
+            },
+            itemLabel = { it.label },
+            height = 44.dp,
+            activeColor = platformAccentColor,
+            activeTextColor = platformAccentColor
+        )
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) accentColor.copy(alpha = 0.15f) else SurfaceElevated)
-                        .border(
-                            width = if (isSelected) 1.5.dp else 1.dp,
-                            color = if (isSelected) accentColor else BorderStark,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clickable {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.updateStreamConfig(
-                                streamConfig.copy(
-                                    platform = platform,
-                                    videoBitrate = platform.defaultVideoBitrate
-                                )
+        // Smooth in-card expansion for EXTENDED DESTINATIONS when OTHER is active
+        AnimatedVisibility(
+            visible = activePrimaryTab == PrimaryPlatformTab.OTHER,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                var isDropdownExpanded by remember { mutableStateOf(false) }
+
+                ExposedDropdownMenuBox(
+                    expanded = isDropdownExpanded,
+                    onExpandedChange = { isDropdownExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        value = "${streamConfig.platform.displayName.uppercase()}   [${streamConfig.platform.protocolTag}]",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = {
+                            Text(
+                                text = "EXTENDED DESTINATION",
+                                fontFamily = BitcountPropSingle,
+                                fontSize = 10.sp,
+                                letterSpacing = 0.5.sp
                             )
                         },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = when (platform) {
-                            StreamPlatform.YOUTUBE -> "YOUTUBE"
-                            StreamPlatform.TWITCH -> "TWITCH"
-                            StreamPlatform.KICK -> "KICK"
-                            StreamPlatform.CUSTOM -> "CUSTOM"
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded)
                         },
-                        color = if (isSelected) accentColor else TextSecondary,
-                        fontSize = 11.sp,
-                        fontFamily = BitcountPropSingle,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = CyberYellow,
+                            unfocusedBorderColor = BorderStark,
+                            focusedContainerColor = SurfaceElevated,
+                            unfocusedContainerColor = SurfaceElevated,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedLabelColor = CyberYellow,
+                            unfocusedLabelColor = TextSecondary
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontFamily = BitcountPropSingle,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
                     )
+
+                    ExposedDropdownMenu(
+                        expanded = isDropdownExpanded,
+                        onDismissRequest = { isDropdownExpanded = false },
+                        modifier = Modifier
+                            .background(SurfaceElevated)
+                            .border(1.dp, BorderStark, RoundedCornerShape(8.dp))
+                    ) {
+                        StreamPlatform.EXTENDED_PLATFORMS.forEach { platform ->
+                            val isSelected = streamConfig.platform == platform
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = platform.displayName,
+                                            fontFamily = BitcountPropSingle,
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) CyberYellow else TextPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(if (isSelected) CyberYellow.copy(alpha = 0.2f) else ObsidianCanvas)
+                                                .border(0.5.dp, if (isSelected) CyberYellow else BorderStark, RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = platform.protocolTag,
+                                                color = if (isSelected) CyberYellow else TextSecondary,
+                                                fontSize = 9.sp,
+                                                fontFamily = BitcountPropSingle,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    isDropdownExpanded = false
+                                    viewModel.selectStreamPlatform(platform)
+                                    ConfigPreferences.saveLastOtherPlatform(context, platform)
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1605,9 +1708,9 @@ private fun StreamSettingsSection(
 
     // 2. Ingest Endpoint & Stream Key
     SectionCard(title = "INGEST & CREDENTIALS", titleTag = "KEYSTORE") {
-        if (streamConfig.platform == StreamPlatform.CUSTOM) {
+        if (streamConfig.platform.isCustomEndpoint) {
             Text(
-                text = "CUSTOM RTMP / RTMPS ENDPOINT:",
+                text = if (streamConfig.platform == StreamPlatform.TIKTOK) "TIKTOK RTMP INGEST ENDPOINT:" else "CUSTOM RTMP / RTMPS ENDPOINT:",
                 color = TextSecondary,
                 fontSize = 11.sp,
                 fontFamily = BitcountPropSingle
@@ -1616,9 +1719,15 @@ private fun StreamSettingsSection(
             OutlinedTextField(
                 value = streamConfig.customEndpointUrl,
                 onValueChange = { url ->
-                    viewModel.updateStreamConfig(streamConfig.copy(customEndpointUrl = url))
+                    viewModel.saveCustomEndpoint(url)
                 },
-                placeholder = { Text("rtmp://your-server.com/live", color = TextMuted, fontSize = 12.sp) },
+                placeholder = {
+                    Text(
+                        if (streamConfig.platform == StreamPlatform.TIKTOK) "rtmp://live-push.tiktok.com/live/" else "rtmp://your-server.com/live",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -1628,6 +1737,15 @@ private fun StreamSettingsSection(
                     unfocusedTextColor = TextPrimary
                 )
             )
+            if (streamConfig.platform == StreamPlatform.TIKTOK) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Requires TikTok Live Studio or 1,000+ follower creator RTMP stream key permissions.",
+                    color = CyberYellow,
+                    fontSize = 10.5.sp,
+                    lineHeight = 14.sp
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
         } else {
             Row(
@@ -1829,47 +1947,123 @@ private fun StreamSettingsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Enhanced RTMP (HEVC) Toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(text = "ENHANCED RTMP (HEVC / H.265)", color = TextPrimary, fontSize = 12.5.sp, fontFamily = BitcountPropSingle, fontWeight = FontWeight.Bold)
-                Text(text = "FourCC 'hvc1' encapsulation for 1440p YouTube Live streaming at 40% lower bandwidth.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+        // Codec & Enhanced RTMP Controls (Platform-Aware Context)
+        if (streamConfig.platform.supportsHevc) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(
+                        text = "ENHANCED RTMP (HEVC / H.265)",
+                        color = TextPrimary,
+                        fontSize = 12.5.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (streamConfig.platform == StreamPlatform.YOUTUBE) {
+                            "FourCC 'hvc1' encapsulation for 1440p YouTube Live streaming at 40% lower bandwidth."
+                        } else {
+                            "FourCC 'hvc1' encapsulation. Ensure your custom RTMP ingest server supports Enhanced RTMP."
+                        },
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp
+                    )
+                }
+                Switch(
+                    checked = streamConfig.useEnhancedHevc,
+                    onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(useEnhancedHevc = it)) },
+                    colors = SwitchDefaults.colors(checkedThumbColor = HyperCyan, checkedTrackColor = HyperCyan.copy(alpha = 0.25f))
+                )
             }
-            Switch(
-                checked = streamConfig.useEnhancedHevc && streamConfig.platform.supportsHevc,
-                enabled = streamConfig.platform.supportsHevc,
-                onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(useEnhancedHevc = it)) },
-                colors = SwitchDefaults.colors(checkedThumbColor = HyperCyan, checkedTrackColor = HyperCyan.copy(alpha = 0.25f))
-            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(
+                        text = "BROADCAST CODEC",
+                        color = TextPrimary,
+                        fontSize = 12.5.sp,
+                        fontFamily = BitcountPropSingle,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${streamConfig.platform.displayName} ingest servers strictly require AVC (H.264). Enhanced RTMP is not supported.",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, BorderStark, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "AVC / H.264",
+                        color = HyperCyan,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
+    }
 
-        Spacer(modifier = Modifier.height(14.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
-        // Dual Master Archive Toggle
+    // 4. Local Master Archive Card
+    SectionCard(title = "LOCAL MASTER ARCHIVE", titleTag = "VAULT") {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(text = "DUAL MASTER VAULT ARCHIVE", color = TextPrimary, fontSize = 12.5.sp, fontFamily = BitcountPropSingle, fontWeight = FontWeight.Bold)
-                Text(text = "Simultaneously write an uncompressed master MP4 copy to local storage while streaming.", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+                Text(
+                    text = "DUAL MASTER VAULT ARCHIVE",
+                    color = TextPrimary,
+                    fontSize = 12.5.sp,
+                    fontFamily = BitcountPropSingle,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (streamConfig.saveLocalMasterArchive) {
+                        "Simultaneously write an uncompressed master MP4 copy to local storage while streaming."
+                    } else {
+                        "Pure Stream Mode. Transmits directly over RTMP with zero local disk footprint."
+                    },
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp
+                )
             }
             Switch(
                 checked = streamConfig.saveLocalMasterArchive,
                 onCheckedChange = { viewModel.updateStreamConfig(streamConfig.copy(saveLocalMasterArchive = it)) },
-                colors = SwitchDefaults.colors(checkedThumbColor = ToxicLime, checkedTrackColor = ToxicLime.copy(alpha = 0.25f))
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ToxicLime,
+                    checkedTrackColor = ToxicLime.copy(alpha = 0.25f),
+                    uncheckedThumbColor = TextMuted,
+                    uncheckedTrackColor = SurfaceElevated
+                )
             )
         }
     }
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // 4. Adaptive Bitrate Control (ABR) Card
+    // 5. Adaptive Bitrate Control (ABR) Card
     SectionCard(title = "ADAPTIVE BITRATE CONTROL", titleTag = "ABR") {
         Row(
             modifier = Modifier.fillMaxWidth(),

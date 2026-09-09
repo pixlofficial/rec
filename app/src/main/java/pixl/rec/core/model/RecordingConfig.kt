@@ -119,7 +119,7 @@ data class RecordingConfig(
     val hidePillDuringRecording: Boolean = false,
     val autoHidePill: Boolean = false,
     val pillRecallGesture: PillRecallGesture = PillRecallGesture.EDGE_SWIPE,
-    val shakeToStop: Boolean = true,
+    val shakeToStop: Boolean = false,
     val stopOnScreenOff: Boolean = true,
     val captureTarget: CaptureTarget = CaptureTarget.ENTIRE_SCREEN,
     val countdownSeconds: Int = 0,

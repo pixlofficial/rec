@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -42,10 +43,12 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.storage.ConfigPreferences
+import pixl.rec.core.storage.StudioMode
 import pixl.rec.ui.CapturePermissionActivity
 import pixl.rec.ui.MainActivity
 import pixl.rec.ui.overlay.FloatingPillView
 import pixl.rec.ui.overlay.FloatingRadialMenuView
+import pixl.rec.ui.setup.StreamSetupModalContent
 import pixl.rec.ui.theme.RECTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
@@ -74,9 +77,17 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         get() = configState.value
     private val isDockedOnLeftState = mutableStateOf(true)
     private val isDockedOnRightState = mutableStateOf(false)
+    private val studioModeState = mutableStateOf(StudioMode.RECORD)
+    private var streamSetupOverlayView: View? = null
     private var preExpandX: Int = 0
     private var preExpandY: Int = 0
     private var standbyDockY: Int = 0
+
+    private val prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == ConfigPreferences.KEY_STUDIO_MODE) {
+            studioModeState.value = ConfigPreferences.getStudioMode(this@FloatingOverlayService)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -94,6 +105,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         }
         val currentCfg = ConfigPreferences.loadConfig(this, baseConfig)
         configState.value = currentCfg
+        studioModeState.value = ConfigPreferences.getStudioMode(this)
         _isTemporarilyHidden.value = false
         removeMenuOverlay()
         if (overlayView == null) {
@@ -216,6 +228,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+        try {
+            ConfigPreferences.getPrefs(this).registerOnSharedPreferenceChangeListener(prefChangeListener)
+        } catch (_: Exception) {}
 
         serviceScope.launch {
             isTemporarilyHidden.collect { hidden ->
@@ -324,6 +339,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                 RECTheme {
                     FloatingPillView(
                         config = currentConfig,
+                        studioMode = studioModeState.value,
                         isDockedOnLeft = isDockedOnLeftState.value,
                         isDockedOnRight = isDockedOnRightState.value,
                         onDrag = { dx, dy ->
@@ -363,9 +379,16 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                         },
                         onCollapseComplete = {},
                         onRecordClick = {
-                            val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
-                            configState.value = activeConfig
-                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
+                            val currentMode = studioModeState.value
+                            val serviceState = RecordingService.serviceState.value
+                            val isRecordingOrStreaming = serviceState is RecorderState.Recording || serviceState is RecorderState.Paused
+                            if (!isRecordingOrStreaming && currentMode == StudioMode.STREAM) {
+                                openStreamSetupOverlay()
+                            } else {
+                                val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                                configState.value = activeConfig
+                                startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
+                            }
                         },
                         onReplayClick = {
                             android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
@@ -658,6 +681,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                         ) {
                             FloatingRadialMenuView(
                                 isExpanded = isMenuExpandedState.value,
+                                studioMode = studioModeState.value,
                                 isDockedOnLeft = isLeft,
                                 isDockedOnRight = isRight,
                                 isRecordingActive = isRecordingActive,
@@ -676,9 +700,16 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                                 onDragEnd = {},
                                 onRecordClick = {
                                     removeMenuOverlay()
-                                    val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
-                                    configState.value = activeConfig
-                                    startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
+                                    val currentMode = studioModeState.value
+                                    val serviceState = RecordingService.serviceState.value
+                                    val isRecordingOrStreaming = serviceState is RecorderState.Recording || serviceState is RecorderState.Paused
+                                    if (!isRecordingOrStreaming && currentMode == StudioMode.STREAM) {
+                                        openStreamSetupOverlay()
+                                    } else {
+                                        val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                                        configState.value = activeConfig
+                                        startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
+                                    }
                                 },
                                 onPauseClick = {
                                     RecordingService.pauseService(this@FloatingOverlayService)
@@ -761,9 +792,94 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         startActivity(intent)
     }
 
+    private fun openStreamSetupOverlay() {
+        if (streamSetupOverlayView != null) return
+        removeMenuOverlay()
+
+        val streamConfig = ConfigPreferences.loadStreamConfig(this)
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val modalParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            overlayType,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.CENTER
+            @Suppress("DEPRECATION")
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        }
+
+        val composeView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@FloatingOverlayService)
+            setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            isFocusableInTouchMode = true
+            requestFocus()
+            setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                    closeStreamSetupOverlay()
+                    true
+                } else {
+                    false
+                }
+            }
+            setContent {
+                RECTheme {
+                    StreamSetupModalContent(
+                        streamConfig = streamConfig,
+                        isOverlayMode = true,
+                        onSaveConfig = { updated ->
+                            ConfigPreferences.saveStreamConfig(this@FloatingOverlayService, updated)
+                        },
+                        onStartBroadcast = { updated ->
+                            ConfigPreferences.saveStreamConfig(this@FloatingOverlayService, updated)
+                            closeStreamSetupOverlay()
+                            val activeConfig = ConfigPreferences.loadConfig(this@FloatingOverlayService, configState.value)
+                            configState.value = activeConfig
+                            startActivity(CapturePermissionActivity.createIntent(this@FloatingOverlayService, activeConfig))
+                        },
+                        onDismiss = {
+                            closeStreamSetupOverlay()
+                        }
+                    )
+                }
+            }
+        }
+
+        streamSetupOverlayView = composeView
+        try {
+            windowManager?.addView(composeView, modalParams)
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingOverlayService", "Failed to add stream setup overlay", e)
+            streamSetupOverlayView = null
+        }
+    }
+
+    private fun closeStreamSetupOverlay() {
+        val view = streamSetupOverlayView ?: return
+        streamSetupOverlayView = null
+        try {
+            windowManager?.removeView(view)
+        } catch (e: Exception) {
+            android.util.Log.e("FloatingOverlayService", "Failed to remove stream setup overlay", e)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        try {
+            ConfigPreferences.getPrefs(this).unregisterOnSharedPreferenceChangeListener(prefChangeListener)
+        } catch (_: Exception) {}
+        closeStreamSetupOverlay()
         removeMenuOverlay()
         if (overlayView != null) {
             try {

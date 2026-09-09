@@ -338,10 +338,18 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         val isStreaming = studioMode == StudioMode.STREAM && streamConfig.isConfigured
         val shouldSaveLocalArchive = !isStreaming || streamConfig.saveLocalMasterArchive
 
-        // If broadcasting to platforms that require AVC (such as Twitch or Kick), lock codec to AVC
-        val effectiveConfig = if (isStreaming && !streamConfig.effectiveSupportsHevc && config.videoCodec != VideoCodec.AVC) {
-            Log.i(TAG, "Multistream includes platforms requiring AVC (Twitch/Kick). Adapting encoder codec from ${config.videoCodec.name} to AVC.")
-            config.copy(videoCodec = VideoCodec.AVC)
+        // Codec negotiation: In STREAM mode, the broadcast configuration is authoritative:
+        // - If Enhanced RTMP (HEVC) is supported and active (e.g. YouTube / Custom), encode in HEVC.
+        // - If broadcasting to platforms requiring AVC (Twitch / Kick) or if Enhanced RTMP is OFF, encode in AVC.
+        // In RECORD mode, strictly respect the Video tab's selected hardware codec.
+        val effectiveConfig = if (isStreaming) {
+            val targetCodec = if (streamConfig.effectiveSupportsHevc) VideoCodec.HEVC else VideoCodec.AVC
+            if (config.videoCodec != targetCodec) {
+                Log.i(TAG, "Broadcast mode: Adapting hardware encoder codec from ${config.videoCodec.name} to ${targetCodec.name} (effectiveSupportsHevc=${streamConfig.effectiveSupportsHevc})")
+                config.copy(videoCodec = targetCodec)
+            } else {
+                config
+            }
         } else {
             config
         }

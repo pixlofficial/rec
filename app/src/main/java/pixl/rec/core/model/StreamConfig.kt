@@ -12,7 +12,8 @@ enum class StreamPlatform(
     val defaultVideoBitrate: Int,
     val recommendedFps: Int,
     val supportsHevc: Boolean,
-    val dashboardUrl: String
+    val dashboardUrl: String,
+    val protocolTag: String = "RTMP"
 ) {
     YOUTUBE(
         displayName = "YouTube Live",
@@ -20,7 +21,8 @@ enum class StreamPlatform(
         defaultVideoBitrate = 9_000_000, // 9 Mbps for 1440p/1080p60
         recommendedFps = 60,
         supportsHevc = true, // YouTube supports Enhanced RTMP HEVC
-        dashboardUrl = "https://studio.youtube.com/channel/UC/livestreaming"
+        dashboardUrl = "https://studio.youtube.com/channel/UC/livestreaming",
+        protocolTag = "RTMPS"
     ),
     TWITCH(
         displayName = "Twitch",
@@ -28,7 +30,8 @@ enum class StreamPlatform(
         defaultVideoBitrate = 6_000_000, // Twitch standard 6 Mbps ingest limit
         recommendedFps = 60,
         supportsHevc = false, // AVC required
-        dashboardUrl = "https://dashboard.twitch.tv/stream-manager"
+        dashboardUrl = "https://dashboard.twitch.tv/stream-manager",
+        protocolTag = "RTMP"
     ),
     KICK(
         displayName = "Kick",
@@ -36,7 +39,53 @@ enum class StreamPlatform(
         defaultVideoBitrate = 8_000_000, // 8 Mbps
         recommendedFps = 60,
         supportsHevc = false,
-        dashboardUrl = "https://kick.com/dashboard/stream"
+        dashboardUrl = "https://kick.com/dashboard/stream",
+        protocolTag = "RTMPS"
+    ),
+    FACEBOOK(
+        displayName = "Facebook Live",
+        defaultEndpoint = "rtmps://live-api-s.facebook.com:443/rtmp/",
+        defaultVideoBitrate = 6_000_000,
+        recommendedFps = 60,
+        supportsHevc = false,
+        dashboardUrl = "https://www.facebook.com/live/producer",
+        protocolTag = "RTMPS"
+    ),
+    LOCO(
+        displayName = "Loco",
+        defaultEndpoint = "rtmp://live.loco.gg/app/",
+        defaultVideoBitrate = 6_000_000,
+        recommendedFps = 60,
+        supportsHevc = false,
+        dashboardUrl = "https://loco.gg/streamer",
+        protocolTag = "RTMP"
+    ),
+    TIKTOK(
+        displayName = "TikTok Live",
+        defaultEndpoint = "rtmp://",
+        defaultVideoBitrate = 6_000_000,
+        recommendedFps = 60,
+        supportsHevc = false,
+        dashboardUrl = "",
+        protocolTag = "RTMP"
+    ),
+    TWITTER(
+        displayName = "X (Twitter)",
+        defaultEndpoint = "rtmps://prod-fastly-us-east-1.video.pscp.tv:443/x/",
+        defaultVideoBitrate = 6_000_000,
+        recommendedFps = 60,
+        supportsHevc = false,
+        dashboardUrl = "https://studio.x.com",
+        protocolTag = "RTMPS"
+    ),
+    RESTREAM(
+        displayName = "Restream.io",
+        defaultEndpoint = "rtmp://live.restream.io/live",
+        defaultVideoBitrate = 8_000_000,
+        recommendedFps = 60,
+        supportsHevc = false,
+        dashboardUrl = "https://app.restream.io",
+        protocolTag = "MULTI"
     ),
     CUSTOM(
         displayName = "Custom RTMP",
@@ -44,8 +93,20 @@ enum class StreamPlatform(
         defaultVideoBitrate = 6_000_000,
         recommendedFps = 60,
         supportsHevc = true,
-        dashboardUrl = ""
-    )
+        dashboardUrl = "",
+        protocolTag = "CUSTOM"
+    );
+
+    val isPrimary: Boolean
+        get() = this == YOUTUBE || this == TWITCH || this == KICK
+
+    val isCustomEndpoint: Boolean
+        get() = this == CUSTOM || this == TIKTOK
+
+    companion object {
+        val PRIMARY_PLATFORMS = listOf(YOUTUBE, TWITCH, KICK)
+        val EXTENDED_PLATFORMS = listOf(FACEBOOK, LOCO, TIKTOK, TWITTER, RESTREAM, CUSTOM)
+    }
 }
 
 /**
@@ -61,7 +122,7 @@ data class StreamDestination(
 ) : Parcelable {
 
     val activeEndpointUrl: String
-        get() = if (platform == StreamPlatform.CUSTOM && customEndpointUrl.isNotBlank()) {
+        get() = if (platform.isCustomEndpoint && customEndpointUrl.isNotBlank()) {
             customEndpointUrl.trim()
         } else {
             platform.defaultEndpoint
@@ -89,7 +150,7 @@ data class StreamConfig(
 ) : Parcelable {
 
     val activeEndpointUrl: String
-        get() = if (platform == StreamPlatform.CUSTOM && customEndpointUrl.isNotBlank()) {
+        get() = if (platform.isCustomEndpoint && customEndpointUrl.isNotBlank()) {
             customEndpointUrl.trim()
         } else {
             platform.defaultEndpoint

@@ -73,7 +73,7 @@ object ConfigPreferences {
     private const val KEY_PILL_DOCK_Y_RATIO = "pill_dock_y_ratio"
 
     // Live Streaming & Studio Mode Keys
-    private const val KEY_STUDIO_MODE = "studio_mode"
+    const val KEY_STUDIO_MODE = "studio_mode"
     private const val KEY_ENABLE_LIVE_STREAMING = "enable_live_streaming"
     private const val KEY_STREAM_PLATFORM = "stream_platform"
     private const val KEY_STREAM_CUSTOM_ENDPOINT = "stream_custom_endpoint"
@@ -112,7 +112,7 @@ object ConfigPreferences {
     private const val KEY_REC_STROKE_OPACITY = "rec_hud_stroke_opacity"
     private const val KEY_REC_SNAP_BEHAVIOR = "rec_hud_snap"
 
-    private fun getPrefs(context: Context): SharedPreferences {
+    fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
@@ -338,21 +338,39 @@ object ConfigPreferences {
         getPrefs(context).edit().putBoolean(KEY_ENABLE_LIVE_STREAMING, enabled).apply()
     }
 
+    const val KEY_LAST_OTHER_PLATFORM = "key_last_other_platform"
+
+    fun getLastOtherPlatform(context: Context): StreamPlatform {
+        val name = getPrefs(context).getString(KEY_LAST_OTHER_PLATFORM, StreamPlatform.FACEBOOK.name)
+        return runCatching { StreamPlatform.valueOf(name ?: StreamPlatform.FACEBOOK.name) }
+            .getOrDefault(StreamPlatform.FACEBOOK)
+            .let { if (it.isPrimary) StreamPlatform.FACEBOOK else it }
+    }
+
+    fun saveLastOtherPlatform(context: Context, platform: StreamPlatform) {
+        if (!platform.isPrimary) {
+            getPrefs(context).edit().putString(KEY_LAST_OTHER_PLATFORM, platform.name).apply()
+        }
+    }
+
     fun loadStreamConfig(context: Context): StreamConfig {
         val prefs = getPrefs(context)
         val platformStr = prefs.getString(KEY_STREAM_PLATFORM, StreamPlatform.YOUTUBE.name) ?: StreamPlatform.YOUTUBE.name
         val platform = runCatching { StreamPlatform.valueOf(platformStr) }.getOrDefault(StreamPlatform.YOUTUBE)
         val legacyStreamKey = SecureStreamPreferences.getStreamKey(context)
         val customUrl = prefs.getString(KEY_STREAM_CUSTOM_ENDPOINT, "") ?: ""
+        val activePlatformKey = SecureStreamPreferences.getPlatformStreamKey(context, platform).ifBlank {
+            if (platform == StreamPlatform.YOUTUBE) legacyStreamKey else ""
+        }
 
         val destinations = StreamPlatform.entries.map { p ->
             val isEnabled = prefs.getBoolean("stream_dest_enabled_${p.name.lowercase()}", p == platform)
             val key = SecureStreamPreferences.getPlatformStreamKey(context, p).ifBlank {
-                if (p == platform) legacyStreamKey else ""
+                if (p == platform) activePlatformKey else ""
             }
             StreamDestination(
                 platform = p,
-                customEndpointUrl = if (p == StreamPlatform.CUSTOM) customUrl else "",
+                customEndpointUrl = if (p.isCustomEndpoint) customUrl else "",
                 streamKey = key,
                 enabled = isEnabled
             )
@@ -361,7 +379,7 @@ object ConfigPreferences {
         return StreamConfig(
             platform = platform,
             customEndpointUrl = customUrl,
-            streamKey = legacyStreamKey,
+            streamKey = activePlatformKey,
             destinations = destinations,
             videoBitrate = prefs.getInt(KEY_STREAM_VIDEO_BITRATE, platform.defaultVideoBitrate),
             enableAbr = prefs.getBoolean(KEY_STREAM_ENABLE_ABR, true),
@@ -378,7 +396,13 @@ object ConfigPreferences {
             SecureStreamPreferences.savePlatformStreamKey(context, dest.platform, dest.streamKey)
         }
         if (config.streamKey.isNotBlank()) {
-            SecureStreamPreferences.saveStreamKey(context, config.streamKey)
+            SecureStreamPreferences.savePlatformStreamKey(context, config.platform, config.streamKey)
+            if (config.platform == StreamPlatform.YOUTUBE) {
+                SecureStreamPreferences.saveStreamKey(context, config.streamKey)
+            }
+        }
+        if (!config.platform.isPrimary) {
+            saveLastOtherPlatform(context, config.platform)
         }
 
         // Save non-sensitive parameters
@@ -394,7 +418,7 @@ object ConfigPreferences {
 
         config.destinations.forEach { dest ->
             editor.putBoolean("stream_dest_enabled_${dest.platform.name.lowercase()}", dest.enabled)
-            if (dest.platform == StreamPlatform.CUSTOM && dest.customEndpointUrl.isNotBlank()) {
+            if (dest.platform.isCustomEndpoint && dest.customEndpointUrl.isNotBlank()) {
                 editor.putString(KEY_STREAM_CUSTOM_ENDPOINT, dest.customEndpointUrl)
             }
         }
