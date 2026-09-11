@@ -206,7 +206,17 @@ base64 -i ~/rec-release.jks -o ~/rec-release.jks.base64
 Copy the contents of `rec-release.jks.base64` directly into the `REC_KEYSTORE_BASE64` secret.
 
 #### 3. Local Release Builds
-To build signed release artifacts locally on your workstation, export the environment variables pointing to your keystore before running Gradle:
+To build signed release artifacts locally on your workstation, configure your signing credentials in `local.properties` (git-ignored, recommended):
+
+```properties
+# local.properties
+REC_KEYSTORE_PATH=/home/username/rec-release.jks
+REC_KEYSTORE_PASSWORD=your_keystore_password
+REC_KEY_ALIAS=rec-release
+REC_KEY_PASSWORD=your_key_password
+```
+
+Or export them as environment variables before running Gradle:
 
 ```bash
 # Export release signing credentials
