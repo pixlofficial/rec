@@ -14,6 +14,7 @@ import pixl.rec.core.audio.AudioCaptureManager
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
+import pixl.rec.core.model.SessionStreamTelemetry
 import pixl.rec.core.storage.MediaStoreWriter
 import pixl.rec.core.storage.StorageCalculator
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,8 @@ class ScreenRecorderEngine(
     private var lastRecordedRotation: Int = -1
 
     private var mediaMuxer: MediaMuxer? = null
+    var privacyShieldController: pixl.rec.core.stream.PrivacyShieldController? = null
+        private set
     private var videoTrackIndex = -1
     private var audioTrackIndex = -1
     private val isMuxerStarted = AtomicBoolean(false)
@@ -282,6 +285,16 @@ class ScreenRecorderEngine(
             displayManager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
 
             startTelemetryTicker()
+            if (streamTarget is MultiStreamOutputTarget) {
+                privacyShieldController = pixl.rec.core.stream.PrivacyShieldController(
+                    scope = engineScope,
+                    streamConfig = streamTarget.streamConfig,
+                    multiStreamTarget = streamTarget,
+                    audioCaptureManager = audioCaptureManager,
+                    videoEncoder = videoEncoder,
+                    sessionBaseTimeNs = sessionBaseTimeNs
+                )
+            }
             streamTarget?.start()
             Log.i(tag, "ScreenRecorderEngine started successfully")
         } catch (e: Exception) {
@@ -380,6 +393,8 @@ class ScreenRecorderEngine(
 
                 // 5. Release Encoders & Output Sinks
                 try {
+                    privacyShieldController?.release()
+                    privacyShieldController = null
                     streamTarget?.release()
                 } catch (e: Exception) {
                     Log.w(tag, "Error releasing streamTarget on stop", e)
@@ -620,4 +635,9 @@ class ScreenRecorderEngine(
         _state.value = RecorderState.Error(message, throwable)
         release()
     }
+
+    /**
+     * Returns real-time live streaming session telemetry, or null if not live streaming.
+     */
+    fun getStreamTelemetry(): SessionStreamTelemetry? = streamTarget?.getTelemetry()
 }

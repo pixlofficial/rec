@@ -179,6 +179,11 @@ class VideoEncoder(
                 setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSeconds)
                 setInteger(MediaFormat.KEY_BITRATE_MODE, config.bitrateMode.androidMode)
 
+                // Explicitly disable B-frames for zero-latency monotonic PTS streaming
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setInteger(MediaFormat.KEY_MAX_B_FRAMES, 0)
+                }
+
                 // Cooperative scheduling priority: prevents encoder from starving foreground games/apps of memory bus & CPU
                 setInteger(MediaFormat.KEY_PRIORITY, 1)
 

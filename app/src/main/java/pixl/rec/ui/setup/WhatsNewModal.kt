@@ -80,28 +80,28 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
-                title = "Multi-Destination Multistreaming",
-                description = "Broadcast live simultaneously to multiple RTMP destinations (YouTube Live, Twitch, Kick, and custom ingest servers) with zero-copy buffer slicing.",
+                title = "Measured Adaptive Bitrate (ABR)",
+                description = "Leading-indicator network congestion controller adapting bitrates smoothly via queue age and write latency with zero dropped-frame stutter.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Decoupled RTMP Chunk Framing",
-                description = "Engineered independent upstream and downstream chunk framing in RtmpChunkStream, guaranteeing bulletproof stability with MediaMTX, NGINX, and major CDNs.",
-                category = PatchCategory.FIXED
-            ),
-            PatchNote(
-                title = "Non-Blocking Broadcast Keepalive",
-                description = "Eliminated TCP socket read timeouts during low-bandwidth or silent broadcast intervals for uninterrupted 60 FPS live streaming.",
-                category = PatchCategory.CHANGED
-            ),
-            PatchNote(
-                title = "Simultaneous Dual Output Dispatch",
-                description = "Broadcast live to your audience while simultaneously capturing a master-grade uncompressed recording locally into your in-app Media Vault.",
+                title = "Bounded Audio Clock Sync",
+                description = "Micro-slew drift synchronizer maintaining strict <80ms audio/video lip-sync lock across long-duration live streaming broadcasts.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Hardware-Backed KeyStore Security",
-                description = "Stream keys and ingest credentials are secured with hardware-backed AES-GCM-256 AndroidKeyStore encryption.",
+                title = "Fail-Closed Privacy Shield",
+                description = "Instant in-flight queue purging with CAVLC black IDR slate injection, 1 FPS keepalive ticker, and microphone mute policy.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Enhanced RTMP HEVC & AVC",
+                description = "Standards-compliant sequence headers with hardware B-frame suppression for ultra-crisp broadcasts on YouTube and custom ingests.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
+                title = "Differential Soak Telemetry",
+                description = "Real-time tracking of thermal rise, battery discharge rate, and linear-regression PSS memory slope relative to game baselines.",
                 category = PatchCategory.ADDED
             )
         )

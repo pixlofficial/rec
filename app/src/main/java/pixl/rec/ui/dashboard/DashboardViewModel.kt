@@ -24,6 +24,7 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.VideoCodec
+import pixl.rec.core.model.SessionStreamTelemetry
 import pixl.rec.core.model.StreamConfig
 import pixl.rec.core.model.StreamPlatform
 import pixl.rec.core.notification.StandbyNotificationManager
@@ -102,6 +103,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _streamConfig = MutableStateFlow(ConfigPreferences.loadStreamConfig(application))
     val streamConfig: StateFlow<StreamConfig> = _streamConfig.asStateFlow()
+
+    val streamTelemetry: StateFlow<SessionStreamTelemetry> = RecordingService.streamTelemetry
 
     fun setStudioMode(mode: StudioMode) {
         _studioMode.value = mode
@@ -228,8 +231,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     if (fpsQueue.size >= 30) fpsQueue.removeFirst()
                     fpsQueue.add(normFps)
 
+                    val streamTelem = RecordingService.streamTelemetry.value
+                    val droppedCount = if (rec.isStreaming) streamTelem.aggregateDrops.totalDrops.toInt() else 0
+                    val activeThroughput = if (rec.isStreaming && streamTelem.totalThroughputBps > 0) {
+                        streamTelem.totalThroughputBps / 8_000_000f
+                    } else {
+                        throughput
+                    }
+
                     // Trace 2: Bitrate throughput normalized [0.1 .. 0.9]
-                    val normBitrate = (throughput / (targetBitrateMbSec * 1.3f)).coerceIn(0.1f, 0.9f)
+                    val normBitrate = (activeThroughput / (targetBitrateMbSec * 1.3f)).coerceIn(0.1f, 0.9f)
                     if (bitrateQueue.size >= 30) bitrateQueue.removeFirst()
                     bitrateQueue.add(normBitrate)
 
@@ -243,10 +254,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         cpuUsagePercent = (1.1f + (Random.nextFloat() * 0.8f)),
                         thermalStatus = thermal,
                         batteryTempCelsius = batteryTemp,
-                        writeThroughputMbSec = throughput,
+                        writeThroughputMbSec = activeThroughput,
                         currentFps = fps,
                         targetFps = targetFramerate,
-                        droppedFrames = 0,
+                        droppedFrames = droppedCount,
                         gameAudioDb = rec.gameAudioDb,
                         micAudioDb = rec.micAudioDb,
                         fpsHistory = fpsQueue.toList(),

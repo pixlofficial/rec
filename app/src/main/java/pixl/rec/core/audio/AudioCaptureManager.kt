@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import java.util.Arrays
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Manages dual-stream audio capture:
@@ -67,6 +68,18 @@ class AudioCaptureManager(
     private val CHUNK_FRAME_COUNT = 1024
     private val CHUNK_BYTES = CHUNK_FRAME_COUNT * bytesPerSample // 4096 bytes
     private val CHUNK_INTERVAL_NS = (CHUNK_FRAME_COUNT.toLong() * 1_000_000_000L) / sampleRate.toLong() // 21,333,333 ns
+
+    val synchronizer = AudioClockSynchronizer(sampleRate = sampleRate, channelCount = 2)
+    val totalTrimmedChunks = AtomicLong(0L)
+
+    private val isPrivacyShieldActive = AtomicBoolean(false)
+    private var privacyMicPolicy = pixl.rec.core.model.PrivacyMicPolicy.MUTE_MIC
+
+    fun setPrivacyShield(active: Boolean, policy: pixl.rec.core.model.PrivacyMicPolicy = pixl.rec.core.model.PrivacyMicPolicy.MUTE_MIC) {
+        privacyMicPolicy = policy
+        isPrivacyShieldActive.set(active)
+        Log.i(tag, "Privacy shield audio state: active=$active, policy=${policy.displayName}")
+    }
 
     private val internalQueue = ConcurrentLinkedQueue<ByteArray>()
     private val micQueue = ConcurrentLinkedQueue<ByteArray>()
@@ -194,6 +207,7 @@ class AudioCaptureManager(
         isRunning.set(true)
         isPaused.set(false)
         lastDbCalcTimeNs = 0L
+        synchronizer.reset(sessionBaseTimeNs)
 
         internalQueue.clear()
         micQueue.clear()
@@ -216,9 +230,13 @@ class AudioCaptureManager(
                             if (read < CHUNK_BYTES) {
                                 Arrays.fill(chunk, read, CHUNK_BYTES, 0.toByte())
                             }
-                            // Cap queue to avoid unbounded latency drift
+                            // Cap queue to avoid unbounded latency drift, explicitly accounting for trimmed duration
                             while (internalQueue.size >= 8) {
-                                internalQueue.poll()?.let { recycleBuffer(it) }
+                                internalQueue.poll()?.let {
+                                    synchronizer.onBufferTrimmed(CHUNK_BYTES)
+                                    totalTrimmedChunks.incrementAndGet()
+                                    recycleBuffer(it)
+                                }
                             }
                             internalQueue.offer(chunk)
                         } else {
@@ -253,7 +271,11 @@ class AudioCaptureManager(
                                 Arrays.fill(chunk, read, CHUNK_BYTES, 0.toByte())
                             }
                             while (micQueue.size >= 8) {
-                                micQueue.poll()?.let { recycleBuffer(it) }
+                                micQueue.poll()?.let {
+                                    synchronizer.onBufferTrimmed(CHUNK_BYTES)
+                                    totalTrimmedChunks.incrementAndGet()
+                                    recycleBuffer(it)
+                                }
                             }
                             micQueue.offer(chunk)
                         } else {
@@ -277,12 +299,14 @@ class AudioCaptureManager(
 
     fun pause() {
         if (isPaused.compareAndSet(false, true)) {
+            synchronizer.pause()
             Log.i(tag, "AudioCaptureManager paused")
         }
     }
 
     fun resume() {
         if (isPaused.compareAndSet(true, false)) {
+            synchronizer.resume()
             Log.i(tag, "AudioCaptureManager resumed")
         }
     }
@@ -359,15 +383,17 @@ class AudioCaptureManager(
 
             val hasGame = gameChunk != null
             val hasMic = micChunk != null
+            val shouldMuteMic = isPrivacyShieldActive.get() && privacyMicPolicy == pixl.rec.core.model.PrivacyMicPolicy.MUTE_MIC
+            val effectiveHasMic = hasMic && !shouldMuteMic
 
             val gBuf = gameChunk ?: silenceBuf
-            val mBuf = micChunk ?: silenceBuf
+            val mBuf = if (shouldMuteMic) silenceBuf else (micChunk ?: silenceBuf)
 
             // Throttled VU decibel level calculation (10Hz matching UI telemetry ticker)
             if (now - lastDbCalcTimeNs >= DB_CALC_INTERVAL_NS) {
                 lastDbCalcTimeNs = now
                 val gameDb = if (hasGame) PcmAudioMixer.calculateDbLevel(gBuf, CHUNK_BYTES, config.internalAudioGain) else -60f
-                val micDb = if (hasMic) PcmAudioMixer.calculateDbLevel(mBuf, CHUNK_BYTES, config.micGain) else -60f
+                val micDb = if (effectiveHasMic) PcmAudioMixer.calculateDbLevel(mBuf, CHUNK_BYTES, config.micGain) else -60f
                 listener.onAudioLevels(gameDb, micDb)
             }
 
@@ -376,7 +402,7 @@ class AudioCaptureManager(
 
             when (config.audioSource) {
                 AudioSource.INTERNAL_AND_MIC -> {
-                    if (hasGame && hasMic) {
+                    if (hasGame && effectiveHasMic) {
                         outputBytes = PcmAudioMixer.mixStereo16Bit(
                             gBuf, CHUNK_BYTES,
                             mBuf, CHUNK_BYTES,
@@ -391,7 +417,7 @@ class AudioCaptureManager(
                             mixedBuf
                         )
                         bufferToSend = mixedBuf
-                    } else if (hasMic) {
+                    } else if (effectiveHasMic) {
                         outputBytes = PcmAudioMixer.applyGain16Bit(
                             mBuf, CHUNK_BYTES,
                             config.micGain,
@@ -399,7 +425,7 @@ class AudioCaptureManager(
                         )
                         bufferToSend = mixedBuf
                     } else {
-                        // Both streams currently silent: send digital silence to keep AAC encoder alive
+                        // Both streams currently silent (or mic muted by privacy shield): send digital silence to keep AAC encoder alive
                         outputBytes = CHUNK_BYTES
                         bufferToSend = silenceBuf
                     }
@@ -419,7 +445,7 @@ class AudioCaptureManager(
                     }
                 }
                 AudioSource.MIC_ONLY -> {
-                    if (hasMic) {
+                    if (effectiveHasMic) {
                         outputBytes = PcmAudioMixer.applyGain16Bit(
                             mBuf, CHUNK_BYTES,
                             config.micGain,
@@ -441,13 +467,13 @@ class AudioCaptureManager(
             if (micChunk != null) recycleBuffer(micChunk)
 
             if (outputBytes > 0) {
-                // Strictly monotonic presentation timestamp based on the continuous audio sample clock
-                val ptsUs = (totalEmittedSamples * 1_000_000L) / sampleRate.toLong()
-                totalEmittedSamples += CHUNK_FRAME_COUNT
-
+                // Calibrated, drift-compensated presentation timestamp aligned with master session clock
+                val ptsUs = synchronizer.computeNextChunkPtsUs(outputBytes, System.nanoTime())
                 listener.onPcmAudioData(bufferToSend, outputBytes, ptsUs)
             }
         }
     }
+
+    fun getAudioDriftMs(): Long = synchronizer.getAudioDriftMs()
 }
 

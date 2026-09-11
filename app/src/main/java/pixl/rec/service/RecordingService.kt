@@ -36,9 +36,11 @@ import pixl.rec.core.engine.RtmpStreamOutputTarget
 import pixl.rec.core.engine.ScreenRecorderEngine
 import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
+import pixl.rec.core.model.SessionStreamTelemetry
 import pixl.rec.core.model.VideoCodec
 import pixl.rec.core.notification.StandbyNotificationManager
 import pixl.rec.core.sensor.ShakeDetector
+import pixl.rec.core.telemetry.ThermalPowerMonitor
 import pixl.rec.core.storage.ConfigPreferences
 import pixl.rec.core.storage.StorageCalculator
 import pixl.rec.core.storage.StudioMode
@@ -70,6 +72,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var stateCollectionJob: Job? = null
     private var storageSafetyJob: Job? = null
     private var countdownJob: Job? = null
+    private var telemetryJob: Job? = null
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
@@ -80,6 +83,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var mediaProjection: MediaProjection? = null
     private var engine: ScreenRecorderEngine? = null
     private var shakeDetector: ShakeDetector? = null
+    private var thermalPowerMonitor: ThermalPowerMonitor? = null
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var batteryLowReceiver: BroadcastReceiver? = null
@@ -96,6 +100,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
     override fun onCreate() {
         super.onCreate()
+        activeInstance = this
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -344,15 +349,16 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         // In RECORD mode, strictly respect the Video tab's selected hardware codec.
         val effectiveConfig = if (isStreaming) {
             val targetCodec = if (streamConfig.effectiveSupportsHevc) VideoCodec.HEVC else VideoCodec.AVC
-            if (config.videoCodec != targetCodec) {
-                Log.i(TAG, "Broadcast mode: Adapting hardware encoder codec from ${config.videoCodec.name} to ${targetCodec.name} (effectiveSupportsHevc=${streamConfig.effectiveSupportsHevc})")
-                config.copy(videoCodec = targetCodec)
-            } else {
-                config
-            }
+            Log.i(TAG, "Broadcast mode: Using ${targetCodec.name}, audio=${streamConfig.audioBitrate / 1000}kbps, GOP=${streamConfig.keyframeIntervalSeconds}s (effectiveSupportsHevc=${streamConfig.effectiveSupportsHevc})")
+            config.copy(
+                videoCodec = targetCodec,
+                audioBitrate = streamConfig.audioBitrate,
+                iFrameIntervalSeconds = streamConfig.keyframeIntervalSeconds
+            )
         } else {
             config
         }
+
 
         // 4. Storage Safety Monitor - Emergency save if free storage dips below 200MB (only if writing to local storage)
         storageSafetyJob?.cancel()
@@ -377,24 +383,14 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         // 6. Initialize and start master recording engine (with zero-copy dual output if in STREAM mode)
         val streamTarget = if (isStreaming) {
-            if (streamConfig.activeDestinations.size > 1) {
-                MultiStreamOutputTarget(
-                    destinations = streamConfig.activeDestinations,
-                    streamConfig = streamConfig,
-                    scope = serviceScope,
-                    onUplinkHealthChanged = { health ->
-                        _uplinkHealth.value = health
-                    }
-                )
-            } else {
-                RtmpStreamOutputTarget(
-                    streamConfig = streamConfig,
-                    scope = serviceScope,
-                    onUplinkHealthChanged = { health ->
-                        _uplinkHealth.value = health
-                    }
-                )
-            }
+            MultiStreamOutputTarget(
+                destinations = streamConfig.activeDestinations,
+                streamConfig = streamConfig,
+                scope = serviceScope,
+                onUplinkHealthChanged = { health ->
+                    _uplinkHealth.value = health
+                }
+            )
         } else {
             null
         }
@@ -407,6 +403,17 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             saveLocalArchive = shouldSaveLocalArchive
         )
         engine = recEngine
+        thermalPowerMonitor = ThermalPowerMonitor(applicationContext).apply {
+            captureBaseline()
+        }
+
+        recEngine.privacyShieldController?.let { psc ->
+            serviceScope.launch {
+                psc.isShieldActive.collect { active ->
+                    _isPrivacySlateActive.value = active
+                }
+            }
+        }
 
         stateCollectionJob?.cancel()
         stateCollectionJob = serviceScope.launch {
@@ -440,6 +447,26 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                         stopSelf()
                     }
                     else -> Unit
+                }
+            }
+        }
+
+        telemetryJob?.cancel()
+        if (isStreaming) {
+            telemetryJob = serviceScope.launch(Dispatchers.Default) {
+                while (isActive) {
+                    val telem = recEngine.getStreamTelemetry()
+                    if (telem != null) {
+                        val differential = thermalPowerMonitor?.recordSample(
+                            encoderFps = telem.encoderOutputFps,
+                            currentGameFps = 0f,
+                            activeDestinations = telem.destinations.size.coerceAtLeast(1),
+                            socketWriteP95Ms = telem.destinations.values.maxOfOrNull { it.writeLatencyP95Ms } ?: 0L,
+                            totalThroughputBps = telem.totalThroughputBps
+                        )
+                        _streamTelemetry.value = telem.copy(differentialTelemetry = differential)
+                    }
+                    delay(500)
                 }
             }
         }
@@ -478,6 +505,11 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         _uplinkHealth.value = UplinkHealth.CLEAN
         _isPrivacySlateActive.value = false
+        telemetryJob?.cancel()
+        telemetryJob = null
+        thermalPowerMonitor?.reset()
+        thermalPowerMonitor = null
+        _streamTelemetry.value = SessionStreamTelemetry()
 
         handleOverlayOnRecordingFinished()
 
@@ -565,6 +597,11 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
         stateCollectionJob?.cancel()
         storageSafetyJob?.cancel()
+        telemetryJob?.cancel()
+        telemetryJob = null
+        thermalPowerMonitor?.reset()
+        thermalPowerMonitor = null
+        _streamTelemetry.value = SessionStreamTelemetry()
         serviceScope.cancel()
 
         shakeDetector?.stop()
@@ -608,6 +645,7 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             StandbyNotificationManager.show(this, savedConfig)
         }
 
+        activeInstance = null
         Log.i(TAG, "RecordingService destroyed")
     }
 
@@ -621,17 +659,27 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         const val EXTRA_RESULT_DATA = "extra_result_data"
         const val EXTRA_CONFIG = "extra_config"
 
+        private var activeInstance: RecordingService? = null
+
         private val _serviceState = MutableStateFlow<RecorderState>(RecorderState.Idle)
         val serviceState: StateFlow<RecorderState> = _serviceState.asStateFlow()
 
         private val _uplinkHealth = MutableStateFlow(UplinkHealth.CLEAN)
         val uplinkHealth: StateFlow<UplinkHealth> = _uplinkHealth.asStateFlow()
 
+        private val _streamTelemetry = MutableStateFlow(SessionStreamTelemetry())
+        val streamTelemetry: StateFlow<SessionStreamTelemetry> = _streamTelemetry.asStateFlow()
+
         private val _isPrivacySlateActive = MutableStateFlow(false)
         val isPrivacySlateActive: StateFlow<Boolean> = _isPrivacySlateActive.asStateFlow()
 
         fun togglePrivacySlate() {
-            _isPrivacySlateActive.value = !_isPrivacySlateActive.value
+            val controller = activeInstance?.engine?.privacyShieldController
+            if (controller != null) {
+                controller.toggle()
+            } else {
+                _isPrivacySlateActive.value = !_isPrivacySlateActive.value
+            }
         }
 
         fun startService(context: Context, resultCode: Int, resultData: Intent, config: RecordingConfig) {

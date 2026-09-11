@@ -1,5 +1,6 @@
 package pixl.rec.core.stream
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -10,7 +11,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import pixl.rec.core.model.DestinationTelemetry
+import pixl.rec.core.model.DropReason
+import pixl.rec.core.model.PacketMediaType
+import pixl.rec.core.engine.UplinkHealth
+import pixl.rec.core.model.WriteLatencyMetrics
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.EOFException
@@ -19,31 +26,72 @@ import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLSocketFactory
 
 /**
- * RTMP / RTMPS Streaming Connection Engine.
- * Manages TCP/TLS socket connections, handshake, command negotiation,
- * and high-throughput non-blocking asynchronous streaming with backpressure protection.
+ * Counting stream wrapper tracking cumulative bytes received from the socket
+ * for RTMP Window Acknowledgement calculations.
+ */
+class CountingInputStream(private val inner: InputStream) : InputStream() {
+    var bytesRead: Long = 0L
+        private set
+
+    override fun read(): Int {
+        val b = inner.read()
+        if (b != -1) bytesRead++
+        return b
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        val count = inner.read(b, off, len)
+        if (count > 0) bytesRead += count
+        return count
+    }
+
+    override fun available(): Int = inner.available()
+    override fun close() = inner.close()
+}
+
+/**
+ * High-performance, zero-copy RTMP/RTMPS client connection.
+ * Implements direct TCP/TLS streaming pipeline, C0/C1/S0/S1/S2 handshake,
+ * AMF0 control signaling, and bounded non-blocking packet queueing.
  */
 class RtmpConnection(
-    private val scope: CoroutineScope
+    val scope: CoroutineScope
 ) {
-    sealed interface State {
-        object Idle : State
-        object Connecting : State
-        object Handshaking : State
-        object Connected : State
-        object Publishing : State
-        object Streaming : State
-        object Disconnected : State
-        data class Error(val message: String, val cause: Throwable? = null) : State
+    private val tag = "RtmpConnection"
+
+    sealed class State {
+        object Idle : State()
+        object Connecting : State()
+        object Handshaking : State()
+        object Publishing : State()
+        object Streaming : State()
+        data class Reconnecting(val attempt: Int, val maxAttempts: Int) : State()
+        object Disconnected : State()
+        data class Error(val message: String, val cause: Throwable? = null) : State()
+        data class Unhealthy(val reason: String) : State()
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _uplinkHealth = MutableStateFlow(UplinkHealth.CLEAN)
+    val uplinkHealth: StateFlow<UplinkHealth> = _uplinkHealth.asStateFlow()
+
+    fun setReconnecting(attempt: Int, maxAttempts: Int) {
+        _state.value = State.Reconnecting(attempt, maxAttempts)
+    }
+
+    fun setUnhealthy(reason: String) {
+        _state.value = State.Unhealthy(reason)
+        closeInternal()
+    }
 
     private var socket: Socket? = null
     private var inputStream: InputStream? = null
@@ -52,17 +100,59 @@ class RtmpConnection(
     private val chunkStream = RtmpChunkStream(RtmpChunkStream.DEFAULT_CHUNK_SIZE)
     private var assignedStreamId: Int = 1
 
-    // Bounded channel to buffer media packets with backpressure drop-oldest protection
-    private var mediaChannel: Channel<RtmpPacket>? = null
+    // Priority channel for control messages (pings, acks, amf0 commands)
+    private var controlChannel: Channel<RtmpPacket>? = null
+    // Dedicated channel for audio packets guaranteeing audio continuity
+    private var audioChannel: Channel<RtmpPacket>? = null
+    // Dedicated channel for video packets with backpressure drop-oldest protection
+    private var videoChannel: Channel<RtmpPacket>? = null
     private var streamingJob: Job? = null
     private var readerJob: Job? = null
 
-    // Telemetry & Metrics
+    var onRequestSyncFrame: (() -> Unit)? = null
+    var onInterFrameEvicted: (() -> Unit)? = null
+
+    private var windowAckSize: Int = 2_500_000
+    private var lastAckedBytes: Long = 0L
+
+    var targetPlatformName: String = ""
+    var targetEndpointUrl: String = ""
+
+    // Telemetry & Metrics (Phase 0)
     val totalBytesSent = AtomicLong(0L)
     val totalFramesSent = AtomicLong(0L)
     val totalFramesDropped = AtomicLong(0L)
 
+    val currentQueuePackets = AtomicInteger(0)
+    val bytesInQueue = AtomicLong(0L)
+    val lastObservedQueueAgeMs = AtomicLong(0L)
+    val timeAboveLatencyBudgetMs = AtomicLong(0L)
+    val writeLatencyMetrics = WriteLatencyMetrics(128)
+
+    val droppedAudio = AtomicLong(0L)
+    val droppedVideoKey = AtomicLong(0L)
+    val droppedVideoInter = AtomicLong(0L)
+    val droppedHeaders = AtomicLong(0L)
+
+    val reconnectCount = AtomicInteger(0)
+    val lastReconnectDurationMs = AtomicLong(0L)
+    val timeToFirstKeyframeMs = AtomicLong(0L)
+
+    val LATENCY_BUDGET_MS = 1000L
+
     private val isRunning = AtomicBoolean(false)
+
+    fun recordDrop(packet: RtmpPacket, reason: DropReason) {
+        totalFramesDropped.incrementAndGet()
+        when (packet.mediaType) {
+            PacketMediaType.AUDIO -> droppedAudio.incrementAndGet()
+            PacketMediaType.VIDEO_KEYFRAME -> droppedVideoKey.incrementAndGet()
+            PacketMediaType.VIDEO_INTER -> droppedVideoInter.incrementAndGet()
+            PacketMediaType.VIDEO_SEQUENCE_HEADER,
+            PacketMediaType.AUDIO_SEQUENCE_HEADER -> droppedHeaders.incrementAndGet()
+            PacketMediaType.METADATA_COMMAND -> {}
+        }
+    }
 
     /**
      * Connects to the given RTMP/RTMPS server and begins live publishing.
@@ -80,8 +170,14 @@ class RtmpConnection(
             return@withContext
         }
 
+        if (_state.value is State.Unhealthy) {
+            isRunning.set(false)
+            return@withContext
+        }
+
         try {
             _state.value = State.Connecting
+            targetEndpointUrl = endpointUrl
 
             val uri = URI(endpointUrl.trim())
             val scheme = uri.scheme?.lowercase() ?: "rtmp"
@@ -107,7 +203,8 @@ class RtmpConnection(
 
             val rawIn = newSocket.getInputStream()
             val rawOut = newSocket.getOutputStream()
-            val bufIn = BufferedInputStream(rawIn, 64 * 1024)
+            val countingIn = CountingInputStream(rawIn)
+            val bufIn = BufferedInputStream(countingIn, 64 * 1024)
             val bufOut = BufferedOutputStream(rawOut, 64 * 1024)
             inputStream = bufIn
             outputStream = bufOut
@@ -209,20 +306,21 @@ class RtmpConnection(
             // Once publishing is negotiated, disable socket read timeout so idle server incoming socket never disconnects
             newSocket.soTimeout = 0
 
-            // Start dedicated asynchronous streaming writer loop
-            val channel = Channel<RtmpPacket>(
-                capacity = 64,
-                onBufferOverflow = BufferOverflow.DROP_OLDEST
-            )
-            mediaChannel = channel
+            // Start dedicated asynchronous streaming writer loop with prioritized control & audio channels
+            val ctrlChannel = Channel<RtmpPacket>(capacity = 32)
+            val aChannel = createAudioChannel(capacity = 64)
+            val vChannel = createVideoChannel(capacity = 64)
+            controlChannel = ctrlChannel
+            audioChannel = aChannel
+            videoChannel = vChannel
 
             streamingJob = scope.launch(Dispatchers.IO) {
-                runStreamingLoop(channel, bufOut)
+                runStreamingLoop(ctrlChannel, aChannel, vChannel, bufOut)
             }
 
             // Start background reader loop for ping/ack and onStatus events
             readerJob = scope.launch(Dispatchers.IO) {
-                runReaderLoop(bufIn)
+                runReaderLoop(bufIn, countingIn)
             }
 
             _state.value = State.Streaming
@@ -234,12 +332,63 @@ class RtmpConnection(
         }
     }
 
+    internal fun createAudioChannel(capacity: Int = 64): Channel<RtmpPacket> {
+        return Channel(
+            capacity = capacity,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+            onUndeliveredElement = { displacedPacket ->
+                currentQueuePackets.decrementAndGet()
+                bytesInQueue.addAndGet(-displacedPacket.payload.size.toLong())
+                recordDrop(displacedPacket, DropReason.QUEUE_OVERFLOW)
+            }
+        )
+    }
+
+    internal fun createVideoChannel(capacity: Int = 64): Channel<RtmpPacket> {
+        return Channel(
+            capacity = capacity,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+            onUndeliveredElement = { displacedPacket ->
+                currentQueuePackets.decrementAndGet()
+                bytesInQueue.addAndGet(-displacedPacket.payload.size.toLong())
+                recordDrop(displacedPacket, DropReason.QUEUE_OVERFLOW)
+                if (displacedPacket.mediaType == PacketMediaType.VIDEO_INTER) {
+                    onInterFrameEvicted?.invoke()
+                    onRequestSyncFrame?.invoke()
+                }
+            }
+        )
+    }
+
+    internal fun initChannelForTesting(
+        capacity: Int = 64,
+        audioCapacity: Int = capacity,
+        videoCapacity: Int = capacity
+    ) {
+        controlChannel = Channel(capacity = 32)
+        audioChannel = createAudioChannel(audioCapacity)
+        videoChannel = createVideoChannel(videoCapacity)
+    }
+
+    internal fun getControlChannel(): Channel<RtmpPacket>? = controlChannel
+    internal fun getAudioChannel(): Channel<RtmpPacket>? = audioChannel
+    internal fun getVideoChannel(): Channel<RtmpPacket>? = videoChannel
+
+    /**
+     * Enqueues a high-priority protocol control packet (e.g. PingResponse, Acknowledgement).
+     */
+    fun sendControlPacket(packet: RtmpPacket): Boolean {
+        val channel = controlChannel ?: return false
+        val res = channel.trySend(packet)
+        return res.isSuccess
+    }
+
     /**
      * Enqueues an audio, video, or metadata packet for transmission to the RTMP server.
      * Guaranteed non-blocking on the caller's thread (e.g. MediaCodec output thread).
+     * Routes audio to dedicated audioChannel and video to videoChannel.
      */
     fun enqueuePacket(packet: RtmpPacket): Boolean {
-        val channel = mediaChannel ?: return false
         val assignedPacket = if (packet.streamId == 0 && packet.messageType in setOf(
                 RtmpPacket.TYPE_VIDEO, RtmpPacket.TYPE_AUDIO, RtmpPacket.TYPE_DATA_AMF0
             )
@@ -249,27 +398,129 @@ class RtmpConnection(
             packet
         }
 
-        val sent = channel.trySend(assignedPacket).isSuccess
-        if (sent) {
-            totalFramesSent.incrementAndGet()
+        val channel = if (assignedPacket.mediaType == PacketMediaType.AUDIO ||
+            assignedPacket.mediaType == PacketMediaType.AUDIO_SEQUENCE_HEADER ||
+            assignedPacket.messageType == RtmpPacket.TYPE_AUDIO
+        ) {
+            audioChannel
         } else {
-            totalFramesDropped.incrementAndGet()
+            videoChannel
+        } ?: run {
+            recordDrop(assignedPacket, DropReason.CONNECTION_CLOSED)
+            return false
         }
-        return sent
+
+        currentQueuePackets.incrementAndGet()
+        bytesInQueue.addAndGet(assignedPacket.payload.size.toLong())
+
+        val result = channel.trySend(assignedPacket)
+        if (result.isSuccess) {
+            totalFramesSent.incrementAndGet()
+            return true
+        } else {
+            currentQueuePackets.decrementAndGet()
+            bytesInQueue.addAndGet(-assignedPacket.payload.size.toLong())
+            recordDrop(assignedPacket, DropReason.QUEUE_OVERFLOW)
+            if (assignedPacket.mediaType == PacketMediaType.VIDEO_INTER) {
+                onInterFrameEvicted?.invoke()
+                onRequestSyncFrame?.invoke()
+            }
+            return false
+        }
     }
 
     /**
-     * Dedicated coroutine write loop consuming queued media packets.
+     * Immediately purges all pending video frames from [videoChannel].
+     * Invoked upon Privacy Shield engagement to guarantee no stale captured frames leak to the network.
+     */
+    fun purgeVideoQueue(): Int {
+        val channel = videoChannel ?: return 0
+        var purgedCount = 0
+        var purgedBytes = 0L
+        while (true) {
+            val res = channel.tryReceive()
+            if (res.isSuccess) {
+                val p = res.getOrThrow()
+                purgedCount++
+                purgedBytes += p.payload.size
+                currentQueuePackets.decrementAndGet()
+                recordDrop(p, DropReason.QUEUE_OVERFLOW)
+            } else {
+                break
+            }
+        }
+        bytesInQueue.addAndGet(-purgedBytes)
+        if (purgedCount > 0) {
+            Log.i(tag, "Purged $purgedCount in-flight video packets ($purgedBytes bytes) from video queue")
+        }
+        return purgedCount
+    }
+
+    /**
+     * Dedicated coroutine write loop consuming queued media packets with strict control & audio priority.
+     * Selects: controlChannel > audioChannel > videoChannel.
+     * Stale video inter-frames exceeding LATENCY_BUDGET_MS are evicted to clear backlog.
      */
     private suspend fun runStreamingLoop(
-        channel: Channel<RtmpPacket>,
+        ctrlChannel: Channel<RtmpPacket>,
+        aChannel: Channel<RtmpPacket>,
+        vChannel: Channel<RtmpPacket>,
         outputStream: OutputStream
     ) {
         try {
-            for (packet in channel) {
-                chunkStream.writePacket(packet, outputStream)
-                outputStream.flush()
-                totalBytesSent.addAndGet(packet.payload.size.toLong())
+            while (isRunning.get()) {
+                // 1. Flush any pending high-priority control packets first
+                var ctrl = ctrlChannel.tryReceive().getOrNull()
+                while (ctrl != null) {
+                    writePacketDirect(ctrl, outputStream)
+                    ctrl = ctrlChannel.tryReceive().getOrNull()
+                }
+
+                // 2. Flush any pending audio packets to guarantee continuous audio playback
+                var audio = aChannel.tryReceive().getOrNull()
+                while (audio != null) {
+                    currentQueuePackets.decrementAndGet()
+                    bytesInQueue.addAndGet(-audio.payload.size.toLong())
+                    writePacketDirect(audio, outputStream)
+                    audio = aChannel.tryReceive().getOrNull()
+                }
+
+                // 3. Select across control, audio, and video
+                val packet: RtmpPacket? = select {
+                    ctrlChannel.onReceiveCatching { it.getOrNull() }
+                    aChannel.onReceiveCatching { it.getOrNull() }
+                    vChannel.onReceiveCatching { it.getOrNull() }
+                }
+
+                if (packet == null) {
+                    break
+                }
+
+                if (packet.csid == RtmpPacket.CSID_CONTROL || packet.messageType in setOf(
+                        RtmpPacket.TYPE_USER_CONTROL, RtmpPacket.TYPE_ACK,
+                        RtmpPacket.TYPE_WINDOW_ACK_SIZE, RtmpPacket.TYPE_SET_CHUNK_SIZE
+                    )
+                ) {
+                    writePacketDirect(packet, outputStream)
+                } else {
+                    currentQueuePackets.decrementAndGet()
+                    bytesInQueue.addAndGet(-packet.payload.size.toLong())
+
+                    val ageMs = ((System.nanoTime() - packet.enqueueTimeNs) / 1_000_000L).coerceAtLeast(0L)
+                    lastObservedQueueAgeMs.set(ageMs)
+                    if (ageMs > LATENCY_BUDGET_MS) {
+                        timeAboveLatencyBudgetMs.addAndGet(ageMs - LATENCY_BUDGET_MS)
+                        if (packet.mediaType == PacketMediaType.VIDEO_INTER) {
+                            // Discard stale delta frame to clear latency backlog
+                            recordDrop(packet, DropReason.LATENCY_BUDGET_EXCEEDED)
+                            onInterFrameEvicted?.invoke()
+                            onRequestSyncFrame?.invoke()
+                            continue
+                        }
+                    }
+
+                    writePacketDirect(packet, outputStream)
+                }
             }
         } catch (e: Throwable) {
             if (isRunning.get()) {
@@ -279,16 +530,100 @@ class RtmpConnection(
         }
     }
 
+    private fun writePacketDirect(packet: RtmpPacket, outputStream: OutputStream) {
+        val writeStartNs = System.nanoTime()
+        chunkStream.writePacket(packet, outputStream)
+        outputStream.flush()
+        val writeDurationMs = ((System.nanoTime() - writeStartNs) / 1_000_000L).coerceAtLeast(0L)
+        writeLatencyMetrics.record(writeDurationMs)
+        totalBytesSent.addAndGet(packet.payload.size.toLong())
+    }
+
     /**
-     * Background reader loop to handle incoming server pings, acks, and status messages.
+     * Generates a point-in-time telemetry snapshot for this destination connection.
      */
-    private suspend fun runReaderLoop(inputStream: InputStream) {
+    fun getTelemetry(destinationId: String = ""): DestinationTelemetry {
+        val (p50, p95, p99) = writeLatencyMetrics.getPercentiles()
+        return DestinationTelemetry(
+            destinationId = destinationId,
+            platformName = targetPlatformName,
+            endpointUrl = targetEndpointUrl,
+            isConnected = _state.value is State.Streaming,
+            bytesTransmitted = totalBytesSent.get(),
+            bytesInQueue = bytesInQueue.get().coerceAtLeast(0L),
+            queueDepthPackets = currentQueuePackets.get().coerceAtLeast(0),
+            oldestPacketAgeMs = lastObservedQueueAgeMs.get().coerceAtLeast(0L),
+            timeAboveLatencyBudgetMs = timeAboveLatencyBudgetMs.get().coerceAtLeast(0L),
+            writeLatencyP50Ms = p50,
+            writeLatencyP95Ms = p95,
+            writeLatencyP99Ms = p99,
+            droppedAudio = droppedAudio.get(),
+            droppedVideoKey = droppedVideoKey.get(),
+            droppedVideoInter = droppedVideoInter.get(),
+            droppedHeaders = droppedHeaders.get(),
+            reconnectCount = reconnectCount.get(),
+            lastReconnectDurationMs = lastReconnectDurationMs.get(),
+            timeToFirstKeyframeMs = timeToFirstKeyframeMs.get()
+        )
+    }
+
+    /**
+     * Background reader loop to handle incoming server pings, acks, chunk size adjustments, and status messages.
+     */
+    private suspend fun runReaderLoop(inputStream: InputStream, countingIn: CountingInputStream) {
         while (isRunning.get()) {
             try {
                 val packet = chunkStream.readPacket(inputStream)
+
+                // Check if cumulative bytes read exceeds windowAckSize to dispatch Acknowledgement (0x03)
+                if (windowAckSize > 0) {
+                    val currentBytes = countingIn.bytesRead
+                    if (currentBytes - lastAckedBytes >= windowAckSize) {
+                        lastAckedBytes = currentBytes
+                        sendControlPacket(RtmpPacket.createAcknowledgement(currentBytes))
+                    }
+                }
+
                 when (packet.messageType) {
+                    RtmpPacket.TYPE_SET_CHUNK_SIZE -> {
+                        if (packet.payload.size >= 4) {
+                            val newSize = ByteBuffer.wrap(packet.payload, 0, 4).int
+                            if (newSize in 128..65536) {
+                                chunkStream.inChunkSize = newSize
+                            }
+                        }
+                    }
+                    RtmpPacket.TYPE_WINDOW_ACK_SIZE -> {
+                        if (packet.payload.size >= 4) {
+                            val size = ByteBuffer.wrap(packet.payload, 0, 4).int
+                            if (size > 0) {
+                                windowAckSize = size
+                            }
+                        }
+                    }
+                    RtmpPacket.TYPE_SET_PEER_BANDWIDTH -> {
+                        if (packet.payload.size >= 5) {
+                            val bandwidth = ByteBuffer.wrap(packet.payload, 0, 4).int
+                            val limitType = packet.payload[4].toInt() and 0xFF
+                            if (bandwidth > 0) {
+                                if (limitType == 0) {
+                                    windowAckSize = bandwidth
+                                } else if (limitType == 1) {
+                                    windowAckSize = minOf(windowAckSize, bandwidth)
+                                } else if (limitType == 2) {
+                                    windowAckSize = bandwidth
+                                }
+                            }
+                        }
+                    }
                     RtmpPacket.TYPE_USER_CONTROL -> {
-                        // Responds to Ping Request if needed
+                        if (packet.payload.size >= 6) {
+                            val eventType = ((packet.payload[0].toInt() and 0xFF) shl 8) or (packet.payload[1].toInt() and 0xFF)
+                            if (eventType == 0x0006) { // PingRequest -> PingResponse
+                                val timestamp = ByteBuffer.wrap(packet.payload, 2, 4).int
+                                sendControlPacket(RtmpPacket.createPingResponse(timestamp))
+                            }
+                        }
                     }
                     RtmpPacket.TYPE_COMMAND_AMF0 -> {
                         val resp = Amf0.parseCommand(packet.payload)
@@ -303,7 +638,6 @@ class RtmpConnection(
                     }
                 }
             } catch (_: java.net.SocketTimeoutException) {
-                // Heartbeat/idle timeout on incoming socket; normal when server has no incoming packets to send
                 continue
             } catch (e: Throwable) {
                 if (isRunning.get() && e !is EOFException) {
@@ -329,8 +663,12 @@ class RtmpConnection(
     private fun closeInternal() {
         isRunning.set(false)
         try {
-            mediaChannel?.close()
-            mediaChannel = null
+            controlChannel?.close()
+            controlChannel = null
+            audioChannel?.close()
+            audioChannel = null
+            videoChannel?.close()
+            videoChannel = null
         } catch (_: Throwable) {}
 
         try {
@@ -348,7 +686,7 @@ class RtmpConnection(
         inputStream = null
         outputStream = null
 
-        if (_state.value !is State.Error) {
+        if (_state.value !is State.Error && _state.value !is State.Unhealthy) {
             _state.value = State.Disconnected
         }
     }

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0] - 2026-09-11
+
+### 🚀 Added
+* **Measured Multi-Signal Adaptive Bitrate (ABR) Controller:**
+  * Replaced drop-only rate control with a leading-indicator control loop consuming queue age, socket write latency P95, bytes in flight, and explicit drop counters.
+  * Implemented multiplicative decrease for congestion mitigation, additive increase for bandwidth probing, and hysteresis cooldowns to eliminate bitrate oscillation.
+  * Preserved per-destination fault isolation so that an unhealthy target does not force degradation onto healthy destinations.
+* **Nano-Precision Audio Clock Synchronization:**
+  * Implemented `AudioClockSynchronizer` with bounded micro-slew ($\le 500\,\mu\text{s}$ per chunk, $\sim 2.4\%$) to eliminate cross-clock drift and maintain audio/video lip-sync within $\le 80\text{ ms}$ over 30+ minute broadcast sessions.
+  * Added explicit queue trim accounting in `AudioCaptureManager` to ensure queue trimming updates session duration without desynchronization.
+  * Stream audio profile defaults updated to 128 kbps AAC and locked 2.0-second GOP intervals for optimal YouTube, Twitch, and Kick ingestion.
+* **Fail-Closed Privacy Shield & Microphone Policy:**
+  * Integrated `PrivacyShieldController` state machine (`LIVE`, `ACTIVATING`, `SHIELDED`, `DEACTIVATING`, `ERROR`) with zero-leakage fail-closed isolation.
+  * Implemented `PrivacySlatePacketFactory` emitting standards-compliant CAVLC black IDR slices for AVC (`0x17 0x01`) and Enhanced RTMP HEVC (`0x91 'hvc1'`).
+  * Engineered instant in-flight queue purging to evict queued video frames before slate keyframe emission.
+  * Added 1 FPS keepalive slate ticker to prevent server disconnects and player timeouts during shield intervals.
+  * Enforced configurable microphone policy (`MUTE_MIC`, `KEEP_MIC_LIVE`) substituting mic input with digital silence.
+  * Keyframe-gated resumption requiring a fresh hardware IDR sync frame before live video delivery resumes.
+* **Copy-Minimized Single-Pass Fanout Architecture:**
+  * Replaced per-destination Annex B parsing and FLV allocations with `SharedRtmpPacket` reference-counted fanout, packetizing encoded frames once and sharing storage across destinations.
+  * Split outgoing RTMP connections into priority `controlChannel` (Pings, Window ACKs), `audioChannel` (audio continuity), and `videoChannel` (backpressure protection).
+  * Enforced latency-budget eviction dropping stale video inter-frames (>1000ms age) while protecting keyframes and audio packets.
+* **Standards-Compliant Enhanced RTMP HEVC (`hvc1`) Ingest:**
+  * Implemented `HevcParser` extracting VPS/SPS/PPS parameter sets with emulation prevention byte unescaping and bit-level Exp-Golomb decoding.
+  * Constructed byte-for-byte compliant `HVCDecoderConfigurationRecord` headers with Annex B start code stripping.
+  * Explicitly enforced hardware B-frame suppression (`KEY_MAX_B_FRAMES = 0`) on Android 10+ to ensure strictly monotonic decode/presentation timestamps ($DTS == PTS$).
+* **Baseline-Relative Thermal, Power & Soak Telemetry:**
+  * Implemented `ThermalPowerMonitor` computing differential metrics ($\Delta^\circ\text{C}$, $\Delta\text{GameFPS}$, battery drain rate $\%/\text{hr}$, discharge current $\text{mA}$) relative to pre-test game baselines.
+  * Continuous linear regression PSS memory slope ($\text{kB/hr}$) to mathematically prove zero memory growth and detect buffer leaks.
+  * Added thermal throttling transition counter tracking escalations to `SEVERE` and `CRITICAL`.
+* **Modernized Live Streaming QA Test Suite (v2.0.0):**
+  * Updated `dev/tests/test_stream.md` with in-path Linux Intermediate Functional Block (`ifb`) ingress network shaping, MediaStore database audit, baseline deltas, and dedicated stress suites (TS-07 to TS-10).
+
+### ⚡ Changed
+* Stream setup defaults updated to 128 kbps AAC audio bitrate and 2.0-second keyframe interval for streaming mode.
+* Replaced universal threshold assumptions in QA protocols with device-specific baseline deltas.
+* Bounded per-destination RTMP socket queues with dedicated drop-reason metrics (`QUEUE_OVERFLOW`, `LATENCY_BUDGET_EXCEEDED`, `SOCKET_TIMEOUT`).
+
+### 🐛 Fixed
+* **Cross-Clock Audio Desynchronization:** Eliminated clock drift between Android system audio sample timing and video presentation timestamps over extended streaming sessions.
+* **RTMP Buffer Head-of-Line Blocking:** Prioritized RTMP control pings and window acknowledgements over heavy video payloads to prevent timeout disconnects under heavy network congestion.
+* **Privacy Shield Leak Prevention:** Purged in-flight video queues instantly upon shield activation to prevent sensitive captured frames from reaching remote sockets.
+
+---
+
 ## [0.8.1] - 2026-09-08
 
 ### 🚀 Added
@@ -385,6 +430,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.9.0]: https://github.com/pixlofficial/rec/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/pixlofficial/rec/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/pixlofficial/rec/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/pixlofficial/rec/compare/v0.6.0...v0.7.0

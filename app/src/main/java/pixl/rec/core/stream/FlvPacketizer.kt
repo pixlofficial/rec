@@ -104,6 +104,23 @@ object FlvPacketizer {
         )
     }
 
+    /**
+     * Strips 3-byte (0x00 00 01) or 4-byte (0x00 00 00 01) Annex B start code prefix if present.
+     */
+    fun stripStartCode(nal: ByteArray): ByteArray {
+        if (nal.size >= 4 && nal[0] == 0.toByte() && nal[1] == 0.toByte() && nal[2] == 0.toByte() && nal[3] == 1.toByte()) {
+            val clean = ByteArray(nal.size - 4)
+            System.arraycopy(nal, 4, clean, 0, clean.size)
+            return clean
+        }
+        if (nal.size >= 3 && nal[0] == 0.toByte() && nal[1] == 0.toByte() && nal[2] == 1.toByte()) {
+            val clean = ByteArray(nal.size - 3)
+            System.arraycopy(nal, 3, clean, 0, clean.size)
+            return clean
+        }
+        return nal
+    }
+
     // --- AVC / H.264 Video Packetizing ---
 
     /**
@@ -115,6 +132,8 @@ object FlvPacketizer {
         timestampMs: Long = 0,
         streamId: Int = 1
     ): RtmpPacket {
+        val cleanSps = stripStartCode(sps)
+        val cleanPps = stripStartCode(pps)
         val baos = ByteArrayOutputStream()
 
         // FLV Video Tag Header (AVC Keyframe Sequence Header)
@@ -124,24 +143,24 @@ object FlvPacketizer {
         baos.write(0x00)
         baos.write(0x00)
 
-        // AVCDecoderConfigurationRecord
+        // AVCDecoderConfigurationRecord (ISO/IEC 14496-15)
         baos.write(0x01) // configurationVersion = 1
-        baos.write((if (sps.size > 1) sps[1] else 0x64).toInt()) // AVCProfileIndication
-        baos.write((if (sps.size > 2) sps[2] else 0x00).toInt()) // profile_compatibility
-        baos.write((if (sps.size > 3) sps[3] else 0x1F).toInt()) // AVCLevelIndication
+        baos.write((if (cleanSps.size > 1) cleanSps[1].toInt() and 0xFF else 0x64)) // AVCProfileIndication
+        baos.write((if (cleanSps.size > 2) cleanSps[2].toInt() and 0xFF else 0x00)) // profile_compatibility
+        baos.write((if (cleanSps.size > 3) cleanSps[3].toInt() and 0xFF else 0x1F)) // AVCLevelIndication
         baos.write(0xFF) // 6 bits reserved (111111) | lengthSizeMinusOne = 3 (4-byte NAL length)
         baos.write(0xE1) // 3 bits reserved (111) | numOfSequenceParameterSets = 1
 
         // SPS Length (2 bytes) + SPS
-        baos.write((sps.size shr 8) and 0xFF)
-        baos.write(sps.size and 0xFF)
-        baos.write(sps)
+        baos.write((cleanSps.size shr 8) and 0xFF)
+        baos.write(cleanSps.size and 0xFF)
+        baos.write(cleanSps)
 
         // PPS Count (1) + PPS Length (2 bytes) + PPS
         baos.write(0x01)
-        baos.write((pps.size shr 8) and 0xFF)
-        baos.write(pps.size and 0xFF)
-        baos.write(pps)
+        baos.write((cleanPps.size shr 8) and 0xFF)
+        baos.write(cleanPps.size and 0xFF)
+        baos.write(cleanPps)
 
         return RtmpPacket(
             messageType = RtmpPacket.TYPE_VIDEO,
@@ -196,7 +215,7 @@ object FlvPacketizer {
 
     /**
      * Enhanced RTMP HEVC Sequence Start packet using FourCC 'hvc1'.
-     * Packages VPS, SPS, and PPS into an HVCDecoderConfigurationRecord.
+     * Packages VPS, SPS, and PPS into an HVCDecoderConfigurationRecord based on standards-aware parsed SPS parameters.
      */
     fun createHevcSequenceStartPacket(
         vps: ByteArray,
@@ -205,6 +224,11 @@ object FlvPacketizer {
         timestampMs: Long = 0,
         streamId: Int = 1
     ): RtmpPacket {
+        val cleanVps = stripStartCode(vps)
+        val cleanSps = stripStartCode(sps)
+        val cleanPps = stripStartCode(pps)
+
+        val spsInfo = HevcParser.parseSps(cleanSps)
         val baos = ByteArrayOutputStream()
 
         // Enhanced RTMP ExHeader
@@ -217,42 +241,56 @@ object FlvPacketizer {
         baos.write('c'.code)
         baos.write('1'.code)
 
-        // HEVCDecoderConfigurationRecord
+        // HVCDecoderConfigurationRecord (ISO/IEC 14496-15 Section 8.3.3.1.2)
         baos.write(0x01) // configurationVersion = 1
 
-        // Parse profile/tier/level from SPS if available
-        val generalProfileSpace = if (sps.size > 1) (sps[1].toInt() shr 6) and 0x03 else 0
-        val generalTierFlag = if (sps.size > 1) (sps[1].toInt() shr 5) and 0x01 else 0
-        val generalProfileIdc = if (sps.size > 1) sps[1].toInt() and 0x1F else 1 // Main profile
-        baos.write((generalProfileSpace shl 6) or (generalTierFlag shl 5) or generalProfileIdc)
+        // general_profile_space (2) | general_tier_flag (1) | general_profile_idc (5)
+        baos.write((spsInfo.profileSpace shl 6) or (spsInfo.tierFlag shl 5) or (spsInfo.profileIdc and 0x1F))
 
-        // Profile compatibility flags (4 bytes)
+        // general_profile_compatibility_flags (4 bytes)
+        baos.write(spsInfo.profileCompatibilityFlags)
+
+        // general_constraint_indicator_flags (6 bytes)
+        baos.write(spsInfo.constraintIndicatorFlags)
+
+        // general_level_idc (1 byte)
+        baos.write(spsInfo.levelIdc and 0xFF)
+
+        // min_spatial_segmentation_idc (4 bits reserved 1111 | 12 bits value)
+        baos.write(0xF0)
         baos.write(0x00)
-        baos.write(0x00)
+
+        // parallelismType (6 bits reserved 111111 | 2 bits value = 0)
+        baos.write(0xFC)
+
+        // chromaFormat (6 bits reserved 111111 | 2 bits chroma_format_idc)
+        baos.write(0xFC or (spsInfo.chromaFormatIdc and 0x03))
+
+        // bitDepthLumaMinus8 (5 bits reserved 11111 | 3 bits value)
+        baos.write(0xF8 or (spsInfo.bitDepthLumaMinus8 and 0x07))
+
+        // bitDepthChromaMinus8 (5 bits reserved 11111 | 3 bits value)
+        baos.write(0xF8 or (spsInfo.bitDepthChromaMinus8 and 0x07))
+
+        // avgFrameRate (2 bytes = 0)
         baos.write(0x00)
         baos.write(0x00)
 
-        // Constraint indicator flags (6 bytes)
-        for (i in 0 until 6) baos.write(0x00)
+        // constantFrameRate(2) | numTemporalLayers(3) | temporalIdNested(1) | lengthSizeMinusOne(2)
+        val constantFrameRate = 0
+        val numTemporalLayers = spsInfo.numTemporalLayers.coerceIn(1, 7)
+        val temporalIdNested = if (spsInfo.temporalIdNested) 1 else 0
+        val lengthSizeMinusOne = 3 // 4-byte NAL lengths
+        baos.write((constantFrameRate shl 6) or (numTemporalLayers shl 3) or (temporalIdNested shl 2) or lengthSizeMinusOne)
 
-        baos.write(if (sps.size > 12) sps[12].toInt() and 0xFF else 120) // general_level_idc
-        baos.write(0xF0) // min_spatial_segmentation_idc (4 bits reserved 1111)
-        baos.write(0x00)
-        baos.write(0xFC) // parallelismType (6 bits reserved 111111)
-        baos.write(0xFD) // chromaFormat (6 bits reserved 111111, 4:2:0 = 1)
-        baos.write(0xF8) // bitDepthLumaMinus8 (5 bits reserved 11111)
-        baos.write(0xF8) // bitDepthChromaMinus8 (5 bits reserved 11111)
-        baos.write(0x00) // avgFrameRate (2 bytes)
-        baos.write(0x00)
-        baos.write(0x0F) // constantFrameRate(2), numTemporalLayers(3), temporalIdNested(1), lengthSizeMinusOne(2) = 3 (4 bytes)
         baos.write(0x03) // numOfArrays = 3 (VPS, SPS, PPS)
 
         // Array 1: VPS (NAL type 32)
-        writeHevcNalArray(baos, nalType = 32, listOf(vps))
+        writeHevcNalArray(baos, nalType = 32, listOf(cleanVps))
         // Array 2: SPS (NAL type 33)
-        writeHevcNalArray(baos, nalType = 33, listOf(sps))
+        writeHevcNalArray(baos, nalType = 33, listOf(cleanSps))
         // Array 3: PPS (NAL type 34)
-        writeHevcNalArray(baos, nalType = 34, listOf(pps))
+        writeHevcNalArray(baos, nalType = 34, listOf(cleanPps))
 
         return RtmpPacket(
             messageType = RtmpPacket.TYPE_VIDEO,
@@ -273,6 +311,7 @@ object FlvPacketizer {
             baos.write(nal)
         }
     }
+
 
     /**
      * Enhanced RTMP HEVC Coded Frames packet.

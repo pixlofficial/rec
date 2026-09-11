@@ -63,10 +63,11 @@ class MultiStreamOutputTargetTest {
         // Since Twitch is active, effectiveSupportsHevc MUST be false to ensure AVC broadcast
         assertFalse(config.effectiveSupportsHevc)
 
-        // Total required bitrate: 2 * (8Mbps + 256kbps)
-        val expectedBps = 2 * (8_000_000L + 256_000L)
+        // Total required bitrate: 2 * (8Mbps + audioBitrate)
+        val expectedBps = 2 * (8_000_000L + config.audioBitrate.toLong())
         assertEquals(expectedBps, config.totalRequiredBitrateBps)
     }
+
 
     @Test
     fun testMultiStreamConfig_allHevcDestinations() {

@@ -133,6 +133,14 @@ data class StreamDestination(
 }
 
 /**
+ * Policy governing microphone audio behavior when Privacy Shield is engaged.
+ */
+enum class PrivacyMicPolicy(val displayName: String) {
+    MUTE_MIC("Mute Microphone"),
+    KEEP_MIC_LIVE("Keep Microphone Live")
+}
+
+/**
  * Configuration profile for Live Streaming sessions with single or multi-destination broadcasting.
  */
 @Parcelize
@@ -146,7 +154,10 @@ data class StreamConfig(
     val minBitrate: Int = 2_000_000,
     val maxBitrate: Int = 14_000_000,
     val saveLocalMasterArchive: Boolean = true,
-    val useEnhancedHevc: Boolean = true
+    val useEnhancedHevc: Boolean = true,
+    val audioBitrate: Int = 128_000, // 128 kbps broadcast standard profile
+    val keyframeIntervalSeconds: Float = 2.0f, // 2-second GOP recommended for streaming
+    val privacyMicPolicy: PrivacyMicPolicy = PrivacyMicPolicy.MUTE_MIC
 ) : Parcelable {
 
     val activeEndpointUrl: String
@@ -190,11 +201,12 @@ data class StreamConfig(
             useEnhancedHevc
 
     /**
-     * Combined required uplink bandwidth (video + 256kbps AAC audio per active stream).
+     * Combined required uplink bandwidth (video + AAC audio bitrate per active stream).
      */
     val totalRequiredBitrateBps: Long
         get() = activeDestinations.sumOf { dest ->
-            videoBitrate.toLong() + 256_000L
-        }.coerceAtLeast(videoBitrate.toLong() + 256_000L)
+            videoBitrate.toLong() + audioBitrate.toLong()
+        }.coerceAtLeast(videoBitrate.toLong() + audioBitrate.toLong())
 }
+
 
