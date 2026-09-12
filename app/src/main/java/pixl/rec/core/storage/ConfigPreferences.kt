@@ -124,6 +124,9 @@ object ConfigPreferences {
     private const val KEY_ENABLE_REPLAY_BUFFER = "enable_replay_buffer"
     private const val KEY_REPLAY_BUFFER_DURATION = "replay_buffer_duration"
 
+    // Audio Sync Tuning Key
+    private const val KEY_AUDIO_SYNC_OFFSET_MS = "audio_sync_offset_ms"
+
 
     fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -193,7 +196,8 @@ object ConfigPreferences {
             recordingHudConfig = recordingHud,
             streamHudConfig = streamHud,
             enableReplayBuffer = prefs.getBoolean(KEY_ENABLE_REPLAY_BUFFER, defaultConfig.enableReplayBuffer),
-            replayBufferDurationSeconds = prefs.getInt(KEY_REPLAY_BUFFER_DURATION, defaultConfig.replayBufferDurationSeconds)
+            replayBufferDurationSeconds = prefs.getInt(KEY_REPLAY_BUFFER_DURATION, defaultConfig.replayBufferDurationSeconds),
+            audioSyncOffsetMs = prefs.getInt(KEY_AUDIO_SYNC_OFFSET_MS, defaultConfig.audioSyncOffsetMs)
         )
     }
 
@@ -232,6 +236,7 @@ object ConfigPreferences {
             .putInt(KEY_COUNTDOWN_SECONDS, config.countdownSeconds)
             .putBoolean(KEY_ENABLE_REPLAY_BUFFER, config.enableReplayBuffer)
             .putInt(KEY_REPLAY_BUFFER_DURATION, config.replayBufferDurationSeconds)
+            .putInt(KEY_AUDIO_SYNC_OFFSET_MS, config.audioSyncOffsetMs)
             // Stream HUD Customization
             .putString(KEY_STREAM_HUD_LASER_INTERVAL, config.streamHudConfig.laserSweepInterval.name)
             .putFloat(KEY_STREAM_HUD_LASER_GLOW, config.streamHudConfig.laserGlowIntensity)

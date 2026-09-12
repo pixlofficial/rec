@@ -851,6 +851,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         updateConfigAndStorage(updated)
     }
 
+    fun updateAudioSyncOffset(offsetMs: Int) {
+        val clamped = offsetMs.coerceIn(-200, 200)
+        val current = _uiState.value.config
+        val updated = current.copy(audioSyncOffsetMs = clamped)
+        updateConfigAndStorage(updated)
+    }
+
     fun startRecording(resultCode: Int, resultData: Intent) {
         val currentConfig = _uiState.value.config
         RecordingService.startService(

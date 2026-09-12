@@ -82,6 +82,7 @@ object ConfigSerializer {
             put("audio_channel_count", config.audioChannelCount)
             put("mic_gain", config.micGain.toDouble())
             put("internal_audio_gain", config.internalAudioGain.toDouble())
+            put("audio_sync_offset_ms", config.audioSyncOffsetMs)
         }
         root.put("audio", audio)
 
@@ -179,6 +180,7 @@ object ConfigSerializer {
         val audioChannelCount = audioObj.optInt("audio_channel_count", defaultConf.audioChannelCount).coerceIn(1, 2)
         val micGain = audioObj.optDouble("mic_gain", defaultConf.micGain.toDouble()).toFloat().coerceIn(0.0f, 4.0f)
         val internalGain = audioObj.optDouble("internal_audio_gain", defaultConf.internalAudioGain.toDouble()).toFloat().coerceIn(0.0f, 4.0f)
+        val audioSyncOffsetMs = audioObj.optInt("audio_sync_offset_ms", defaultConf.audioSyncOffsetMs).coerceIn(-200, 200)
 
         // 3. Controls Section
         val controlsObj = root.optJSONObject("controls") ?: root
@@ -278,7 +280,8 @@ object ConfigSerializer {
             streamHudConfig = streamHud,
             hudSnapBehavior = hudSnapBehavior,
             enableReplayBuffer = enableReplay,
-            replayBufferDurationSeconds = replayDuration
+            replayBufferDurationSeconds = replayDuration,
+            audioSyncOffsetMs = audioSyncOffsetMs
         )
     }
 

@@ -80,6 +80,16 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
+                title = "Hardware A/V Sync Calibration",
+                description = "Eliminated 50–90ms hardware encoder startup delay from video presentation timestamps, locking audio and video together with nano-precision.",
+                category = PatchCategory.FIXED
+            ),
+            PatchNote(
+                title = "OBS-Style A/V Sync Offset Tuning",
+                description = "Fine-tune audio sync with a -200ms to +200ms slider and one-tap preset pills (-50ms, 0ms, +25ms, +50ms, +100ms) in Settings > Audio.",
+                category = PatchCategory.ADDED
+            ),
+            PatchNote(
                 title = "Instant Replay Buffer Engine",
                 description = "Volatile RAM circular ring buffer continuously caching 15s–120s of gameplay with 1-tap tactical clip export to Scoped Storage.",
                 category = PatchCategory.ADDED
@@ -92,16 +102,6 @@ fun WhatsNewModal(
             PatchNote(
                 title = "Media Vault Hybrid Hub",
                 description = "Interactive 2x2 telemetry deck tracking recordings, streams, replays, and screenshots with 1-tap sliding filter navigation.",
-                category = PatchCategory.ADDED
-            ),
-            PatchNote(
-                title = "Adaptive Feed & Lightbox",
-                description = "Seamlessly switches between 16:9 cinematic video cards and a 3-column photo grid, with high-res memory-safe image lightbox.",
-                category = PatchCategory.ADDED
-            ),
-            PatchNote(
-                title = "Replay Buffer Settings Deck",
-                description = "Live RAM overhead estimation, master toggle, and 15s/30s/60s/120s duration selector pills under Settings > Output.",
                 category = PatchCategory.ADDED
             )
         )

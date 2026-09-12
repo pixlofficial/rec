@@ -18,6 +18,7 @@ class AudioClockSynchronizer(
     val sampleRate: Int = 48_000,
     val channelCount: Int = 2,
     var sessionBaseTimeNs: Long = System.nanoTime(),
+    var audioSyncOffsetUs: Long = 0L,               // Configurable A/V sync offset (+ delays audio, - advances audio)
     val driftCorrectionThresholdUs: Long = 40_000L, // 40ms threshold to activate slew
     val maxCorrectionPerChunkUs: Long = 500L,       // Max 500us adjustment per ~21ms chunk (~2.4%)
     val timeProvider: () -> Long = { System.nanoTime() }
@@ -37,10 +38,11 @@ class AudioClockSynchronizer(
     private val lastMeasuredDriftUs = AtomicLong(0L)
 
     /**
-     * Calibrates baseline with unified session start time.
+     * Calibrates baseline with unified session start time and optional sync offset.
      */
-    fun reset(baseTimeNs: Long = timeProvider()) {
+    fun reset(baseTimeNs: Long = timeProvider(), syncOffsetUs: Long = audioSyncOffsetUs) {
         sessionBaseTimeNs = baseTimeNs
+        audioSyncOffsetUs = syncOffsetUs
         isPaused.set(false)
         pauseStartTimeNs = 0L
         totalPausedDurationNs = 0L
@@ -108,8 +110,8 @@ class AudioClockSynchronizer(
 
         if (isFirstChunk) {
             isFirstChunk = false
-            // Initial alignment: anchor initial PTS to session elapsed time
-            cumulativeSamplePtsUs = sessionElapsedUs
+            // Initial alignment: anchor initial PTS to session elapsed time plus user audio sync offset
+            cumulativeSamplePtsUs = (sessionElapsedUs + audioSyncOffsetUs).coerceAtLeast(0L)
             lastEmittedPtsUs = cumulativeSamplePtsUs
             return cumulativeSamplePtsUs
         }
@@ -117,8 +119,8 @@ class AudioClockSynchronizer(
         // Advance sample clock by chunk duration
         cumulativeSamplePtsUs += chunkDurationUs
 
-        // Measure drift between sample clock and session clock
-        val driftUs = cumulativeSamplePtsUs - sessionElapsedUs
+        // Measure drift between sample clock and session clock (accounting for user sync offset)
+        val driftUs = cumulativeSamplePtsUs - sessionElapsedUs - audioSyncOffsetUs
         lastMeasuredDriftUs.set(driftUs)
 
         // Bounded slew adjustment if drift exceeds threshold

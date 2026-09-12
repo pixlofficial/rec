@@ -28,6 +28,25 @@ class AudioClockSynchronizationTest {
     }
 
     @Test
+    fun testAudioSyncOffset_shiftsPtsCorrectly() {
+        var syntheticTimeNs = 10_000_000_000L
+        val offsetUs = 50_000L // +50ms delay
+        val synchronizer = AudioClockSynchronizer(
+            sampleRate = 48_000,
+            channelCount = 2,
+            sessionBaseTimeNs = syntheticTimeNs,
+            audioSyncOffsetUs = offsetUs,
+            timeProvider = { syntheticTimeNs }
+        )
+
+        syntheticTimeNs += 50_000_000L
+        val ptsUs = synchronizer.computeNextChunkPtsUs(chunkBytes = 4096, nowNs = syntheticTimeNs)
+
+        // Initial PTS should equal session elapsed time + offset (50ms + 50ms = 100,000us)
+        assertEquals(100_000L, ptsUs)
+    }
+
+    @Test
     fun testStrictMonotonicity_duringNormalPlayback() {
         var syntheticTimeNs = 1_000_000_000L
         val chunkDurationNs = (1024L * 1_000_000_000L) / 48_000L // ~21,333,333 ns

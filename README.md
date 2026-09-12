@@ -9,7 +9,7 @@
 
   <br />
 
-  [![Latest Release](https://img.shields.io/badge/Release-v0.10.0-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
+  [![Latest Release](https://img.shields.io/badge/Release-v0.10.1-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
   [![Android Minimum SDK](https://img.shields.io/badge/Android-10%20to%2016%20Ready-00FF66?style=for-the-badge&logo=android&logoColor=black)](https://developer.android.com)
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-E50914?style=for-the-badge&logo=gnu&logoColor=white)](./LICENSE)
   [![Build Status](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-7928CA?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/pixlofficial/rec/actions)
@@ -130,9 +130,9 @@ flowchart TD
 ### Standalone Release (GitHub)
 Download the latest signed standalone binaries from our **[Releases Page](https://github.com/pixlofficial/rec/releases)**:
 
-* **`REC-v0.10.0.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
-* **`REC-v0.10.0-debug.apk`** — Debug build with logging and development inspection tools.
-* **`REC-v0.10.0.aab`** — Google Play App Bundle with full split-APK optimization.
+* **`REC-v0.10.1.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
+* **`REC-v0.10.1-debug.apk`** — Debug build with logging and development inspection tools.
+* **`REC-v0.10.1.aab`** — Google Play App Bundle with full split-APK optimization.
 * **`SHA256SUMS.txt`** — Cryptographic SHA-256 verification checksums for all release binaries.
 
 ---
@@ -156,11 +156,11 @@ cd rec
 
 # 3. Assemble Standalone Debug APK
 ./gradlew assembleDebug
-# Output: app/build/outputs/apk/debug/REC-v0.10.0-debug.apk
+# Output: app/build/outputs/apk/debug/REC-v0.10.1-debug.apk
 
-# 4. Assemble Optimized Release APK (R8 Minified + Resource Shrunk)
+# Build standalone release APK
 ./gradlew assembleRelease
-# Output: app/build/outputs/apk/release/REC-v0.10.0.apk
+# Output: app/build/outputs/apk/release/REC-v0.10.1.apk
 
 # 5. Assemble Google Play Store App Bundle (AAB)
 ./gradlew bundleRelease
@@ -278,7 +278,7 @@ REC/
 ├── dev/                         # Developer roadmaps, improvements & audits
 ├── .github/workflows/
 │   └── build-apk.yml            # CI/CD: Automated Gradle test, AAB & APK releases
-├── version.properties           # Single source of truth for versioning (0.10.0)
+├── version.properties           # Single source of truth for versioning (0.10.1)
 ├── CHANGELOG.md                 # Keep a Changelog release history
 ├── AGENTS.md                    # Coding standards & development guidelines
 ├── CONTRIBUTING.md              # Open-source contribution guidelines

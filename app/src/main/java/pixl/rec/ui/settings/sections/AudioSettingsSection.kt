@@ -1,16 +1,23 @@
 package pixl.rec.ui.settings.sections
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,11 +30,14 @@ import pixl.rec.ui.dashboard.DashboardUiState
 import pixl.rec.ui.dashboard.DashboardViewModel
 import pixl.rec.ui.theme.BitcountPropSingle
 import pixl.rec.ui.theme.BorderStark
+import pixl.rec.ui.theme.CyberYellow
 import pixl.rec.ui.theme.HyperCrimson
 import pixl.rec.ui.theme.HyperCyan
+import pixl.rec.ui.theme.SurfaceCard
 import pixl.rec.ui.theme.TextMuted
 import pixl.rec.ui.theme.TextPrimary
 import pixl.rec.ui.theme.TextSecondary
+import pixl.rec.ui.theme.ToxicLime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -171,5 +181,111 @@ fun AudioSettingsSection(
             dbLevel = micDb,
             statusOverride = if (!isMicAudioActive) "MUTED" else null
         )
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // 3. Audio / Video Sync Offset (OBS-style tuning)
+    val syncOffsetMs = config.audioSyncOffsetMs
+    val syncTag = when {
+        syncOffsetMs > 0 -> "+${syncOffsetMs} MS (DELAY AUDIO)"
+        syncOffsetMs < 0 -> "${syncOffsetMs} MS (ADVANCE AUDIO)"
+        else -> "0 MS (SYNCED)"
+    }
+    val syncColor = when {
+        syncOffsetMs > 0 -> CyberYellow
+        syncOffsetMs < 0 -> HyperCyan
+        else -> ToxicLime
+    }
+
+    SectionCard(title = "A/V SYNC OFFSET", titleTag = syncTag) {
+        Text(
+            text = "Fine-tune audio/video synchronization for live streaming or local capture. Useful for eliminating Bluetooth earbud latency or hardware encoder delay.",
+            fontSize = 11.sp,
+            color = TextSecondary,
+            lineHeight = 16.sp
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "OFFSET (MS)",
+                fontFamily = BitcountPropSingle,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            Text(
+                text = if (syncOffsetMs > 0) "+$syncOffsetMs ms" else "$syncOffsetMs ms",
+                fontFamily = BitcountPropSingle,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = syncColor
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Slider(
+            value = syncOffsetMs.toFloat(),
+            onValueChange = { viewModel.updateAudioSyncOffset(it.roundToInt()) },
+            valueRange = -200f..200f,
+            steps = 79, // 5ms steps
+            enabled = !isRecordingActive,
+            colors = SliderDefaults.colors(
+                thumbColor = syncColor,
+                activeTrackColor = syncColor,
+                inactiveTrackColor = BorderStark,
+                disabledThumbColor = TextMuted,
+                disabledActiveTrackColor = BorderStark.copy(alpha = 0.3f)
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Quick Presets
+        val presets = listOf(-50, 0, 25, 50, 100)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            presets.forEach { presetMs ->
+                val isSelected = syncOffsetMs == presetMs
+                val label = when {
+                    presetMs == 0 -> "0ms"
+                    presetMs > 0 -> "+${presetMs}ms"
+                    else -> "${presetMs}ms"
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) syncColor.copy(alpha = 0.2f) else SurfaceCard)
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) syncColor else BorderStark,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .clickable(enabled = !isRecordingActive) {
+                            viewModel.updateAudioSyncOffset(presetMs)
+                        }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        fontFamily = BitcountPropSingle,
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) syncColor else TextSecondary
+                    )
+                }
+            }
+        }
     }
 }

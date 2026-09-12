@@ -379,11 +379,19 @@ class VideoEncoder(
 
                                         // Calibrate video PTS relative to the unified session base time
                                         if (basePtsOffsetUs < 0) {
-                                            val nowNs = System.nanoTime()
-                                            val elapsedSinceStartUs = ((nowNs - sessionBaseTimeNs) / 1000L).coerceAtLeast(0L)
-                                            basePtsOffsetUs = bufferInfo.presentationTimeUs - elapsedSinceStartUs
                                             firstFramePtsUs = bufferInfo.presentationTimeUs
-                                            Log.i(tag, "First video frame captured at raw PTS: ${firstFramePtsUs}us (calibrated with session offset: ${basePtsOffsetUs}us)")
+                                            val sessionBaseUs = sessionBaseTimeNs / 1000L
+                                            // On Android, VirtualDisplay stamps input GraphicBuffers with systemTime(SYSTEM_TIME_MONOTONIC).
+                                            // If raw PTS is in the same monotonic clock domain as sessionBaseTimeNs (within 10s),
+                                            // align basePtsOffsetUs directly to sessionBaseUs. This eliminates encoder dequeue pipeline delay (30-80ms).
+                                            val monotonicDiffUs = kotlin.math.abs(bufferInfo.presentationTimeUs - sessionBaseUs)
+                                            basePtsOffsetUs = if (monotonicDiffUs < 10_000_000L) {
+                                                sessionBaseUs
+                                            } else {
+                                                // Fallback for non-standard device drivers that stamp starting from 0 or uptime
+                                                bufferInfo.presentationTimeUs
+                                            }
+                                            Log.i(tag, "First video frame captured at raw PTS: ${firstFramePtsUs}us (calibrated with base offset: ${basePtsOffsetUs}us, monotonicDiff: ${monotonicDiffUs}us)")
                                         }
 
                                         val relativePtsUs = (bufferInfo.presentationTimeUs - basePtsOffsetUs).coerceAtLeast(0L)

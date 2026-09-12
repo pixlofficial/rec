@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.1] - 2026-09-12
+
+### 🚀 Added
+* **OBS-Style Audio / Video Sync Offset Tuning:**
+  * Added user-configurable `audioSyncOffsetMs` (`-200ms` to `+200ms`, default `0ms`) in `RecordingConfig`, persisted in `ConfigPreferences` and portable across JSON configuration exports.
+  * Added dedicated cyberpunk **A/V SYNC OFFSET** card in `Settings > Audio` with a 5ms-step slider, color-coded live delay/advance indicators, and one-tap presets (`-50ms`, `0ms`, `+25ms`, `+50ms`, `+100ms`).
+  * Integrated dynamic sync offset compensation directly into `AudioClockSynchronizer` and `AudioCaptureManager`, preserving bounded micro-slew drift correction ($\le 40\text{ms}$) and strict monotonic timestamp progression.
+
+### 🐛 Fixed
+* **Hardware Encoder Dequeue Latency Bleed Elimination:**
+  * Fixed an issue where the initial hardware encoder startup/dequeue latency (~50–90ms) was captured into `basePtsOffsetUs`, artificially shifting all subsequent video presentation timestamps (PTS) into the future and causing audio to play ahead of video.
+  * Aligned `basePtsOffsetUs` directly against `sessionBaseTimeNs / 1000L` within the same monotonic clock domain (`SYSTEM_TIME_MONOTONIC`) in `VideoEncoder.kt`, locking video frames to their true GPU render times and achieving nano-precision audio/video synchronization.
+
+---
+
 ## [0.10.0] - 2026-09-12
 
 ### 🚀 Added
@@ -462,6 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.10.1]: https://github.com/pixlofficial/rec/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/pixlofficial/rec/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/pixlofficial/rec/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/pixlofficial/rec/compare/v0.8.0...v0.8.1

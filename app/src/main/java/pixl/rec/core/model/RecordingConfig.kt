@@ -135,7 +135,10 @@ data class RecordingConfig(
 
     // Instant Replay Buffer Configuration
     val enableReplayBuffer: Boolean = true,
-    val replayBufferDurationSeconds: Int = 30 // 15, 30, 60, 120
+    val replayBufferDurationSeconds: Int = 30, // 15, 30, 60, 120
+
+    // Audio / Video Synchronization Tuning
+    val audioSyncOffsetMs: Int = 0 // -200ms to +200ms (positive delays audio, negative advances audio)
 ) : Parcelable {
 
     val hudConfig: HudStyleConfig

@@ -69,7 +69,11 @@ class AudioCaptureManager(
     private val CHUNK_BYTES = CHUNK_FRAME_COUNT * bytesPerSample // 4096 bytes
     private val CHUNK_INTERVAL_NS = (CHUNK_FRAME_COUNT.toLong() * 1_000_000_000L) / sampleRate.toLong() // 21,333,333 ns
 
-    val synchronizer = AudioClockSynchronizer(sampleRate = sampleRate, channelCount = 2)
+    val synchronizer = AudioClockSynchronizer(
+        sampleRate = sampleRate,
+        channelCount = 2,
+        audioSyncOffsetUs = config.audioSyncOffsetMs * 1000L
+    )
     val totalTrimmedChunks = AtomicLong(0L)
 
     private val isPrivacyShieldActive = AtomicBoolean(false)
@@ -207,7 +211,7 @@ class AudioCaptureManager(
         isRunning.set(true)
         isPaused.set(false)
         lastDbCalcTimeNs = 0L
-        synchronizer.reset(sessionBaseTimeNs)
+        synchronizer.reset(sessionBaseTimeNs, config.audioSyncOffsetMs * 1000L)
 
         internalQueue.clear()
         micQueue.clear()

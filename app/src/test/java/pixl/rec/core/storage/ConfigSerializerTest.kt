@@ -135,6 +135,27 @@ class ConfigSerializerTest {
         // Verify Replay Buffer
         assertEquals(original.enableReplayBuffer, restored.enableReplayBuffer)
         assertEquals(original.replayBufferDurationSeconds, restored.replayBufferDurationSeconds)
+        // Verify Audio Sync Offset
+        assertEquals(original.audioSyncOffsetMs, restored.audioSyncOffsetMs)
+    }
+
+    @Test
+    fun testAudioSyncOffsetClampingAndRoundTrip() {
+        val config = RecordingConfig(audioSyncOffsetMs = 50)
+        val json = ConfigSerializer.exportToJson(config)
+        val imported = ConfigSerializer.importFromJson(json).getOrThrow()
+        assertEquals(50, imported.audioSyncOffsetMs)
+
+        // Clamping check for out-of-range values (-500 clamped to -200, 500 clamped to 200)
+        val clampedJson = """
+            {
+              "audio": {
+                "audio_sync_offset_ms": 999
+              }
+            }
+        """.trimIndent()
+        val clampedConfig = ConfigSerializer.importFromJson(clampedJson).getOrThrow()
+        assertEquals(200, clampedConfig.audioSyncOffsetMs)
     }
 
     @Test
