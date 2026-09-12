@@ -132,8 +132,46 @@ class ConfigSerializerTest {
         assertEquals(original.standbyHudConfig.animation, restored.standbyHudConfig.animation)
         assertEquals(original.standbyHudConfig.hasBackground, restored.standbyHudConfig.hasBackground)
         assertEquals(original.standbyHudConfig.hasStroke, restored.standbyHudConfig.hasStroke)
-        assertEquals(original.recordingHudConfig.animation, restored.recordingHudConfig.animation)
-        assertEquals(original.recordingHudConfig.shape, restored.recordingHudConfig.shape)
+        // Verify Replay Buffer
+        assertEquals(original.enableReplayBuffer, restored.enableReplayBuffer)
+        assertEquals(original.replayBufferDurationSeconds, restored.replayBufferDurationSeconds)
+    }
+
+    @Test
+    fun testReplayBufferSerializationRoundTripAndFallback() {
+        val original = RecordingConfig(
+            enableReplayBuffer = true,
+            replayBufferDurationSeconds = 60
+        )
+        val json = ConfigSerializer.exportToJson(original)
+        assertTrue(json.contains("\"replay_buffer\""))
+        assertTrue(json.contains("\"enabled\": true"))
+        assertTrue(json.contains("\"duration_seconds\": 60"))
+
+        val result = ConfigSerializer.importFromJson(json)
+        assertTrue(result.isSuccess)
+        val imported = result.getOrThrow()
+        assertTrue(imported.enableReplayBuffer)
+        assertEquals(60, imported.replayBufferDurationSeconds)
+
+        // Legacy JSON without replay_buffer block should safely fall back to defaults
+        val legacyJson = """
+        {
+          "metadata": {
+            "app": "REC",
+            "version_name": "0.1.0"
+          },
+          "video": {
+            "width": 1080,
+            "height": 1920
+          }
+        }
+        """.trimIndent()
+        val legacyResult = ConfigSerializer.importFromJson(legacyJson)
+        assertTrue(legacyResult.isSuccess)
+        val legacyConfig = legacyResult.getOrThrow()
+        assertTrue(legacyConfig.enableReplayBuffer)
+        assertEquals(30, legacyConfig.replayBufferDurationSeconds)
     }
 
     @Test

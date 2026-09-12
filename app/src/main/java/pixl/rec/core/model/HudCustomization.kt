@@ -68,3 +68,31 @@ data class HudStyleConfig(
     val idleOpacity: Float
         get() = iconOpacity
 }
+
+/**
+ * Speed/interval presets for the bi-directional laser sweep animation on the stream standby pill.
+ */
+enum class LaserSweepInterval(val displayName: String, val intervalMs: Long) {
+    FAST("1.5s Fast", 1500L),
+    STANDARD("2.5s Standard", 2500L),
+    CALM("4.0s Calm", 4000L),
+    CONTINUOUS("Beacon", 800L),
+    OFF("Off", 0L)
+}
+
+/**
+ * Dedicated customization settings for the Broadcast / Live Stream Floating HUD pill.
+ */
+@Parcelize
+data class StreamHudConfig(
+    val laserSweepInterval: LaserSweepInterval = LaserSweepInterval.STANDARD,
+    val laserGlowIntensity: Float = 0.85f, // 0.20f to 1.0f
+    val enableUplinkHealthAura: Boolean = true,
+    val livePulseRhythm: HudAnimation = HudAnimation.PULSE,
+    val standbyHud: HudStyleConfig = HudStyleConfig(
+        strokeColorHex = 0xFFFF0033L // HyperCrimson
+    ),
+    val activeHud: HudStyleConfig = HudStyleConfig(
+        strokeColorHex = 0xFFFF0033L
+    )
+) : Parcelable

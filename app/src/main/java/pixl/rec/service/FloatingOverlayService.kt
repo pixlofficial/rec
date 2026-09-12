@@ -233,6 +233,40 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
         } catch (_: Exception) {}
 
         serviceScope.launch {
+            RecordingService.replayClipEvents.collect { event ->
+                when (event) {
+                    is ReplayClipEvent.InProgress -> {
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ SAVING REPLAY CLIP...", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    is ReplayClipEvent.Success -> {
+                        val sec = (event.durationMs / 1000).coerceAtLeast(1)
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "✅ REPLAY CLIPPED (${sec}s) → VAULT", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    is ReplayClipEvent.Error -> {
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "⚠️ ${event.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        serviceScope.launch {
+            RecordingService.screenshotEvents.collect { event ->
+                when (event) {
+                    is ScreenshotEvent.InProgress -> {
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "📸 CAPTURING SCREENSHOT...", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    is ScreenshotEvent.Success -> {
+                        overlayView?.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "📸 SCREENSHOT SAVED: ${event.filename}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    is ScreenshotEvent.Error -> {
+                        android.widget.Toast.makeText(this@FloatingOverlayService, "⚠️ ${event.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        serviceScope.launch {
             isTemporarilyHidden.collect { hidden ->
                 val wm = windowManager ?: return@collect
                 try {
@@ -391,11 +425,15 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                             }
                         },
                         onReplayClick = {
-                            android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
-                            openMainActivity()
+                            RecordingService.triggerReplayClip(this@FloatingOverlayService)
                         },
                         onScreenshotClick = {
-                            openMainActivity(startRecord = false)
+                            val sState = RecordingService.serviceState.value
+                            if (sState is RecorderState.Recording || sState is RecorderState.Paused) {
+                                RecordingService.triggerScreenshot(this@FloatingOverlayService)
+                            } else {
+                                startActivity(CapturePermissionActivity.createScreenshotIntent(this@FloatingOverlayService))
+                            }
                         },
                         onVaultClick = {
                             openMainActivity(tab = "VAULT")
@@ -729,12 +767,16 @@ class FloatingOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwne
                                 },
                                 onReplayClick = {
                                     removeMenuOverlay()
-                                    android.widget.Toast.makeText(this@FloatingOverlayService, "⚡ Instant Replay buffer initializing...", android.widget.Toast.LENGTH_SHORT).show()
-                                    openMainActivity()
+                                    RecordingService.triggerReplayClip(this@FloatingOverlayService)
                                 },
                                 onScreenshotClick = {
                                     removeMenuOverlay()
-                                    openMainActivity(startRecord = false)
+                                    val sState = RecordingService.serviceState.value
+                                    if (sState is RecorderState.Recording || sState is RecorderState.Paused) {
+                                        RecordingService.triggerScreenshot(this@FloatingOverlayService)
+                                    } else {
+                                        startActivity(CapturePermissionActivity.createScreenshotIntent(this@FloatingOverlayService))
+                                    }
                                 },
                                 onVaultClick = {
                                     removeMenuOverlay()

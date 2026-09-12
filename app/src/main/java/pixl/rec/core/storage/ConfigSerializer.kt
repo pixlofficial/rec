@@ -11,10 +11,12 @@ import pixl.rec.core.model.HudAnimation
 import pixl.rec.core.model.HudShape
 import pixl.rec.core.model.HudSnapBehavior
 import pixl.rec.core.model.HudStyleConfig
+import pixl.rec.core.model.LaserSweepInterval
 import pixl.rec.core.model.PillRecallGesture
 import pixl.rec.core.model.QuickPreset
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
+import pixl.rec.core.model.StreamHudConfig
 import pixl.rec.core.model.StrokeStyle
 import pixl.rec.core.model.VideoCodec
 import java.text.SimpleDateFormat
@@ -105,8 +107,23 @@ object ConfigSerializer {
             put("hud_snap_behavior", config.hudSnapBehavior.name)
             put("standby", serializeHudStyle(config.standbyHudConfig))
             put("recording", serializeHudStyle(config.recordingHudConfig))
+            put("stream_hud", JSONObject().apply {
+                put("laser_sweep_interval", config.streamHudConfig.laserSweepInterval.name)
+                put("laser_glow_intensity", config.streamHudConfig.laserGlowIntensity.toDouble())
+                put("enable_uplink_health_aura", config.streamHudConfig.enableUplinkHealthAura)
+                put("live_pulse_rhythm", config.streamHudConfig.livePulseRhythm.name)
+                put("standby", serializeHudStyle(config.streamHudConfig.standbyHud))
+                put("active", serializeHudStyle(config.streamHudConfig.activeHud))
+            })
         }
         root.put("hud", hud)
+
+        // 6. Instant Replay Buffer
+        val replayBuffer = JSONObject().apply {
+            put("enabled", config.enableReplayBuffer)
+            put("duration_seconds", config.replayBufferDurationSeconds)
+        }
+        root.put("replay_buffer", replayBuffer)
 
         return root.toString(2)
     }
@@ -190,9 +207,39 @@ object ConfigSerializer {
         val recordingHud = hudObj.optJSONObject("recording")?.let { deserializeHudStyle(it, defaultConf.recordingHudConfig) }
             ?: defaultConf.recordingHudConfig
 
+        val streamHudObj = hudObj.optJSONObject("stream_hud")
+        val streamHud = if (streamHudObj != null) {
+            val laserInterval = runCatching { LaserSweepInterval.valueOf(streamHudObj.optString("laser_sweep_interval", defaultConf.streamHudConfig.laserSweepInterval.name)) }
+                .getOrDefault(defaultConf.streamHudConfig.laserSweepInterval)
+            val laserGlow = streamHudObj.optDouble("laser_glow_intensity", defaultConf.streamHudConfig.laserGlowIntensity.toDouble()).toFloat().coerceIn(0.1f, 1.0f)
+            val uplinkAura = streamHudObj.optBoolean("enable_uplink_health_aura", defaultConf.streamHudConfig.enableUplinkHealthAura)
+            val livePulse = runCatching { HudAnimation.valueOf(streamHudObj.optString("live_pulse_rhythm", defaultConf.streamHudConfig.livePulseRhythm.name)) }
+                .getOrDefault(defaultConf.streamHudConfig.livePulseRhythm)
+            val streamStandby = streamHudObj.optJSONObject("standby")?.let { deserializeHudStyle(it, defaultConf.streamHudConfig.standbyHud) }
+                ?: defaultConf.streamHudConfig.standbyHud
+            val streamActive = streamHudObj.optJSONObject("active")?.let { deserializeHudStyle(it, defaultConf.streamHudConfig.activeHud) }
+                ?: defaultConf.streamHudConfig.activeHud
+            StreamHudConfig(
+                laserSweepInterval = laserInterval,
+                laserGlowIntensity = laserGlow,
+                enableUplinkHealthAura = uplinkAura,
+                livePulseRhythm = livePulse,
+                standbyHud = streamStandby,
+                activeHud = streamActive
+            )
+        } else {
+            defaultConf.streamHudConfig
+        }
+
         // Ensure resolution macroblock alignment and non-zero dimensions
         val safeWidth = if (rawWidth > 0) ((rawWidth + 15) / 16) * 16 else defaultConf.width
         val safeHeight = if (rawHeight > 0) ((rawHeight + 15) / 16) * 16 else defaultConf.height
+
+        // 6. Instant Replay Buffer
+        val replayObj = root.optJSONObject("replay_buffer")
+        val enableReplay = replayObj?.optBoolean("enabled", defaultConf.enableReplayBuffer) ?: defaultConf.enableReplayBuffer
+        val replayDuration = replayObj?.optInt("duration_seconds", defaultConf.replayBufferDurationSeconds)?.coerceIn(15, 120)
+            ?: defaultConf.replayBufferDurationSeconds
 
         RecordingConfig(
             width = safeWidth,
@@ -228,7 +275,10 @@ object ConfigSerializer {
             recordingNotification = recordingNotification,
             standbyHudConfig = standbyHud,
             recordingHudConfig = recordingHud,
-            hudSnapBehavior = hudSnapBehavior
+            streamHudConfig = streamHud,
+            hudSnapBehavior = hudSnapBehavior,
+            enableReplayBuffer = enableReplay,
+            replayBufferDurationSeconds = replayDuration
         )
     }
 

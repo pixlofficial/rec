@@ -31,6 +31,9 @@ data class RecordingItem(
     val isStream: Boolean
         get() = displayName.startsWith("STREAM_") || displayName.contains("STREAM", ignoreCase = true)
 
+    val isClip: Boolean
+        get() = displayName.startsWith("CLIP_") || displayName.contains("CLIP", ignoreCase = true)
+
     companion object {
         private val dateFormatter = DateTimeFormatter
             .ofPattern("MMM dd, yyyy • HH:mm", Locale.US)

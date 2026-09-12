@@ -817,6 +817,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun updateStreamHudConfig(streamHudConfig: pixl.rec.core.model.StreamHudConfig) {
+        val current = _uiState.value.config
+        val updated = current.copy(streamHudConfig = streamHudConfig)
+        updateConfigAndStorage(updated)
+        if (updated.alwaysOnFloatingPill && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(getApplication()))) {
+            FloatingOverlayService.start(getApplication(), updated)
+        }
+    }
+
     fun updateHudSnapBehavior(snapBehavior: pixl.rec.core.model.HudSnapBehavior) {
         val current = _uiState.value.config
         val updated = current.copy(hudSnapBehavior = snapBehavior)
@@ -828,6 +837,18 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateHudConfig(hudConfig: pixl.rec.core.model.HudStyleConfig) {
         updateStandbyHudConfig(hudConfig)
+    }
+
+    fun updateEnableReplayBuffer(enabled: Boolean) {
+        val current = _uiState.value.config
+        val updated = current.copy(enableReplayBuffer = enabled)
+        updateConfigAndStorage(updated)
+    }
+
+    fun updateReplayBufferDuration(seconds: Int) {
+        val current = _uiState.value.config
+        val updated = current.copy(replayBufferDurationSeconds = seconds)
+        updateConfigAndStorage(updated)
     }
 
     fun startRecording(resultCode: Int, resultData: Intent) {

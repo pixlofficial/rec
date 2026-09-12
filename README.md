@@ -9,7 +9,7 @@
 
   <br />
 
-  [![Latest Release](https://img.shields.io/badge/Release-v0.9.0-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
+  [![Latest Release](https://img.shields.io/badge/Release-v0.10.0-00E5FF?style=for-the-badge&logo=github&logoColor=black)](https://github.com/pixlofficial/rec/releases/latest)
   [![Android Minimum SDK](https://img.shields.io/badge/Android-10%20to%2016%20Ready-00FF66?style=for-the-badge&logo=android&logoColor=black)](https://developer.android.com)
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-E50914?style=for-the-badge&logo=gnu&logoColor=white)](./LICENSE)
   [![Build Status](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-7928CA?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/pixlofficial/rec/actions)
@@ -41,8 +41,10 @@ With REC, you capture pristine **1080p / 1440p / 4K footage up to 120+ FPS** whi
 * 📡 **Zero-Copy RTMP Live Streaming & Broadcast Studio:** Direct client-to-server RTMP/RTMPS broadcasting to YouTube Live, Twitch, Kick, or custom servers with Adaptive Bitrate (ABR) control, simultaneous dual dispatch (live stream + full-quality Vault archive), and hardware-backed `AndroidKeyStore` AES-GCM credential security.
 * 🎬 **Zero-Latency In-App Vault Player:** Integrated hardware-accelerated video player featuring 0ms `CLOSEST_SYNC` keyframe seeking, dynamic multi-tap seek accumulation ($5\text{s} \to 10\text{s} \to 20\text{s}\dots$), custom pixel double-chevron vector suites with internal laser ripple sweeps, and vertical volume/brightness slide gestures.
 * 🪟 **Cyberpunk Floating HUD & Studio:** Magnetized floating glass overlay with 4-node radial action fan, live glowing uplink health indicator dot, one-tap Privacy Shield blackout, ghost auto-hide standby, edge-gesture recall, and a full HUD Studio customization suite.
+* ⚡ **Instant Replay Buffer Engine:** Volatile RAM rolling ring buffer (15s–120s) with strict GOP-aware keyframe preservation, non-blocking Scoped Storage MP4 clip export, and radial fan lightning trigger.
+* 📸 **Tactical Dual-Mode Screenshot Pipeline:** Asynchronous hardware keyframe decoding (~2–3ms, 0ms surface latency) during active recordings plus invisible standby trampoline captures directly to `Pictures/PixL-REC`.
+* 🏛️ **Media Vault Hybrid Hub:** Command console interface with interactive 2x2 cyberpunk telemetry deck, one-tap sliding filter bar (`ALL`, `RECORDINGS`, `STREAMS`, `REPLAYS`, `SCREENSHOTS`), 3-column photo grid, and high-res lightbox.
 * 💾 **Configuration Deck & Profile Portability:** Complete configurations management suite with 1-click JSON export and import for portable recording setups.
-* 📦 **Instant Media Vault (<15ms):** Asynchronous background thumbnail decoding backed by an in-memory 64-item `LruCache`.
 * 🛡️ **100% Offline & Private:** Zero ads, zero tracking SDKs, zero cloud dependencies, and zero accounts. Saves locally to Scoped Storage.
 * 🪶 **20 MB Lightweight Binary:** Full R8 ProGuard bytecode optimization and resource shrinking for minimal storage footprint.
 
@@ -128,9 +130,9 @@ flowchart TD
 ### Standalone Release (GitHub)
 Download the latest signed standalone binaries from our **[Releases Page](https://github.com/pixlofficial/rec/releases)**:
 
-* **`REC-v0.9.0.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
-* **`REC-v0.9.0-debug.apk`** — Debug build with logging and development inspection tools.
-* **`REC-v0.9.0.aab`** — Google Play App Bundle with full split-APK optimization.
+* **`REC-v0.10.0.apk`** (or `REC.apk`) — Universal standalone optimized release build (~20 MB).
+* **`REC-v0.10.0-debug.apk`** — Debug build with logging and development inspection tools.
+* **`REC-v0.10.0.aab`** — Google Play App Bundle with full split-APK optimization.
 * **`SHA256SUMS.txt`** — Cryptographic SHA-256 verification checksums for all release binaries.
 
 ---
@@ -154,11 +156,11 @@ cd rec
 
 # 3. Assemble Standalone Debug APK
 ./gradlew assembleDebug
-# Output: app/build/outputs/apk/debug/REC-v0.9.0-debug.apk
+# Output: app/build/outputs/apk/debug/REC-v0.10.0-debug.apk
 
 # 4. Assemble Optimized Release APK (R8 Minified + Resource Shrunk)
 ./gradlew assembleRelease
-# Output: app/build/outputs/apk/release/REC-v0.9.0.apk
+# Output: app/build/outputs/apk/release/REC-v0.10.0.apk
 
 # 5. Assemble Google Play Store App Bundle (AAB)
 ./gradlew bundleRelease
@@ -276,7 +278,7 @@ REC/
 ├── dev/                         # Developer roadmaps, improvements & audits
 ├── .github/workflows/
 │   └── build-apk.yml            # CI/CD: Automated Gradle test, AAB & APK releases
-├── version.properties           # Single source of truth for versioning (0.9.0)
+├── version.properties           # Single source of truth for versioning (0.10.0)
 ├── CHANGELOG.md                 # Keep a Changelog release history
 ├── AGENTS.md                    # Coding standards & development guidelines
 ├── CONTRIBUTING.md              # Open-source contribution guidelines

@@ -80,28 +80,28 @@ fun WhatsNewModal(
     val patchNotes = remember {
         listOf(
             PatchNote(
-                title = "Measured Adaptive Bitrate (ABR)",
-                description = "Leading-indicator network congestion controller adapting bitrates smoothly via queue age and write latency with zero dropped-frame stutter.",
+                title = "Instant Replay Buffer Engine",
+                description = "Volatile RAM circular ring buffer continuously caching 15s–120s of gameplay with 1-tap tactical clip export to Scoped Storage.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Bounded Audio Clock Sync",
-                description = "Micro-slew drift synchronizer maintaining strict <80ms audio/video lip-sync lock across long-duration live streaming broadcasts.",
+                title = "Tactical Dual-Mode Screenshots",
+                description = "2-3ms async hardware keyframe decoding during active gameplay plus standby invisible trampoline screen capture.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Fail-Closed Privacy Shield",
-                description = "Instant in-flight queue purging with CAVLC black IDR slate injection, 1 FPS keepalive ticker, and microphone mute policy.",
+                title = "Media Vault Hybrid Hub",
+                description = "Interactive 2x2 telemetry deck tracking recordings, streams, replays, and screenshots with 1-tap sliding filter navigation.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Enhanced RTMP HEVC & AVC",
-                description = "Standards-compliant sequence headers with hardware B-frame suppression for ultra-crisp broadcasts on YouTube and custom ingests.",
+                title = "Adaptive Feed & Lightbox",
+                description = "Seamlessly switches between 16:9 cinematic video cards and a 3-column photo grid, with high-res memory-safe image lightbox.",
                 category = PatchCategory.ADDED
             ),
             PatchNote(
-                title = "Differential Soak Telemetry",
-                description = "Real-time tracking of thermal rise, battery discharge rate, and linear-regression PSS memory slope relative to game baselines.",
+                title = "Replay Buffer Settings Deck",
+                description = "Live RAM overhead estimation, master toggle, and 15s/30s/60s/120s duration selector pills under Settings > Output.",
                 category = PatchCategory.ADDED
             )
         )

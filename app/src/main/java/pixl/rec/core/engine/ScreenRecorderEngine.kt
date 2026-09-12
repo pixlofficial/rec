@@ -15,8 +15,11 @@ import pixl.rec.core.model.RecorderState
 import pixl.rec.core.model.RecordingConfig
 import pixl.rec.core.model.RecordingOrientation
 import pixl.rec.core.model.SessionStreamTelemetry
+import pixl.rec.core.replay.ReplayClipMuxer
+import pixl.rec.core.replay.ReplayRingBuffer
 import pixl.rec.core.storage.MediaStoreWriter
 import pixl.rec.core.storage.StorageCalculator
+import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -60,6 +64,10 @@ class ScreenRecorderEngine(
     private var virtualDisplay: VirtualDisplay? = null
     private var displayListener: DisplayManager.DisplayListener? = null
     private var lastRecordedRotation: Int = -1
+
+    var replayRingBuffer: ReplayRingBuffer? = null
+        private set
+    private var configuredProfile: RecordingConfig? = null
 
     private var mediaMuxer: MediaMuxer? = null
     var privacyShieldController: pixl.rec.core.stream.PrivacyShieldController? = null
@@ -103,8 +111,11 @@ class ScreenRecorderEngine(
     private var currentFps = 0f
     private var gameAudioDb = -60f
     private var micAudioDb = -60f
-
     private var telemetryTickerJob: Job? = null
+
+    @Volatile private var activeVideoFormat: MediaFormat? = null
+    @Volatile private var latestKeyframeData: ByteArray? = null
+    @Volatile private var latestKeyframePtsUs: Long = 0L
 
     /**
      * Prepares hardware encoders, audio capture pipelines, and Scoped Storage descriptors.
@@ -184,6 +195,15 @@ class ScreenRecorderEngine(
                 height = vEncoder.configuredHeight,
                 framerate = vEncoder.configuredFramerate
             )
+            configuredProfile = finalConfig
+
+            // Initialize Instant Replay Buffer if enabled
+            if (finalConfig.enableReplayBuffer) {
+                replayRingBuffer = ReplayRingBuffer(durationSeconds = finalConfig.replayBufferDurationSeconds)
+                Log.i(tag, "Initialized Instant Replay Buffer: ${finalConfig.replayBufferDurationSeconds}s rolling window in volatile RAM")
+            } else {
+                replayRingBuffer = null
+            }
 
             // 2. Initialize MediaStore Scoped Storage Writer with final configured canvas (if local archive enabled)
             val shouldSaveLocal = saveLocalArchive || streamTarget == null
@@ -406,6 +426,11 @@ class ScreenRecorderEngine(
                 audioEncoder = null
                 audioCaptureManager = null
                 mediaStoreWriter = null
+                replayRingBuffer?.clear()
+                replayRingBuffer = null
+                configuredProfile = null
+                latestKeyframeData = null
+                activeVideoFormat = null
 
                 val formattedSize = if (uri != null) {
                     StorageCalculator.formatBytes(finalBytes)
@@ -479,12 +504,69 @@ class ScreenRecorderEngine(
         pendingSamples.clear()
         pendingBufferPool.clear()
 
+        replayRingBuffer?.clear()
+        replayRingBuffer = null
+        configuredProfile = null
+        latestKeyframeData = null
+        activeVideoFormat = null
+
         mediaStoreWriter?.cancel()
         _state.value = RecorderState.Idle
     }
 
+    /**
+     * Extracts the buffered window from the [ReplayRingBuffer] and writes an independent MP4 clip
+     * to Scoped Storage on Dispatchers.IO with zero interruption to active recording or live streams.
+     */
+    fun triggerReplayClip(onResult: (Result<Uri>) -> Unit) {
+        val ringBuffer = replayRingBuffer ?: run {
+            onResult(Result.failure(IllegalStateException("Instant Replay Buffer is disabled in settings")))
+            return
+        }
+        val snapshot = ringBuffer.snapshot() ?: run {
+            onResult(Result.failure(IllegalStateException("Replay buffer has insufficient frames to create a clip")))
+            return
+        }
+        val currentCfg = configuredProfile ?: config
+        engineScope.launch(Dispatchers.IO) {
+            val result = ReplayClipMuxer.saveClip(context, currentCfg, snapshot)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
+    /**
+     * Captures a high-resolution screenshot of the currently recorded screen by decoding the
+     * latest in-session keyframe asynchronously on Dispatchers.IO.
+     */
+    fun triggerScreenshot(onResult: (Result<Uri>) -> Unit) {
+        val format = activeVideoFormat ?: run {
+            onResult(Result.failure(IllegalStateException("No active video format available for screenshot")))
+            return
+        }
+        val keyframe = latestKeyframeData ?: run {
+            onResult(Result.failure(IllegalStateException("No video keyframe captured yet for screenshot")))
+            return
+        }
+        val ptsUs = latestKeyframePtsUs
+        engineScope.launch(Dispatchers.IO) {
+            val uri = pixl.rec.core.screenshot.ScreenshotCaptureManager.captureInSession(context, format, keyframe, ptsUs)
+            withContext(Dispatchers.Main) {
+                if (uri != null) {
+                    onResult(Result.success(uri))
+                } else {
+                    onResult(Result.failure(IllegalStateException("HardwareFrameDecoder failed to produce screenshot")))
+                }
+            }
+        }
+        videoEncoder?.requestSyncFrame()
+    }
+
     private fun handleVideoFormat(format: MediaFormat) {
+        activeVideoFormat = format
         streamTarget?.onVideoFormat(format)
+        replayRingBuffer?.setVideoFormat(format)
         muxerLock.withLock {
             val muxer = mediaMuxer ?: return
             if (videoTrackIndex < 0) {
@@ -497,6 +579,7 @@ class ScreenRecorderEngine(
 
     private fun handleAudioFormat(format: MediaFormat) {
         streamTarget?.onAudioFormat(format)
+        replayRingBuffer?.setAudioFormat(format)
         muxerLock.withLock {
             val muxer = mediaMuxer ?: return
             if (audioTrackIndex < 0) {
@@ -545,6 +628,20 @@ class ScreenRecorderEngine(
 
     private fun writeSample(logicalTrack: Int, buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         if (!isRecording.get()) return
+
+        // Route sample to volatile RAM circular buffer for instant replay
+        replayRingBuffer?.addSample(logicalTrack, buffer, bufferInfo)
+
+        // Cache latest video keyframe for instantaneous in-session screenshot captures
+        if (logicalTrack == 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0 && bufferInfo.size > 0) {
+            val kfBytes = ByteArray(bufferInfo.size)
+            val kfPos = buffer.position()
+            buffer.position(bufferInfo.offset)
+            buffer.get(kfBytes, 0, bufferInfo.size)
+            buffer.position(kfPos)
+            latestKeyframeData = kfBytes
+            latestKeyframePtsUs = bufferInfo.presentationTimeUs
+        }
 
         // Dispatch zero-copy slice to live stream sink if active
         if (streamTarget != null) {

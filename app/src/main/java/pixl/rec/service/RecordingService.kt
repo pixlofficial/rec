@@ -52,8 +52,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import android.net.Uri
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
@@ -142,9 +147,49 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             ACTION_RESUME -> {
                 engine?.resume()
             }
+            ACTION_REPLAY_CLIP -> {
+                handleReplayClipRequest()
+            }
+            ACTION_SCREENSHOT -> {
+                handleScreenshotRequest()
+            }
         }
 
         return START_NOT_STICKY
+    }
+
+    private fun handleReplayClipRequest() {
+        val eng = engine
+        if (eng == null) {
+            _replayClipEvents.tryEmit(ReplayClipEvent.Error("No active recording session"))
+            return
+        }
+        _replayClipEvents.tryEmit(ReplayClipEvent.InProgress)
+        eng.triggerReplayClip { result ->
+            result.onSuccess { uri ->
+                val durationMs = eng.replayRingBuffer?.currentDurationMs ?: 0L
+                _replayClipEvents.tryEmit(ReplayClipEvent.Success(uri, durationMs))
+            }.onFailure { err ->
+                _replayClipEvents.tryEmit(ReplayClipEvent.Error(err.message ?: "Failed to save replay clip"))
+            }
+        }
+    }
+
+    private fun handleScreenshotRequest() {
+        val eng = engine
+        if (eng == null) {
+            _screenshotEvents.tryEmit(ScreenshotEvent.Error("No active recording session"))
+            return
+        }
+        _screenshotEvents.tryEmit(ScreenshotEvent.InProgress)
+        eng.triggerScreenshot { result ->
+            result.onSuccess { uri ->
+                val name = uri.lastPathSegment ?: "Screenshot"
+                _screenshotEvents.tryEmit(ScreenshotEvent.Success(uri, name))
+            }.onFailure { err ->
+                _screenshotEvents.tryEmit(ScreenshotEvent.Error(err.message ?: "Failed to capture screenshot"))
+            }
+        }
     }
 
     private fun startRecordingSession(resultCode: Int, resultData: Intent, config: RecordingConfig) {
@@ -654,6 +699,8 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         const val ACTION_STOP = "pixl.rec.action.STOP"
         const val ACTION_PAUSE = "pixl.rec.action.PAUSE"
         const val ACTION_RESUME = "pixl.rec.action.RESUME"
+        const val ACTION_REPLAY_CLIP = "pixl.rec.action.REPLAY_CLIP"
+        const val ACTION_SCREENSHOT = "pixl.rec.action.SCREENSHOT"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -673,6 +720,18 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         private val _isPrivacySlateActive = MutableStateFlow(false)
         val isPrivacySlateActive: StateFlow<Boolean> = _isPrivacySlateActive.asStateFlow()
 
+        private val _replayClipEvents = MutableSharedFlow<ReplayClipEvent>(
+            extraBufferCapacity = 8,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        val replayClipEvents: SharedFlow<ReplayClipEvent> = _replayClipEvents.asSharedFlow()
+
+        private val _screenshotEvents = MutableSharedFlow<ScreenshotEvent>(
+            extraBufferCapacity = 8,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        val screenshotEvents: SharedFlow<ScreenshotEvent> = _screenshotEvents.asSharedFlow()
+
         fun togglePrivacySlate() {
             val controller = activeInstance?.engine?.privacyShieldController
             if (controller != null) {
@@ -680,6 +739,20 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             } else {
                 _isPrivacySlateActive.value = !_isPrivacySlateActive.value
             }
+        }
+
+        fun triggerReplayClip(context: Context) {
+            val intent = Intent(context, RecordingService::class.java).apply {
+                action = ACTION_REPLAY_CLIP
+            }
+            context.startService(intent)
+        }
+
+        fun triggerScreenshot(context: Context) {
+            val intent = Intent(context, RecordingService::class.java).apply {
+                action = ACTION_SCREENSHOT
+            }
+            context.startService(intent)
         }
 
         fun startService(context: Context, resultCode: Int, resultData: Intent, config: RecordingConfig) {
@@ -717,4 +790,22 @@ class RecordingService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             context.startService(intent)
         }
     }
+}
+
+/**
+ * Event emitted when an instant replay clip is requested, processing, or finalized.
+ */
+sealed class ReplayClipEvent {
+    data object InProgress : ReplayClipEvent()
+    data class Success(val uri: Uri, val durationMs: Long) : ReplayClipEvent()
+    data class Error(val message: String) : ReplayClipEvent()
+}
+
+/**
+ * Event emitted when an in-game screenshot is requested, processing, or saved.
+ */
+sealed class ScreenshotEvent {
+    data object InProgress : ScreenshotEvent()
+    data class Success(val uri: Uri, val filename: String) : ScreenshotEvent()
+    data class Error(val message: String) : ScreenshotEvent()
 }

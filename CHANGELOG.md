@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.0] - 2026-09-12
+
+### 🚀 Added
+* **Instant Replay Buffer Engine & Tactical Clip Trigger:**
+  * Implemented zero-disk, volatile RAM circular ring buffer (`ReplayRingBuffer`) with strict GOP-aware eviction (never evicts keyframes unless newer keyframes exist beyond duration) and presentation timestamp ($PTS_0 = 0$) normalization.
+  * Added non-blocking Scoped Storage MP4 clip export (`ReplayClipMuxer`) using `MediaStoreWriter` with custom `CLIP_` prefix (`CLIP_YYYYMMDD_HHMMSS.mp4`).
+  * Seamless integration into `ScreenRecorderEngine` sample drain loop and `RecordingService` via `ACTION_REPLAY_CLIP` and `ReplayClipEvent`.
+  * Connected lightning bolt trigger on both the floating radial fan and compact pill HUD with haptic vibration and toast telemetry.
+  * Wired Output Settings Replay Buffer section with master toggle, live RAM overhead calculator, and duration selector pills (15s, 30s, 60s, 120s) adhering strictly to user preferences.
+* **Tactical In-Game & Standby Screenshot Pipeline:**
+  * Asynchronous hardware-accelerated H.264/H.265 keyframe decoder (`HardwareFrameDecoder`) running on `Dispatchers.IO`, decoding frames into bitmaps in ~2–3ms with zero impact on the live recording surface.
+  * Direct Scoped Storage image persistence (`ScreenshotWriter`) writing lossless PNGs to `Pictures/PixL-REC/SHOT_YYYYMMDD_HHMMSS.png` with `IS_PENDING` atomic commit safety.
+  * Standby invisible trampoline capture (`CapturePermissionActivity.createScreenshotIntent`) enabling 1-tap screen capture on top of any game without pulling REC into the foreground.
+  * Connected Camera button on floating radial HUD and compact pill across active recording and standby modes.
+* **Media Vault Hybrid Hub & Adaptive Media Feed:**
+  * Interactive 2x2 cyberpunk telemetry deck (`VaultCategoryMetricsStrip`) displaying live file counts and storage footprint for `RECORDINGS`, `STREAMS`, `REPLAYS`, and `SCREENSHOTS`.
+  * Horizontal sliding filter bar (`[ ALL | RECORDINGS | STREAMS | REPLAYS | SCREENSHOTS ]`) with real-time count badges.
+  * Adaptive media feed dynamically switching between 16:9 cinematic video cards (with 0ms keyframe seek player) and a high-density 3-column square photo grid when viewing screenshots.
+  * Fullscreen high-resolution screenshot lightbox (`ScreenshotLightboxModal`) featuring display-bounded, OOM-safe bitmap decoding and instant Share/Delete action buttons.
+  * Collision-free MediaStore URI keying eliminating numeric ID clashes between `MediaStore.Video` and `MediaStore.Images` tables.
+
+### ⚡ Changed
+* Vault screen header refreshed to **MEDIA VAULT** with total media items telemetry.
+* Unified `VaultViewModel` querying `Movies/PixL-REC` and `Pictures/PixL-REC` concurrently on `Dispatchers.IO`.
+* Auto-refreshes vault catalog on recording completion, replay clip export, and screenshot capture.
+
+### 🐛 Fixed
+* **MediaStore ID Collision Bug:** Fixed potential Compose key collisions and thumbnail cache mixups between Video and Image tables by using full qualified URI strings.
+* **Unbounded Bitmap OOM Guard:** Protected fullscreen screenshot lightbox against out-of-memory errors on 1440p/4K displays via display-bounded sampling and safe fallback.
+
+---
+
 ## [0.9.0] - 2026-09-11
 
 ### 🚀 Added
@@ -430,6 +462,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.10.0]: https://github.com/pixlofficial/rec/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/pixlofficial/rec/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/pixlofficial/rec/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/pixlofficial/rec/compare/v0.7.0...v0.8.0

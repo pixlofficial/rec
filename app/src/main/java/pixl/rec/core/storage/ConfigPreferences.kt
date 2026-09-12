@@ -15,6 +15,8 @@ import pixl.rec.core.model.HudShape
 import pixl.rec.core.model.StrokeStyle
 import pixl.rec.core.model.HudSnapBehavior
 import pixl.rec.core.model.HudStyleConfig
+import pixl.rec.core.model.LaserSweepInterval
+import pixl.rec.core.model.StreamHudConfig
 import pixl.rec.core.model.StreamConfig
 import pixl.rec.core.model.StreamDestination
 import pixl.rec.core.model.StreamPlatform
@@ -112,6 +114,17 @@ object ConfigPreferences {
     private const val KEY_REC_STROKE_OPACITY = "rec_hud_stroke_opacity"
     private const val KEY_REC_SNAP_BEHAVIOR = "rec_hud_snap"
 
+    // Stream HUD Keys
+    private const val KEY_STREAM_HUD_LASER_INTERVAL = "stream_hud_laser_interval"
+    private const val KEY_STREAM_HUD_LASER_GLOW = "stream_hud_laser_glow"
+    private const val KEY_STREAM_HUD_ENABLE_UPLINK_AURA = "stream_hud_enable_uplink_aura"
+    private const val KEY_STREAM_HUD_LIVE_PULSE = "stream_hud_live_pulse"
+
+    // Replay Buffer Keys
+    private const val KEY_ENABLE_REPLAY_BUFFER = "enable_replay_buffer"
+    private const val KEY_REPLAY_BUFFER_DURATION = "replay_buffer_duration"
+
+
     fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -122,34 +135,16 @@ object ConfigPreferences {
             return defaultConfig
         }
 
-        val standbyHud = HudStyleConfig(
-            iconSizeDp = prefs.getInt(KEY_STANDBY_ICON_SIZE_DP, defaultConfig.standbyHudConfig.iconSizeDp),
-            iconOpacity = prefs.getFloat(KEY_STANDBY_ICON_OPACITY, defaultConfig.standbyHudConfig.iconOpacity),
-            animation = runCatching { HudAnimation.valueOf(prefs.getString(KEY_STANDBY_ANIMATION, defaultConfig.standbyHudConfig.animation.name) ?: defaultConfig.standbyHudConfig.animation.name) }.getOrDefault(defaultConfig.standbyHudConfig.animation),
-            hasBackground = prefs.getBoolean(KEY_STANDBY_HAS_BG, defaultConfig.standbyHudConfig.hasBackground),
-            shape = runCatching { HudShape.valueOf(prefs.getString(KEY_STANDBY_SHAPE, defaultConfig.standbyHudConfig.shape.name) ?: defaultConfig.standbyHudConfig.shape.name) }.getOrDefault(defaultConfig.standbyHudConfig.shape),
-            nodeSizeDp = prefs.getInt(KEY_STANDBY_NODE_SIZE_DP, defaultConfig.standbyHudConfig.nodeSizeDp),
-            backgroundOpacity = prefs.getFloat(KEY_STANDBY_BG_OPACITY, defaultConfig.standbyHudConfig.backgroundOpacity),
-            hasStroke = prefs.getBoolean(KEY_STANDBY_HAS_STROKE, defaultConfig.standbyHudConfig.hasStroke),
-            strokeWidthDp = prefs.getFloat(KEY_STANDBY_STROKE_WIDTH, defaultConfig.standbyHudConfig.strokeWidthDp),
-            strokeStyle = runCatching { StrokeStyle.valueOf(prefs.getString(KEY_STANDBY_STROKE_STYLE, defaultConfig.standbyHudConfig.strokeStyle.name) ?: defaultConfig.standbyHudConfig.strokeStyle.name) }.getOrDefault(defaultConfig.standbyHudConfig.strokeStyle),
-            strokeOpacity = prefs.getFloat(KEY_STANDBY_STROKE_OPACITY, defaultConfig.standbyHudConfig.strokeOpacity),
-            snapBehavior = runCatching { HudSnapBehavior.valueOf(prefs.getString(KEY_STANDBY_SNAP_BEHAVIOR, defaultConfig.standbyHudConfig.snapBehavior.name) ?: defaultConfig.standbyHudConfig.snapBehavior.name) }.getOrDefault(defaultConfig.standbyHudConfig.snapBehavior)
-        )
+        val standbyHud = loadHudStyle(prefs, "standby_hud", defaultConfig.standbyHudConfig)
+        val recordingHud = loadHudStyle(prefs, "rec_hud", defaultConfig.recordingHudConfig)
 
-        val recordingHud = HudStyleConfig(
-            iconSizeDp = prefs.getInt(KEY_REC_ICON_SIZE_DP, defaultConfig.recordingHudConfig.iconSizeDp),
-            iconOpacity = prefs.getFloat(KEY_REC_ICON_OPACITY, defaultConfig.recordingHudConfig.iconOpacity),
-            animation = runCatching { HudAnimation.valueOf(prefs.getString(KEY_REC_ANIMATION, defaultConfig.recordingHudConfig.animation.name) ?: defaultConfig.recordingHudConfig.animation.name) }.getOrDefault(defaultConfig.recordingHudConfig.animation),
-            hasBackground = prefs.getBoolean(KEY_REC_HAS_BG, defaultConfig.recordingHudConfig.hasBackground),
-            shape = runCatching { HudShape.valueOf(prefs.getString(KEY_REC_SHAPE, defaultConfig.recordingHudConfig.shape.name) ?: defaultConfig.recordingHudConfig.shape.name) }.getOrDefault(defaultConfig.recordingHudConfig.shape),
-            nodeSizeDp = prefs.getInt(KEY_REC_NODE_SIZE_DP, defaultConfig.recordingHudConfig.nodeSizeDp),
-            backgroundOpacity = prefs.getFloat(KEY_REC_BG_OPACITY, defaultConfig.recordingHudConfig.backgroundOpacity),
-            hasStroke = prefs.getBoolean(KEY_REC_HAS_STROKE, defaultConfig.recordingHudConfig.hasStroke),
-            strokeWidthDp = prefs.getFloat(KEY_REC_STROKE_WIDTH, defaultConfig.recordingHudConfig.strokeWidthDp),
-            strokeStyle = runCatching { StrokeStyle.valueOf(prefs.getString(KEY_REC_STROKE_STYLE, defaultConfig.recordingHudConfig.strokeStyle.name) ?: defaultConfig.recordingHudConfig.strokeStyle.name) }.getOrDefault(defaultConfig.recordingHudConfig.strokeStyle),
-            strokeOpacity = prefs.getFloat(KEY_REC_STROKE_OPACITY, defaultConfig.recordingHudConfig.strokeOpacity),
-            snapBehavior = runCatching { HudSnapBehavior.valueOf(prefs.getString(KEY_REC_SNAP_BEHAVIOR, defaultConfig.recordingHudConfig.snapBehavior.name) ?: defaultConfig.recordingHudConfig.snapBehavior.name) }.getOrDefault(defaultConfig.recordingHudConfig.snapBehavior)
+        val streamHud = StreamHudConfig(
+            laserSweepInterval = runCatching { LaserSweepInterval.valueOf(prefs.getString(KEY_STREAM_HUD_LASER_INTERVAL, defaultConfig.streamHudConfig.laserSweepInterval.name) ?: defaultConfig.streamHudConfig.laserSweepInterval.name) }.getOrDefault(defaultConfig.streamHudConfig.laserSweepInterval),
+            laserGlowIntensity = prefs.getFloat(KEY_STREAM_HUD_LASER_GLOW, defaultConfig.streamHudConfig.laserGlowIntensity),
+            enableUplinkHealthAura = prefs.getBoolean(KEY_STREAM_HUD_ENABLE_UPLINK_AURA, defaultConfig.streamHudConfig.enableUplinkHealthAura),
+            livePulseRhythm = runCatching { HudAnimation.valueOf(prefs.getString(KEY_STREAM_HUD_LIVE_PULSE, defaultConfig.streamHudConfig.livePulseRhythm.name) ?: defaultConfig.streamHudConfig.livePulseRhythm.name) }.getOrDefault(defaultConfig.streamHudConfig.livePulseRhythm),
+            standbyHud = loadHudStyle(prefs, "stream_hud_standby", defaultConfig.streamHudConfig.standbyHud),
+            activeHud = loadHudStyle(prefs, "stream_hud_active", defaultConfig.streamHudConfig.activeHud)
         )
 
         return RecordingConfig(
@@ -195,13 +190,16 @@ object ConfigPreferences {
             standbyNotification = prefs.getBoolean(KEY_STANDBY_NOTIFICATION, defaultConfig.standbyNotification),
             recordingNotification = prefs.getBoolean(KEY_RECORDING_NOTIFICATION, defaultConfig.recordingNotification),
             standbyHudConfig = standbyHud,
-            recordingHudConfig = recordingHud
+            recordingHudConfig = recordingHud,
+            streamHudConfig = streamHud,
+            enableReplayBuffer = prefs.getBoolean(KEY_ENABLE_REPLAY_BUFFER, defaultConfig.enableReplayBuffer),
+            replayBufferDurationSeconds = prefs.getInt(KEY_REPLAY_BUFFER_DURATION, defaultConfig.replayBufferDurationSeconds)
         )
     }
 
     fun saveConfig(context: Context, config: RecordingConfig) {
-        getPrefs(context).edit()
-            .putInt(KEY_WIDTH, config.width)
+        val editor = getPrefs(context).edit()
+        editor.putInt(KEY_WIDTH, config.width)
             .putInt(KEY_HEIGHT, config.height)
             .putInt(KEY_DPI, config.dpi)
             .putInt(KEY_FRAMERATE, config.framerate)
@@ -232,33 +230,56 @@ object ConfigPreferences {
             .putBoolean(KEY_RECORDING_NOTIFICATION, config.recordingNotification)
             .putString(KEY_CAPTURE_TARGET, config.captureTarget.name)
             .putInt(KEY_COUNTDOWN_SECONDS, config.countdownSeconds)
-            // Standby HUD Customization
-            .putInt(KEY_STANDBY_ICON_SIZE_DP, config.standbyHudConfig.iconSizeDp)
-            .putFloat(KEY_STANDBY_ICON_OPACITY, config.standbyHudConfig.iconOpacity)
-            .putString(KEY_STANDBY_ANIMATION, config.standbyHudConfig.animation.name)
-            .putBoolean(KEY_STANDBY_HAS_BG, config.standbyHudConfig.hasBackground)
-            .putString(KEY_STANDBY_SHAPE, config.standbyHudConfig.shape.name)
-            .putInt(KEY_STANDBY_NODE_SIZE_DP, config.standbyHudConfig.nodeSizeDp)
-            .putFloat(KEY_STANDBY_BG_OPACITY, config.standbyHudConfig.backgroundOpacity)
-            .putBoolean(KEY_STANDBY_HAS_STROKE, config.standbyHudConfig.hasStroke)
-            .putFloat(KEY_STANDBY_STROKE_WIDTH, config.standbyHudConfig.strokeWidthDp)
-            .putString(KEY_STANDBY_STROKE_STYLE, config.standbyHudConfig.strokeStyle.name)
-            .putFloat(KEY_STANDBY_STROKE_OPACITY, config.standbyHudConfig.strokeOpacity)
-            .putString(KEY_STANDBY_SNAP_BEHAVIOR, config.standbyHudConfig.snapBehavior.name)
-            // Recording HUD Customization
-            .putInt(KEY_REC_ICON_SIZE_DP, config.recordingHudConfig.iconSizeDp)
-            .putFloat(KEY_REC_ICON_OPACITY, config.recordingHudConfig.iconOpacity)
-            .putString(KEY_REC_ANIMATION, config.recordingHudConfig.animation.name)
-            .putBoolean(KEY_REC_HAS_BG, config.recordingHudConfig.hasBackground)
-            .putString(KEY_REC_SHAPE, config.recordingHudConfig.shape.name)
-            .putInt(KEY_REC_NODE_SIZE_DP, config.recordingHudConfig.nodeSizeDp)
-            .putFloat(KEY_REC_BG_OPACITY, config.recordingHudConfig.backgroundOpacity)
-            .putBoolean(KEY_REC_HAS_STROKE, config.recordingHudConfig.hasStroke)
-            .putFloat(KEY_REC_STROKE_WIDTH, config.recordingHudConfig.strokeWidthDp)
-            .putString(KEY_REC_STROKE_STYLE, config.recordingHudConfig.strokeStyle.name)
-            .putFloat(KEY_REC_STROKE_OPACITY, config.recordingHudConfig.strokeOpacity)
-            .putString(KEY_REC_SNAP_BEHAVIOR, config.recordingHudConfig.snapBehavior.name)
-            .apply()
+            .putBoolean(KEY_ENABLE_REPLAY_BUFFER, config.enableReplayBuffer)
+            .putInt(KEY_REPLAY_BUFFER_DURATION, config.replayBufferDurationSeconds)
+            // Stream HUD Customization
+            .putString(KEY_STREAM_HUD_LASER_INTERVAL, config.streamHudConfig.laserSweepInterval.name)
+            .putFloat(KEY_STREAM_HUD_LASER_GLOW, config.streamHudConfig.laserGlowIntensity)
+            .putBoolean(KEY_STREAM_HUD_ENABLE_UPLINK_AURA, config.streamHudConfig.enableUplinkHealthAura)
+            .putString(KEY_STREAM_HUD_LIVE_PULSE, config.streamHudConfig.livePulseRhythm.name)
+
+        saveHudStyle(editor, "standby_hud", config.standbyHudConfig)
+        saveHudStyle(editor, "rec_hud", config.recordingHudConfig)
+        saveHudStyle(editor, "stream_hud_standby", config.streamHudConfig.standbyHud)
+        saveHudStyle(editor, "stream_hud_active", config.streamHudConfig.activeHud)
+
+        editor.apply()
+    }
+
+    private fun loadHudStyle(prefs: SharedPreferences, prefix: String, fallback: HudStyleConfig): HudStyleConfig {
+        return HudStyleConfig(
+            iconSizeDp = prefs.getInt("${prefix}_icon_size_dp", fallback.iconSizeDp),
+            iconOpacity = prefs.getFloat("${prefix}_icon_opacity", fallback.iconOpacity),
+            animation = runCatching { HudAnimation.valueOf(prefs.getString("${prefix}_animation", fallback.animation.name) ?: fallback.animation.name) }.getOrDefault(fallback.animation),
+            hasBackground = prefs.getBoolean("${prefix}_has_bg", fallback.hasBackground),
+            shape = runCatching { HudShape.valueOf(prefs.getString("${prefix}_shape", fallback.shape.name) ?: fallback.shape.name) }.getOrDefault(fallback.shape),
+            nodeSizeDp = prefs.getInt("${prefix}_node_size_dp", fallback.nodeSizeDp),
+            backgroundOpacity = prefs.getFloat("${prefix}_bg_opacity", fallback.backgroundOpacity),
+            backgroundColorHex = prefs.getLong("${prefix}_bg_color_hex", fallback.backgroundColorHex),
+            hasStroke = prefs.getBoolean("${prefix}_has_stroke", fallback.hasStroke),
+            strokeColorHex = prefs.getLong("${prefix}_stroke_color_hex", fallback.strokeColorHex),
+            strokeWidthDp = prefs.getFloat("${prefix}_stroke_width", fallback.strokeWidthDp),
+            strokeStyle = runCatching { StrokeStyle.valueOf(prefs.getString("${prefix}_stroke_style", fallback.strokeStyle.name) ?: fallback.strokeStyle.name) }.getOrDefault(fallback.strokeStyle),
+            strokeOpacity = prefs.getFloat("${prefix}_stroke_opacity", fallback.strokeOpacity),
+            snapBehavior = runCatching { HudSnapBehavior.valueOf(prefs.getString("${prefix}_snap", fallback.snapBehavior.name) ?: fallback.snapBehavior.name) }.getOrDefault(fallback.snapBehavior)
+        )
+    }
+
+    private fun saveHudStyle(editor: SharedPreferences.Editor, prefix: String, style: HudStyleConfig) {
+        editor.putInt("${prefix}_icon_size_dp", style.iconSizeDp)
+            .putFloat("${prefix}_icon_opacity", style.iconOpacity)
+            .putString("${prefix}_animation", style.animation.name)
+            .putBoolean("${prefix}_has_bg", style.hasBackground)
+            .putString("${prefix}_shape", style.shape.name)
+            .putInt("${prefix}_node_size_dp", style.nodeSizeDp)
+            .putFloat("${prefix}_bg_opacity", style.backgroundOpacity)
+            .putLong("${prefix}_bg_color_hex", style.backgroundColorHex)
+            .putBoolean("${prefix}_has_stroke", style.hasStroke)
+            .putLong("${prefix}_stroke_color_hex", style.strokeColorHex)
+            .putFloat("${prefix}_stroke_width", style.strokeWidthDp)
+            .putString("${prefix}_stroke_style", style.strokeStyle.name)
+            .putFloat("${prefix}_stroke_opacity", style.strokeOpacity)
+            .putString("${prefix}_snap", style.snapBehavior.name)
     }
 
     fun isAutoTuneBitrateDismissed(context: Context): Boolean {

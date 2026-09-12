@@ -49,6 +49,7 @@ fun MainScreen(
 ) {
     var currentTab by rememberSaveable { mutableStateOf(initialTab) }
     var isHudStudioOpen by rememberSaveable { mutableStateOf(false) }
+    var hudStudioInitialMode by rememberSaveable { mutableStateOf(pixl.rec.core.storage.StudioMode.RECORD) }
     val isRecording by dashboardViewModel.isRecordingActive.collectAsState()
     val studioMode by dashboardViewModel.studioMode.collectAsState()
     val streamConfig by dashboardViewModel.streamConfig.collectAsState()
@@ -89,7 +90,10 @@ fun MainScreen(
                     )
                     NavigationTab.SETTINGS -> SettingsScreen(
                         viewModel = dashboardViewModel,
-                        onNavigateToHudStudio = { isHudStudioOpen = true }
+                        onNavigateToHudStudio = { mode ->
+                            hudStudioInitialMode = mode
+                            isHudStudioOpen = true
+                        }
                     )
                     NavigationTab.MORE -> MoreScreen(
                         viewModel = dashboardViewModel,
@@ -134,6 +138,7 @@ fun MainScreen(
         if (isHudStudioOpen) {
             pixl.rec.ui.studio.HudStudioScreen(
                 viewModel = dashboardViewModel,
+                initialStudioMode = hudStudioInitialMode,
                 onBackClick = { isHudStudioOpen = false }
             )
         }

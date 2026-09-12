@@ -130,7 +130,12 @@ data class RecordingConfig(
     // HUD Customization Configuration (Separate Standby & Recording Configs + Global Snap)
     val standbyHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.NONE),
     val recordingHudConfig: HudStyleConfig = HudStyleConfig(animation = HudAnimation.BREATHE),
-    val hudSnapBehavior: HudSnapBehavior = HudSnapBehavior.PROXIMITY_SNAP
+    val streamHudConfig: StreamHudConfig = StreamHudConfig(),
+    val hudSnapBehavior: HudSnapBehavior = HudSnapBehavior.PROXIMITY_SNAP,
+
+    // Instant Replay Buffer Configuration
+    val enableReplayBuffer: Boolean = true,
+    val replayBufferDurationSeconds: Int = 30 // 15, 30, 60, 120
 ) : Parcelable {
 
     val hudConfig: HudStyleConfig
